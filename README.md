@@ -3,7 +3,7 @@
 A Chrome browser extension that allows users to easily add torrents (via magnet links or .torrent file URLs) to various remote torrent client WebUIs. It supports managing multiple server profiles for different client types like qBittorrent, Transmission, Deluge, and more, offering a streamlined experience for torrent management directly from your browser.
 
 
-I coded this from scratch losely based on now discontinued /bogenpirat/remote-torrent-adder with my own added features.
+I used Cline + Google Gemini Pro to code this from scratch losely based on now discontinued @bogenpirat/remote-torrent-adder with my own added features.
 Please give it a try and create some feedbacks or issues here. 
 
 Supported Clients
