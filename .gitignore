@@ -16,6 +16,8 @@ ehthumbs.db
 Thumbs.db
 /memory-bank
 .clinerules
+github
+github.pub
 
 # IDE specific files
 .vscode/
