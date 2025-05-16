@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Remote Torrent Adder Options</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/tailwind.css">
+  <script>
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+      if (event.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
+  </script>
+  <style>
+    /* Custom styles for scrollbar if needed, or other minor tweaks not covered by Tailwind */
+    body {
+        font-family: 'Inter', sans-serif; /* A common font used with shadcn/ui, include via CDN or local if desired */
+    }
+    /* Basic styling for active server list item */
+    .active-server-item {
+        border-left-width: 4px;
+        border-left-color: hsl(222.2 47.4% 11.2%); /* shadcn/ui primary color */
+        /* background-color will be handled by Tailwind classes applied in JS */
+    }
+    .dark .active-server-item { /* Ensure border color changes in dark mode if needed */
+        border-left-color: hsl(210 40% 98%); /* Lighter border for dark mode */
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4 md:p-8">
+  <div class="container mx-auto max-w-4xl">
+    <header class="mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Remote Torrent Adder Options</h1>
+    </header>
+
+    <!-- Server Profiles Section -->
+    <section id="serverListSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+      <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Server Profiles</h2>
+      <ul id="serverList" class="space-y-3 mb-4">
+        {/* Server items will be populated here by options.js */}
+      </ul>
+      <button id="showAddServerFormButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+        Add New Server
+      </button>
+    </section>
+
+    <!-- Server Form Section (Initially Hidden) -->
+    <section id="serverFormSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6" style="display:none;">
+      <h2 id="serverFormTitle" class="text-2xl font-semibold mb-6 border-b dark:border-gray-700 pb-2">Add New Server</h2>
+      <input type="hidden" id="serverId" name="serverId">
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="form-group">
+          <label for="serverName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Server Name:</label>
+          <input type="text" id="serverName" name="serverName" placeholder="e.g., Home NAS, Seedbox" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+
+        <div class="form-group">
+          <label for="clientType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Type:</label>
+          <select id="clientType" name="clientType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            <option value="qbittorrent">qBittorrent</option>
+            <option value="transmission">Transmission</option>
+            <option value="deluge">Deluge</option>
+            <option value="utorrent">uTorrent</option>
+            <option value="rtorrent">rTorrent</option>
+            <option value="synology_download_station">Synology Download Station</option>
+            <option value="qnap_download_station">QNAP Download Station</option>
+            <option value="kodi_elementum">Kodi Elementum</option>
+            <option value="bittorrent">BitTorrent</option>
+            <option value="buffalo_torrent">Buffalo Torrent Client</option>
+            <option value="vuze">Vuze</option>
+            <option value="ttorrent">tTorrent</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group mt-6">
+        <label for="qbUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Server URL:</label>
+        <input type="text" id="qbUrl" name="qbUrl" placeholder="http://localhost:8080" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div class="form-group">
+          <label for="qbUsername" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username:</label>
+          <input type="text" id="qbUsername" name="qbUsername" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+
+        <div class="form-group">
+          <label for="qbPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password:</label>
+          <input type="password" id="qbPassword" name="qbPassword" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
+      <div class="form-group mt-6" id="rpcPathGroup" style="display:none;">
+        <label for="rpcPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RPC Path (for Transmission):</label>
+        <input type="text" id="rpcPath" name="rpcPath" placeholder="/transmission/rpc" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div class="form-group mt-6" id="scgiPathGroup" style="display:none;">
+        <label for="scgiPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SCGI/HTTPRPC URL (for rTorrent):</label>
+        <input type="text" id="scgiPath" name="scgiPath" placeholder="http://localhost:5000 or scgi://localhost:5000" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <div class="form-group">
+          <label for="defaultTags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Tags (comma-separated):</label>
+          <input type="text" id="defaultTags" name="defaultTags" placeholder="e.g., movies, series" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+
+        <div class="form-group">
+          <label for="defaultCategory" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Category/Label:</label>
+          <input type="text" id="defaultCategory" name="defaultCategory" placeholder="e.g., films, software" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+      
+      <div class="form-group mt-6 flex items-center space-x-2">
+        <input type="checkbox" id="addPaused" name="addPaused" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+        <label for="addPaused" class="text-sm font-medium text-gray-700 dark:text-gray-300">Add torrents in paused state by default</label>
+      </div>
+
+      <div class="form-group mt-4 flex items-center space-x-2">
+        <input type="checkbox" id="askForLabelDirOnPage" name="askForLabelDirOnPage" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+        <label for="askForLabelDirOnPage" class="text-sm font-medium text-gray-700 dark:text-gray-300">Ask for Label/Directory on page (if link catching enabled)</label>
+      </div>
+
+      <div class="mt-8 flex space-x-3">
+        <button id="saveServerButton" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-500 dark:hover:bg-green-600">Save Server</button>
+        <button id="testConnectionButton" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 dark:bg-yellow-400 dark:hover:bg-yellow-500">Test Connection</button>
+        <button id="cancelEditButton" type="button" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-600 dark:hover:bg-gray-700">Cancel</button>
+      </div>
+      <div id="formStatusMessage" class="mt-4 text-sm"></div>
+    </section>
+    
+    <!-- URL Mapping Section -->
+    <section id="urlMappingSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">URL-to-Server Mappings</h2>
+        <div class="form-group flex items-center space-x-2 mb-4">
+            <input type="checkbox" id="enableUrlBasedServerSelectionToggle" name="enableUrlBasedServerSelectionToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+            <label for="enableUrlBasedServerSelectionToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable URL-Based Server Selection</label>
+        </div>
+        <div id="mappingsListContainer" class="mt-2">
+            <ul id="urlMappingsList" class="space-y-2 mb-4">
+                {/* Mapping rules will be populated here */}
+            </ul>
+            <button id="showAddMappingFormButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">Add New URL Rule</button>
+        </div>
+        <div id="mappingFormSection" style="display:none;" class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/30">
+            <h3 id="mappingFormTitle" class="text-lg font-medium mb-3">Add New URL Rule</h3>
+            <input type="hidden" id="mappingId">
+            <div class="form-group mb-4">
+                <label for="websitePatternInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website URL Pattern (e.g., example.com or https://site.com/path):</label>
+                <input type="text" id="websitePatternInput" placeholder="example.com" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="form-group mb-4">
+                <label for="mapToServerSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Server:</label>
+                <select id="mapToServerSelect" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    {/* Server options populated by JS */}
+                </select>
+            </div>
+            <div class="flex space-x-3">
+                <button id="saveMappingButton" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-500 dark:hover:bg-green-600">Save Rule</button>
+                <button id="cancelMappingEditButton" type="button" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-600 dark:hover:bg-gray-700">Cancel</button>
+            </div>
+            <div id="mappingFormStatusMessage" class="mt-3 text-sm"></div>
+        </div>
+    </section>
+
+    <!-- Global Settings Section -->
+    <section id="globalSettingsSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Other Global Settings</h2>
+        <div class="space-y-4">
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="showAdvancedAddDialogToggle" name="showAdvancedAddDialogToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="showAdvancedAddDialogToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Show advanced options dialog before adding torrent (via context menu/popup)</label>
+            </div>
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="catchFromPageToggle" name="catchFromPageToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="catchFromPageToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable on-page link/form catching</label>
+            </div>
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="linksFoundIndicatorToggle" name="linksFoundIndicatorToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="linksFoundIndicatorToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Show indicator when torrent links are found on page (requires page reload)</label>
+            </div>
+            <div class="form-group">
+                <label for="linkMatchesInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom URL patterns for on-page link catching (tilde `~` separated regex):</label>
+                <input type="text" id="linkMatchesInput" name="linkMatchesInput" placeholder="e.g., example.com/torrent=~anotherpattern" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="form-group">
+                <label for="registerDelayInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Delay (ms) before registering on-page links (0 for no delay):</label>
+                <input type="number" id="registerDelayInput" name="registerDelayInput" min="0" step="100" value="0" class="w-full md:w-1/3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+        </div>
+    </section>
+
+    <!-- Backup & Restore Section -->
+    <section id="backupRestoreSection" class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Backup & Restore Settings</h2>
+        <div class="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
+            <button id="exportSettingsButton" class="w-full md:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">Export Settings</button>
+            <div class="flex items-center space-x-2">
+                <label for="importSettingsFile" class="sr-only">Import Settings (JSON file):</label>
+                <input type="file" id="importSettingsFile" accept=".json" class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-violet-50 dark:file:bg-gray-700 file:text-violet-700 dark:file:text-violet-300 hover:file:bg-violet-100 dark:hover:file:bg-gray-600">
+                <button id="importSettingsButton" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:bg-purple-500 dark:hover:bg-purple-600">Import</button>
+            </div>
+        </div>
+        <div id="backupStatusMessage" class="mt-4 text-sm"></div>
+    </section>
+
+  </div>
+  <script src="options.js"></script>
+  <footer class="mt-12 text-center text-xs text-gray-500 dark:text-gray-400 py-4 border-t dark:border-gray-700">
+    <p>
+      Remote Torrent Adder - Version <span id="extensionVersion"></span>
+    </p>
+    <p class="mt-1">
+      Developed by <a href="#" id="developerLink" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline">Your Name/Link Here</a> (Link TBD)
+    </p>
+  </footer>
+</body>
+</html>

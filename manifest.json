@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Remote Torrent WebUI Adder via Browser",
+  "version": "0.2.1",
+  "description": "Easily add .torrent or magnet URI link directly from your browser to your remote / local BitTorrent clients via their WebUI interface. There is added granulated options to set multiple remote or local server connections ability to manage per site url download to separate servers, Advanced options to set tags, labels, and torrent download state ( paused etc)",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "notifications"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.svg",
+      "48": "icons/icon48.svg",
+      "128": "icons/icon128.svg"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon48.svg",
+    "128": "icons/icon128.svg"
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon_delete.svg",
+        "icons/icon16.svg",
+        "icons/icon48.svg",
+        "icons/icon128.svg"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
