@@ -14,6 +14,9 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Windows alternate data streams
+*:Zone.Identifier
 /memory-bank
 .clinerules
 github
