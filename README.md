@@ -1,6 +1,19 @@
-# Add Remote Torrent
+# Remote Torrent WebUI Adder via Browser
 
 A Chrome browser extension that allows users to easily add torrents (via magnet links or .torrent file URLs) to various remote torrent client WebUIs. It supports managing multiple server profiles for different client types like qBittorrent, Transmission, Deluge, and more, offering a streamlined experience for torrent management directly from your browser.
+
+
+I used Cline + Google Gemini Pro to code this from scratch losely based on now discontinued @bogenpirat/remote-torrent-adder with my own added features.
+Please give it a try and create some feedbacks or issues here. 
+
+Supported Clients
+qBittorrent (Fully Tested) 
+Transmission
+Deluge
+uTorrent
+rTorrent
+Synology Download Station
+
 
 ## Core Features
 
@@ -28,7 +41,7 @@ A Chrome browser extension that allows users to easily add torrents (via magnet 
 *   Chrome Extension APIs (Manifest V3)
 *   Webpack
 
-## Installation & Usage (Placeholder)
+## Installation & Usage 
 
 *(Details on how to load the extension in developer mode or install from a store would go here.)*
 
@@ -38,10 +51,6 @@ A Chrome browser extension that allows users to easily add torrents (via magnet 
 4.  Load the `dist/` folder as an unpacked extension in Chrome's Developer Mode.
 5.  Configure your torrent servers in the extension's options page.
 
-## Contributing (Placeholder)
 
-*(Information for potential contributors, coding standards, how to submit pull requests, etc.)*
 
----
 
-*This README provides a general overview. More detailed documentation on specific client APIs, advanced configurations, and troubleshooting can be developed further.*
