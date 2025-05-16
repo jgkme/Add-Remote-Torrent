@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Remote Torrent WebUI Adder via Browser",
+  "name": "Add Remote Torrent",
+  "short_name": "Add Remote Torrent",
   "version": "0.2.1",
   "description": "Easily add .torrent or magnet URI link directly from your browser to your remote / local BitTorrent clients via their WebUI interface. There is added granulated options to set multiple remote or local server connections ability to manage per site url download to separate servers, Advanced options to set tags, labels, and torrent download state ( paused etc)",
   "permissions": [
