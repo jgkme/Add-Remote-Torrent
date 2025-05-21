@@ -16,15 +16,15 @@
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "icons/icon16.svg",
-      "48": "icons/icon48.svg",
-      "128": "icons/icon128.svg"
+      "16": "icons/icon-16x16.png",
+      "48": "icons/icon-48x48.png",
+      "128": "icons/icon-128x128.png"
     }
   },
   "icons": {
-    "16": "icons/icon16.svg",
-    "48": "icons/icon48.svg",
-    "128": "icons/icon128.svg"
+    "16": "icons/icon-16x16.png",
+    "48": "icons/icon-48x48.png",
+    "128": "icons/icon-128x128.png"
   },
   "options_page": "options/options.html",
   "background": {
@@ -41,10 +41,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "icons/icon_delete.svg",
-        "icons/icon16.svg",
-        "icons/icon48.svg",
-        "icons/icon128.svg"
+        "icons/icon-delete.png",
+        "icons/icon-16x16.png",
+        "icons/icon-48x48.png",
+        "icons/icon-128x128.png"
       ],
       "matches": ["<all_urls>"]
     }

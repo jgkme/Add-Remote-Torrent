@@ -257,6 +257,17 @@ async function determineTargetServer(pageUrl) {
 }
 
 
+// Helper function to convert ArrayBuffer to Base64
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
 // Main function to handle adding a torrent
 async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined) {
   let serverToUse = serverConfigFromDialog; 
@@ -309,8 +320,40 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     category: categoryToUse, 
     labels: labelsArray,
     selectedFileIndices: selectedFileIndices,
-    totalFileCount: totalFileCount // Pass this to the API handler
+    totalFileCount: totalFileCount,
+    // Will be populated if it's a .torrent file URL
+    torrentFileContentBase64: null, 
+    originalTorrentUrl: torrentUrl // Keep original URL for filename hints or if content fetch fails
   };
+
+  const isTorrentFileUrl = /\.torrent($|\?|#)/i.test(torrentUrl);
+  const isMagnet = torrentUrl.startsWith("magnet:");
+
+  if (isTorrentFileUrl && !isMagnet) {
+    console.log(`[RTWA Background] Detected .torrent file URL: ${torrentUrl}. Attempting to fetch content.`);
+    try {
+      // Fetch with credentials to handle private trackers
+      const response = await fetch(torrentUrl, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch .torrent file: ${response.status} ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      if (arrayBuffer && arrayBuffer.byteLength > 0) {
+        torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
+        console.log(`[RTWA Background] Successfully fetched and base64 encoded .torrent file content for: ${torrentUrl}`);
+      } else {
+        throw new Error("Fetched .torrent file content is empty or invalid.");
+      }
+    } catch (fetchError) {
+      console.error(`[RTWA Background] Error fetching .torrent file content for ${torrentUrl}:`, fetchError);
+      // Proceed with URL, but notify user that direct download failed, client will try.
+      chrome.notifications.create({
+        type: 'basic', iconUrl: 'icons/icon48.svg', title: 'Add Remote Torrent Warning',
+        message: `Could not download .torrent file from ${torrentUrl} (e.g. private tracker issue if cookies not sent by browser). Sending URL to client instead. Error: ${fetchError.message}`
+      });
+      // torrentOptions.torrentFileContentBase64 remains null, handlers will use originalTorrentUrl
+    }
+  }
 
   const { name: serverName, clientType } = serverToUse; 
   const apiClient = getClientApi(clientType);
@@ -318,13 +361,14 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   if (!apiClient || typeof apiClient.addTorrent !== 'function') {
     const errorMsg = `No valid API handler found for client type: ${clientType}`;
     console.error(errorMsg);
-    chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon48.svg', title: 'Remote Torrent Adder Error', message: errorMsg });
+    chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon48.svg', title: 'Add Remote Torrent Error', message: errorMsg });
     chrome.storage.local.set({ lastActionStatus: errorMsg });
     return;
   }
 
   try {
-    const result = await apiClient.addTorrent(torrentUrl, serverToUse, torrentOptions);
+    // Pass originalTorrentUrl as the primary identifier, torrentOptions contains the content if fetched
+    const result = await apiClient.addTorrent(torrentOptions.originalTorrentUrl, serverToUse, torrentOptions);
 
     if (result.success) {
       let successMsg = `Successfully added to "${serverName}" (${clientType}): ${torrentUrl.substring(0, 50)}...`;

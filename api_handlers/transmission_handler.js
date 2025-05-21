@@ -103,10 +103,17 @@ async function makeRpcCall(rpcUrl, method, callArguments, serverConfig) {
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // serverConfig: { url, username, password, clientType, rpcPath, ... }
-    // torrentOptions: { downloadDir, paused, labels (array), selectedFileIndices }
+    // torrentOptions: { downloadDir, paused, labels (array), selectedFileIndices, torrentFileContentBase64, originalTorrentUrl }
+    // Note: `torrentUrl` parameter here is `originalTorrentUrl` from background.js
 
-    const { selectedFileIndices } = torrentOptions;
+    const { 
+        selectedFileIndices, 
+        torrentFileContentBase64, 
+        // originalTorrentUrl is already passed as torrentUrl parameter
+    } = torrentOptions;
+
     const isMagnet = torrentUrl.startsWith('magnet:');
+    const isTorrentFileExtension = torrentUrl.toLowerCase().endsWith('.torrent');
 
     const path = serverConfig.rpcPath || '/transmission/rpc';
     const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
@@ -114,20 +121,24 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     let addArguments = {};
     const originalPausedState = torrentOptions.paused; // Store original intent
 
-    // Check if torrentUrl is a .torrent file URL
-    if (torrentUrl.toLowerCase().endsWith('.torrent')) {
+    if (torrentFileContentBase64) {
+        console.log('Transmission: Using pre-fetched torrent file content (base64).');
+        addArguments.metainfo = torrentFileContentBase64;
+    } else if (isTorrentFileExtension) {
+        // Fallback: If background didn't provide content, try fetching it directly (less likely to work for private trackers)
+        console.warn(`Transmission: torrentFileContentBase64 not provided. Attempting to fetch ${torrentUrl} directly.`);
         try {
-            console.log(`Fetching .torrent file content from: ${torrentUrl}`);
-            const response = await fetch(torrentUrl);
+            console.log(`Transmission: Fetching .torrent file content from: ${torrentUrl}`);
+            const response = await fetch(torrentUrl); // This fetch won't have user's browser cookies
             if (!response.ok) {
-                throw new Error(`Failed to fetch .torrent file: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch .torrent file directly: ${response.status} ${response.statusText}`);
             }
             const arrayBuffer = await response.arrayBuffer();
-            const byteArray = new Uint8Array(arrayBuffer);
-            addArguments.metainfo = b64_encode(byteArray);
-            console.log('Successfully fetched and encoded .torrent file.');
+            const byteArray = new Uint8Array(arrayBuffer); // b64_encode expects Uint8Array
+            addArguments.metainfo = b64_encode(byteArray); 
+            console.log('Transmission: Successfully fetched and encoded .torrent file directly.');
         } catch (fetchError) {
-            console.error(`Error processing .torrent file URL for Transmission: ${fetchError.message}`);
+            console.error(`Transmission: Error processing .torrent file URL directly: ${fetchError.message}`);
             return { 
                 success: false, 
                 error: {

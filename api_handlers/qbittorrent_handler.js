@@ -15,7 +15,15 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
   // Use these destructured values
   const { url, username, password } = serverConfig;
-  const { paused: userWantsPaused, tags, category, selectedFileIndices, totalFileCount } = torrentOptions;
+  const { 
+    paused: userWantsPaused, 
+    tags, 
+    category, 
+    selectedFileIndices, 
+    totalFileCount,
+    torrentFileContentBase64, // Added from torrentOptions
+    originalTorrentUrl // Use this as the primary identifier if content is present
+  } = torrentOptions;
 
   const loginApiUrl = getApiUrl(url, 'auth/login');
   
@@ -106,7 +114,32 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
 
     const addTorrentFormData = new FormData();
-    addTorrentFormData.append('urls', torrentUrl);
+
+    if (torrentFileContentBase64) {
+        console.log("qBittorrent: Adding torrent using file content.");
+        try {
+            const blob = base64ToBlob(torrentFileContentBase64);
+            let fileName = 'file.torrent'; // Default filename
+            if (originalTorrentUrl) {
+                try {
+                    const urlPath = new URL(originalTorrentUrl).pathname;
+                    const nameFromPath = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+                    if (nameFromPath && nameFromPath.toLowerCase().endsWith('.torrent')) {
+                        fileName = nameFromPath;
+                    }
+                } catch (e) { /* ignore if URL parsing fails, use default */ }
+            }
+            addTorrentFormData.append('torrents', blob, fileName);
+        } catch (e) {
+            console.error("Error creating Blob from base64 content:", e);
+            // Fallback to URL if blob creation fails
+            addTorrentFormData.append('urls', originalTorrentUrl);
+        }
+    } else {
+        console.log("qBittorrent: Adding torrent using URL:", originalTorrentUrl);
+        addTorrentFormData.append('urls', originalTorrentUrl);
+    }
+
     if (tags) addTorrentFormData.append('tags', tags);
     if (category) addTorrentFormData.append('category', category);
     
@@ -160,11 +193,27 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     return { 
       success: false, 
       error: {
-        userMessage: "A network error occurred or the server could not be reached.",
+        userMessage: "A network error occurred or the server could not be reached during qBittorrent add.",
         technicalDetail: error.message,
-        errorCode: "NETWORK_ERROR"
+        errorCode: "NETWORK_ERROR_QBIT_ADD"
       }
     };
+  }
+}
+
+// Helper function to convert base64 string to Blob
+function base64ToBlob(base64, type = 'application/x-bittorrent') {
+  try {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], {type});
+  } catch (e) {
+    console.error("base64ToBlob conversion error:", e);
+    throw e; // Re-throw to be caught by caller
   }
 }
 

@@ -253,7 +253,7 @@ function rtwa_showLabelDirChooser(initialSettings, linkUrl, serverInfo) {
     for (var d_idx in dirlist) adddialog += `<option value="${escapeHtml(dirlist[d_idx])}">${escapeHtml(dirlist[d_idx])}</option>`;
     adddialog += `
                             </select>
-                            <img id='rtwa_dirremover' src='${chrome.runtime.getURL("icons/icon_delete.svg")}' title='Remove selected directory from list' class='h-5 w-5 cursor-pointer text-gray-400 hover:text-red-500' />
+                            <img id='rtwa_dirremover' src='${chrome.runtime.getURL("icons/icon-delete.png")}' title='Remove selected directory from list' class='h-5 w-5 cursor-pointer text-gray-400 hover:text-red-500' />
                         </div>
                         <label for='rtwa_adddialog_directory_new' class='block text-xs font-medium text-gray-500 dark:text-gray-400 mt-1'>Or new:</label>
                         <input id='rtwa_adddialog_directory_new' type='text' class='mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm' />
@@ -265,7 +265,7 @@ function rtwa_showLabelDirChooser(initialSettings, linkUrl, serverInfo) {
     for (var l_idx in labellist) adddialog += `<option value="${escapeHtml(labellist[l_idx])}">${escapeHtml(labellist[l_idx])}</option>`;
     adddialog += `
                             </select>
-                            <img id='rtwa_labelremover' src='${chrome.runtime.getURL("icons/icon_delete.svg")}' title='Remove selected label from list' class='h-5 w-5 cursor-pointer text-gray-400 hover:text-red-500' />
+                            <img id='rtwa_labelremover' src='${chrome.runtime.getURL("icons/icon-delete.png")}' title='Remove selected label from list' class='h-5 w-5 cursor-pointer text-gray-400 hover:text-red-500' />
                         </div>
                         <label for='rtwa_adddialog_label_new' class='block text-xs font-medium text-gray-500 dark:text-gray-400 mt-1'>Or new:</label>
                         <input id='rtwa_adddialog_label_new' type='text' class='mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm' />

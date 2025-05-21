@@ -121,9 +121,17 @@ async function login(serverConfig) {
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // serverConfig: { url, password, clientType, ... }
-    // torrentOptions: { downloadDir, paused, category, tags, selectedFileIndices, totalFileCount }
+    // torrentOptions: { downloadDir, paused, category, tags, selectedFileIndices, totalFileCount, torrentFileContentBase64, originalTorrentUrl }
+    // Note: `torrentUrl` parameter here is `originalTorrentUrl` from background.js
 
-    const { selectedFileIndices, totalFileCount, paused: userWantsPaused } = torrentOptions;
+    const { 
+        selectedFileIndices, 
+        totalFileCount, 
+        paused: userWantsPaused,
+        torrentFileContentBase64,
+        // originalTorrentUrl is already passed as torrentUrl parameter
+    } = torrentOptions;
+
     const isMagnet = torrentUrl.startsWith('magnet:');
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
 
@@ -151,31 +159,43 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
     }
 
-    const addParams = {
-        path: torrentUrl, 
-        options: {},
-    };
+    let rpcMethod;
+    let rpcParams;
+    const addOptions = {};
 
     if (torrentOptions.downloadDir) {
-        addParams.options.download_location = torrentOptions.downloadDir;
+        addOptions.download_location = torrentOptions.downloadDir;
     }
 
-    // If using file selection, always add paused initially. Otherwise, respect user's choice.
     const addPausedEffective = useFileSelection ? true : userWantsPaused;
-    if (typeof addPausedEffective === 'boolean') { // Only add if explicitly set
-        addParams.options.add_paused = addPausedEffective;
+    if (typeof addPausedEffective === 'boolean') {
+        addOptions.add_paused = addPausedEffective;
+    }
+
+    if (torrentFileContentBase64 && !isMagnet) {
+        rpcMethod = 'core.add_torrent_file';
+        let fileName = 'file.torrent';
+        if (torrentUrl) { // torrentUrl is originalTorrentUrl here
+            try {
+                const urlPath = new URL(torrentUrl).pathname;
+                const nameFromPath = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+                if (nameFromPath && nameFromPath.toLowerCase().endsWith('.torrent')) {
+                    fileName = nameFromPath;
+                }
+            } catch (e) { /* ignore, use default */ }
+        }
+        rpcParams = [fileName, torrentFileContentBase64, addOptions];
+        console.log(`Deluge: Adding torrent using file content (core.add_torrent_file). Filename: ${fileName}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
+    } else {
+        rpcMethod = 'web.add_torrents';
+        const webAddParams = { path: torrentUrl, options: addOptions };
+        rpcParams = [[webAddParams]]; // web.add_torrents expects an array of torrent objects
+        console.log(`Deluge: Adding torrent using URL (web.add_torrents). URL: ${torrentUrl}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
     }
     
-    console.log(`Deluge: Adding torrent. Effective paused: ${addParams.options.add_paused}. File selection active: ${useFileSelection}`);
-
-    // Deluge's web.add_torrents expects an array of torrents to add.
-    // Each item in the array is an object like {path: "url_or_magnet", options: {...}}
-    // OR for local .torrent files, it can be {filename: "name.torrent", filedump: "base64_encoded_content", options: {...}}
-    // For now, assuming URL/magnet via 'path'. If .torrent file content needs to be sent, this needs adjustment.
-    const addResult = await makeRpcRequest(serverConfig.url, 'web.add_torrents', [[addParams]], serverConfig);
+    const addResult = await makeRpcRequest(serverConfig.url, rpcMethod, rpcParams, serverConfig);
 
     if (!addResult.success) {
-        // Handle potential re-login if session expired
         if (addResult.error && addResult.error.errorCode === "AUTH_FAILED_SESSION" && !serverConfig.retriedLoginOnAdd) {
             delugeSessionCookie = null;
             serverConfig.retriedLoginOnAdd = true; // Prevent infinite retry for add

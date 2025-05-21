@@ -75,21 +75,37 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
         };
     }
 
-    const queryParams = new URLSearchParams(params);
+    const queryParams = new URLSearchParams(); // Base for URL
+    if (method === 'GET' && params) {
+        for (const key in params) {
+            queryParams.append(key, params[key]);
+        }
+    }
     queryParams.append('token', token);
     queryParams.append('action', action);
     
     const requestUrl = `${baseUrl.replace(/\/$/, '')}/gui/?${queryParams.toString()}`;
+    
+    const fetchOptions = {
+        method: method,
+        headers: {
+            'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
+        },
+        credentials: 'include',
+    };
+
+    if (method === 'POST' && params instanceof FormData) {
+        fetchOptions.body = params; // FormData body for POST
+        // Do NOT set Content-Type for FormData, browser does it with boundary
+    } else if (method === 'POST') {
+        // Handle other POST types if needed, e.g., application/x-www-form-urlencoded
+        // For now, assuming POST with FormData or GET
+        console.warn("uTorrent makeApiRequest: POST method used without FormData. This might not be handled correctly.");
+    }
+
 
     try {
-        const response = await fetch(requestUrl, {
-            method: method, // uTorrent add-url is GET
-            headers: {
-                'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
-                // Cookie header is not manually set; rely on 'credentials: "include"'
-            },
-            credentials: 'include', // Crucial for sending session cookies like GUID
-        });
+        const response = await fetch(requestUrl, fetchOptions);
 
         if (!response.ok) {
             // If token expired (often 401 or 403, though uTorrent might just fail), try to refetch token once.
@@ -144,14 +160,38 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
     }
 }
 
+// Helper function to convert base64 string to Blob
+function base64ToBlob(base64, type = 'application/x-bittorrent') {
+  try {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], {type});
+  } catch (e) {
+    console.error("base64ToBlob conversion error:", e);
+    throw e; 
+  }
+}
+
 import bencode from 'bencode'; // For parsing .torrent files to get hash
 import { Buffer } from 'buffer';   // For bencode library
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // serverConfig: { url, username, password, clientType }
-    // torrentOptions: { downloadDir, paused, labels, selectedFileIndices, totalFileCount }
+    // torrentOptions: { downloadDir, paused, labels, selectedFileIndices, totalFileCount, torrentFileContentBase64, originalTorrentUrl }
+    // Note: `torrentUrl` parameter here is `originalTorrentUrl` from background.js
 
-    const { selectedFileIndices, totalFileCount, paused: userWantsPaused } = torrentOptions;
+    const { 
+        selectedFileIndices, 
+        totalFileCount, 
+        paused: userWantsPaused,
+        torrentFileContentBase64,
+        // originalTorrentUrl is already passed as torrentUrl parameter
+    } = torrentOptions;
+
     const isMagnet = torrentUrl.startsWith('magnet:');
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
 
@@ -195,22 +235,61 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
     }
     
-    const addParams = { s: torrentUrl };
-    if (torrentOptions.downloadDir) addParams.path = torrentOptions.downloadDir;
-    if (torrentOptions.labels && torrentOptions.labels.length > 0) addParams.label = torrentOptions.labels[0];
+    let addResult;
 
-    // Try to add paused if file selection is used, though add-url might not support it.
-    // uTorrent's `add-url` doesn't have a direct 'paused' param.
-    // We'll add, then try to get hash, then set props and stop/start.
+    if (torrentFileContentBase64 && !isMagnet) {
+        console.log("uTorrent: Adding torrent using file content (action=add-file).");
+        const formData = new FormData();
+        try {
+            const blob = base64ToBlob(torrentFileContentBase64);
+            let fileName = 'file.torrent';
+            if (torrentUrl) { // torrentUrl is originalTorrentUrl
+                try {
+                    const urlPath = new URL(torrentUrl).pathname;
+                    const nameFromPath = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+                    if (nameFromPath && nameFromPath.toLowerCase().endsWith('.torrent')) {
+                        fileName = nameFromPath;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            formData.append('torrent_file', blob, fileName);
+            
+            // Other params like download_dir (path) or label might need to be query params for add-file
+            // For now, focusing on just uploading the file.
+            // The `makeApiRequest` for POST will put action & token in URL, body is FormData.
+            // If `path` or `label` are needed, they must be part of the URL query string for add-file.
+            const queryParamsForAddFile = {};
+            if (torrentOptions.downloadDir) queryParamsForAddFile.path = torrentOptions.downloadDir;
+            // uTorrent's add-file doesn't typically take label as a query param.
+            // It might need to be set post-add if hash is known.
 
-    console.log(`uTorrent: Adding torrent. File selection active: ${useFileSelection}`);
-    const addResult = await makeApiRequest(serverConfig.url, 'add-url', addParams, serverConfig, 'GET');
+            addResult = await makeApiRequest(serverConfig.url, 'add-file', formData, serverConfig, 'POST');
+            // Note: The `params` argument to makeApiRequest for POST is the body (FormData).
+            // If query parameters are needed for POST's URL, makeApiRequest needs adjustment or
+            // we build the URL more carefully here.
+            // Current makeApiRequest for POST: queryParams are built from `params` if method is GET.
+            // For POST, `params` becomes the body. So, `path` and `label` won't be in URL.
+            // This means add-file will use default path/label.
+            // TODO: Adjust makeApiRequest or URL construction if query params are needed for POST actions like add-file.
+            // For now, this will just upload the file.
+
+        } catch (e) {
+            console.error("uTorrent: Error preparing FormData for add-file:", e);
+            return { success: false, error: { userMessage: "Failed to prepare torrent file for upload.", technicalDetail: e.message, errorCode: "FORMDATA_ERROR" }};
+        }
+    } else {
+        console.log(`uTorrent: Adding torrent using URL (action=add-url): ${torrentUrl}`);
+        const addUrlParams = { s: torrentUrl };
+        if (torrentOptions.downloadDir) addUrlParams.path = torrentOptions.downloadDir;
+        if (torrentOptions.labels && torrentOptions.labels.length > 0) addUrlParams.label = torrentOptions.labels[0];
+        addResult = await makeApiRequest(serverConfig.url, 'add-url', addUrlParams, serverConfig, 'GET');
+    }
 
     if (!addResult.success) {
         return addResult;
     }
 
-    // After successful add, try to get all torrents to find the new one if hash wasn't pre-determined
+    // After successful add (either URL or file), try to get all torrents to find the new one if hash wasn't pre-determined
     // This is a common pattern if add-url doesn't return the hash.
     // uTorrent's add-url response is typically empty on success.
     // We need the hash to set file priorities or stop/start.

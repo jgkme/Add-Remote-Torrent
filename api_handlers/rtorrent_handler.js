@@ -157,14 +157,28 @@ async function makeXmlRpcRequest(serverConfig, methodName, params = []) {
 }
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
-    // For rTorrent, we'll primarily use load.start or load.normal with the URL.
-    // The first parameter is typically an empty string (for view, not critical for adding).
-    // The second parameter is the torrent URL (magnet or direct .torrent file URL).
-    
-    const methodToCall = torrentOptions.paused ? 'load.normal' : 'load.start';
-    const params = ["", torrentUrl]; // Standard parameters for adding by URL
+    // torrentUrl is originalTorrentUrl from background.js
+    const { 
+        paused, 
+        torrentFileContentBase64,
+        // originalTorrentUrl is already passed as torrentUrl parameter
+    } = torrentOptions;
 
-    console.log(`rTorrent: Calling ${methodToCall} with URL: ${torrentUrl}`);
+    const isMagnet = torrentUrl.startsWith('magnet:');
+    let methodToCall;
+    let params;
+
+    if (torrentFileContentBase64 && !isMagnet) {
+        methodToCall = paused ? 'load.raw' : 'load.raw_start';
+        // The first parameter for load.raw_start can be an empty string (target for commands, not file path)
+        // The second parameter is the base64 encoded torrent data.
+        params = ["", { type: 'base64', value: torrentFileContentBase64 }];
+        console.log(`rTorrent: Calling ${methodToCall} with base64 torrent content.`);
+    } else {
+        methodToCall = paused ? 'load.normal' : 'load.start';
+        params = ["", torrentUrl]; // Standard parameters for adding by URL
+        console.log(`rTorrent: Calling ${methodToCall} with URL: ${torrentUrl}`);
+    }
 
     // Optional parameters like download directory or labels are more complex with rTorrent's
     // XML-RPC. They often require using "execute" commands or setting properties post-add.
