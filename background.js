@@ -323,35 +323,46 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     totalFileCount: totalFileCount,
     // Will be populated if it's a .torrent file URL
     torrentFileContentBase64: null, 
-    originalTorrentUrl: torrentUrl // Keep original URL for filename hints or if content fetch fails
+    originalTorrentUrl: torrentUrl 
   };
 
-  const isTorrentFileUrl = /\.torrent($|\?|#)/i.test(torrentUrl);
   const isMagnet = torrentUrl.startsWith("magnet:");
-
-  if (isTorrentFileUrl && !isMagnet) {
-    console.log(`[RTWA Background] Detected .torrent file URL: ${torrentUrl}. Attempting to fetch content.`);
+  
+  if (!isMagnet) { // For any non-magnet link, attempt to fetch content
+    console.log(`[RTWA Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`);
     try {
-      // Fetch with credentials to handle private trackers
       const response = await fetch(torrentUrl, { credentials: 'include' });
       if (!response.ok) {
-        throw new Error(`Failed to fetch .torrent file: ${response.status} ${response.statusText}`);
+        // If fetch fails (e.g. 404, 403 without redirect to login page), throw to be caught below.
+        // The client might still be able to handle it if it's a redirect to a login page the client understands.
+        throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
       }
-      const arrayBuffer = await response.arrayBuffer();
-      if (arrayBuffer && arrayBuffer.byteLength > 0) {
-        torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
-        console.log(`[RTWA Background] Successfully fetched and base64 encoded .torrent file content for: ${torrentUrl}`);
+
+      const contentType = response.headers.get('content-type');
+      console.log(`[RTWA Background] Fetched ${torrentUrl}, Content-Type: ${contentType}`);
+
+      if (contentType && (contentType.includes('application/x-bittorrent') || contentType.includes('application/octet-stream') || contentType.includes('application/torrent'))) {
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer && arrayBuffer.byteLength > 0) {
+          torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
+          console.log(`[RTWA Background] Successfully fetched and base64 encoded .torrent content (Content-Type: ${contentType}) for: ${torrentUrl}`);
+        } else {
+          // This case (valid content-type but empty body) is unlikely for valid .torrent files but handled.
+          console.warn(`[RTWA Background] URL ${torrentUrl} had .torrent Content-Type but empty/invalid body. Sending URL to client.`);
+          torrentOptions.torrentFileContentBase64 = null; 
+        }
       } else {
-        throw new Error("Fetched .torrent file content is empty or invalid.");
+        // Content-Type doesn't indicate a torrent file.
+        console.log(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Will send URL to client as is.`);
+        torrentOptions.torrentFileContentBase64 = null; 
       }
     } catch (fetchError) {
-      console.error(`[RTWA Background] Error fetching .torrent file content for ${torrentUrl}:`, fetchError);
-      // Proceed with URL, but notify user that direct download failed, client will try.
-      chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon48.svg', title: 'Add Remote Torrent Warning',
-        message: `Could not download .torrent file from ${torrentUrl} (e.g. private tracker issue if cookies not sent by browser). Sending URL to client instead. Error: ${fetchError.message}`
-      });
-      // torrentOptions.torrentFileContentBase64 remains null, handlers will use originalTorrentUrl
+      console.warn(`[RTWA Background] Error attempting to fetch content for ${torrentUrl}:`, fetchError.message, ". Will send URL to client as is.");
+      // Notification about fetch failure was here, but it might be too noisy if the URL is just a webpage.
+      // The client handlers will ultimately determine if they can process the URL.
+      // For now, let's remove the direct notification here and let the client attempt to handle the URL.
+      // If the client fails, its handler should provide a more specific error.
+      torrentOptions.torrentFileContentBase64 = null; // Ensure it's null
     }
   }
 
@@ -414,13 +425,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // Regex to check for .torrent extension, allowing for query strings or fragments
     let isTorrentFile = /\.torrent($|\?|#)/i.test(linkUrl); 
 
+    // Removed the early return. Let addTorrentToClient handle all non-magnet links
+    // and decide based on fetch + Content-Type if it's a torrent.
+    // We can still log if it doesn't strictly match the .torrent pattern.
     if (!isMagnet && !isTorrentFile) {
-      console.log("Link is not a recognized magnet or .torrent file URL:", linkUrl);
-      chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon48.svg', title: 'Remote Torrent Adder',
-        message: 'The clicked link is not a recognized magnet or .torrent file URL.'
-      });
-      return;
+      console.log(`[RTWA Background] Link URL "${linkUrl}" does not strictly end with .torrent. Proceeding to addTorrentToClient for content type check.`);
     }
 
     console.log(`[RTWA Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
