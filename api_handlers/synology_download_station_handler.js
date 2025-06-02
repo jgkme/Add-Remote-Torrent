@@ -16,14 +16,15 @@ async function getSynologySid(serverConfig) {
     // Method: login
     // Version: 6 is common, but Synology supports up to 7. Version 6 is widely compatible.
     // Consider making version configurable or checking API.Info if issues arise.
-    // Auth summary suggests version '2' for SYNO.API.Auth login. Defaulting to that.
-    const authUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/auth.cgi`;
+    // User log indicates SYNO.API.Auth path is entry.cgi and maxVersion is 7.
+    // Using version 6 for SYNO.API.Auth as it's often cited as stable.
+    const authUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/entry.cgi`; // Changed path
     const params = new URLSearchParams({
         api: 'SYNO.API.Auth',
-        version: serverConfig.authApiVersion || '2', 
+        version: serverConfig.authApiVersion || '6', // Changed version
         method: 'login',
         account: serverConfig.username,
-        passwd: serverConfig.password,
+        passwd: serverConfig.password, // This should be passwd
         session: 'DownloadStation', // Session name
         format: 'sid'
     });
@@ -76,8 +77,39 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
         };
     }
 
-    const apiUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/entry.cgi`;
+    let cgiPath;
+    if (apiName === 'SYNO.API.Info') {
+        cgiPath = 'query.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.Task') {
+        cgiPath = 'DownloadStation/task.cgi'; // As per user's log for SYNO.API.Info
+    } else if (apiName === 'SYNO.DownloadStation.Info') { // From the PDF, for getinfo/getconfig
+        cgiPath = 'DownloadStation/info.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.Schedule') { // From the PDF
+        cgiPath = 'DownloadStation/schedule.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.Statistic') { // From the PDF
+        cgiPath = 'DownloadStation/statistic.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.RSS.Site') { // From the PDF
+        cgiPath = 'DownloadStation/RSSsite.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.RSS.Feed') { // From the PDF
+        cgiPath = 'DownloadStation/RSSfeed.cgi';
+    } else if (apiName === 'SYNO.DownloadStation.BTSearch') { // From the PDF
+        cgiPath = 'DownloadStation/btsearch.cgi';
+    } else {
+        // Default to entry.cgi for SYNO.API.Auth (handled in getSynologySid) 
+        // and any other APIs not explicitly mapped.
+        // Note: getSynologySid makes its own direct call to entry.cgi for SYNO.API.Auth.
+        // This makeSynologyApiRequest is for other general API calls.
+        // If SYNO.API.Auth is called through here for other methods like 'logout', it should use entry.cgi.
+        cgiPath = 'entry.cgi'; 
+    }
+    
+    const baseUrl = serverConfig.url.replace(/\/$/, '');
+    const apiUrl = `${baseUrl}/webapi/${cgiPath}`;
+    
     const queryParams = new URLSearchParams(params);
+    // For entry.cgi, api, version, method are part of query.
+    // For specific cgi paths, they might be implicit or still needed.
+    // The Synology PDF shows them in query even for specific CGIs.
     queryParams.set('api', apiName);
     queryParams.set('version', version);
     queryParams.set('method', methodName);
@@ -187,11 +219,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // API: SYNO.DownloadStation.Task
     // Method: create
     // Version: 1 as per initial analysis. Newer versions (e.g., 3) exist and might offer more.
-    // For now, sticking to v1.
+    // For now, sticking to v3 based on user's DSM 7.2 maxVersion.
     const result = await makeSynologyApiRequest(
         serverConfig,
         'SYNO.DownloadStation.Task',
-        serverConfig.taskApiVersion || '1', 
+        serverConfig.taskApiVersion || '3', // Changed version
         'create',
         params,
         'POST' 
@@ -232,6 +264,7 @@ export async function testConnection(serverConfig) {
 
         if (result.success && result.data && result.data['SYNO.DownloadStation.Task']) {
             const dsInfo = result.data['SYNO.DownloadStation.Task'];
+            console.log(`Synology DownloadStation.Task API Info: minVersion=${dsInfo.minVersion}, maxVersion=${dsInfo.maxVersion}, path=${dsInfo.path}`); // Log versions
             return { 
                 success: true, 
                 data: { 
