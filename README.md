@@ -51,6 +51,8 @@ Synology Download Station
 4.  Load the `dist/` folder as an unpacked extension in Chrome's Developer Mode.
 5.  Configure your torrent servers in the extension's options page.
 
+## Known Issues
+1. qbitorrent Webui 5.1 - Need to untick CSRF under Security, limitation of Chrome Extension and browser security measure.
 
 
 
