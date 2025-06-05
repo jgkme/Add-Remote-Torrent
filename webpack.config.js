@@ -67,6 +67,7 @@ module.exports = (env, argv) => {
           { from: 'options/options.html', to: 'options/options.html' },
           { from: 'popup/popup.html', to: 'popup/popup.html' },
           { from: 'confirmAdd/confirmAdd.html', to: 'confirmAdd/confirmAdd.html' },
+          { from: 'js/theme.js', to: 'js/theme.js' } // Added this line
           // Add any other static assets that need to be copied
         ],
       }),

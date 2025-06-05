@@ -448,7 +448,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (response.success) {
                                 displayFormStatus('Connection successful!', 'success');
                             } else {
-                                displayFormStatus(`Connection failed: ${response.message || response.error}`, 'error');
+                                let errorMessage = "Connection failed.";
+                                if (response.error && response.error.userMessage) {
+                                    errorMessage = `Connection failed: ${response.error.userMessage}`;
+                                    if (response.error.technicalDetail) console.error("Technical details for connection failure:", response.error.technicalDetail);
+                                } else if (response.message) {
+                                    errorMessage = `Connection failed: ${response.message}`;
+                                } else if (response.error) { // Fallback if error is not the structured object
+                                    errorMessage = `Connection failed: ${JSON.stringify(response.error)}`;
+                                }
+                                displayFormStatus(errorMessage, 'error');
                             }
                         } else {
                             displayFormStatus('No response from service worker.', 'error');

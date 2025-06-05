@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Add torrents/magnets to remote/local clients via WebUI. Supports multiple servers, per-site rules, tags, labels, and paused state.",
   "permissions": [
     "storage",
@@ -44,7 +44,8 @@
         "icons/icon-delete.png",
         "icons/icon-16x16.png",
         "icons/icon-48x48.png",
-        "icons/icon-128x128.png"
+        "icons/icon-128x128.png",
+        "js/theme.js"
       ],
       "matches": ["<all_urls>"]
     }
