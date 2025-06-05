@@ -21,6 +21,7 @@ Thumbs.db
 .clinerules
 github
 github.pub
+/.roo
 
 # IDE specific files
 .vscode/
