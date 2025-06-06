@@ -10,7 +10,6 @@ const offscreenDocumentManager = {
     isReady: false,
     readyPromise: null,
     resolveReadyPromise: null,
-    // Function to reset or initialize the readyPromise
     _setupReadyPromise: function() { 
         this.readyPromise = new Promise(resolve => {
             this.resolveReadyPromise = resolve;
@@ -369,6 +368,42 @@ async function playSound(soundFile) {
   }
 }
 
+async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, currentTagsToUse) {
+    let appliedRule = false;
+    const { trackerUrlRules } = await chrome.storage.local.get('trackerUrlRules');
+
+    if (trackerUrlRules && trackerUrlRules.length > 0 && announceUrls && announceUrls.length > 0) {
+        console.log('[RTWA Background] applyTrackerRulesLogic: Checking rules against announce URLs:', announceUrls);
+        for (const rule of trackerUrlRules) {
+            for (const announceUrl of announceUrls) {
+                if (announceUrl.includes(rule.trackerUrlPattern)) {
+                    console.log(`[RTWA Background] Tracker rule matched: Pattern "${rule.trackerUrlPattern}" found in "${announceUrl}"`);
+                    if (rule.label) {
+                        currentTorrentOptions.category = rule.label;
+                        currentTorrentOptions.labels = [rule.label];
+                        if (currentTagsToUse) {
+                             currentTorrentOptions.labels = currentTorrentOptions.labels.concat(currentTagsToUse.split(',').map(t => t.trim()).filter(t => t && t !== rule.label));
+                        }
+                        console.log(`[RTWA Background] Applied label from rule: "${rule.label}"`);
+                        appliedRule = true;
+                    }
+                    if (rule.directory) {
+                        currentTorrentOptions.downloadDir = rule.directory;
+                        console.log(`[RTWA Background] Applied directory from rule: "${rule.directory}"`);
+                        appliedRule = true;
+                    }
+                    if (appliedRule) break; 
+                }
+            }
+            if (appliedRule) break; 
+        }
+    } else {
+        console.log('[RTWA Background] applyTrackerRulesLogic: No tracker rules configured or no/empty announce URLs to process.');
+    }
+    return { wasRuleApplied: appliedRule, torrentOptions: currentTorrentOptions };
+}
+
+
 async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined) {
   let serverToUse = serverConfigFromDialog; 
   let serverDeterminedByRule = false;
@@ -419,17 +454,16 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   }
 
   const tagsToUse = customTags !== null ? customTags : (serverToUse.tags || '');
-  const categoryToUse = customCategory !== null ? customCategory : (serverToUse.category || ''); 
-  const addPausedToUse = customAddPaused !== null ? customAddPaused : (serverToUse.addPaused || false);
-  const downloadDirToUse = customDownloadDir !== null ? customDownloadDir : (serverToUse.downloadDir || null); 
+  let categoryToUse = customCategory !== null ? customCategory : (serverToUse.category || ''); 
+  let downloadDirToUse = customDownloadDir !== null ? customDownloadDir : (serverToUse.downloadDir || null); 
 
   let labelsArray = [];
   if (categoryToUse) labelsArray.push(categoryToUse); 
   if (tagsToUse) labelsArray = labelsArray.concat(tagsToUse.split(',').map(t => t.trim()).filter(t => t));
   
-  const torrentOptions = {
+  let torrentOptions = { 
     downloadDir: downloadDirToUse, 
-    paused: addPausedToUse,
+    paused: customAddPaused !== null ? customAddPaused : (serverToUse.addPaused || false),
     tags: tagsToUse, 
     category: categoryToUse, 
     labels: labelsArray,
@@ -440,7 +474,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   };
 
   const isMagnet = torrentUrl.startsWith("magnet:");
-  let wasRuleApplied = false; // Flag to indicate if a tracker rule modified options
+  let wasRuleApplied = false; 
   
   if (!isMagnet) { 
     console.log(`[RTWA Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`);
@@ -470,60 +504,65 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     }
   }
 
-  // Apply Tracker URL Rules if it's a .torrent file with content
-  if (torrentOptions.torrentFileContentBase64) {
+  // Apply Tracker URL Rules
+  let ruleApplicationResult; 
+
+  if (isMagnet) {
+    console.log('[RTWA Background] Applying tracker URL rules for magnet link...');
+    const magnetTrackers = [];
     try {
-      console.log('[RTWA Background] Applying tracker URL rules...');
-      const { trackerUrlRules } = await chrome.storage.local.get('trackerUrlRules');
-      if (trackerUrlRules && trackerUrlRules.length > 0) {
-        const torrentDataBuffer = Uint8Array.from(atob(torrentOptions.torrentFileContentBase64), c => c.charCodeAt(0));
-        const decodedTorrent = bencode.decode(torrentDataBuffer);
-        // console.log('[RTWA Background] Decoded torrent for tracker rules:', decodedTorrent);
-
-        let announceUrls = [];
-        if (decodedTorrent.announce) {
-          announceUrls.push(Buffer.isBuffer(decodedTorrent.announce) ? decodedTorrent.announce.toString('utf-8') : String(decodedTorrent.announce));
-        }
-        if (decodedTorrent['announce-list'] && Array.isArray(decodedTorrent['announce-list'])) {
-          decodedTorrent['announce-list'].forEach(tier => {
-            if (Array.isArray(tier)) {
-              tier.forEach(tracker => {
-                announceUrls.push(Buffer.isBuffer(tracker) ? tracker.toString('utf-8') : String(tracker));
-              });
+        const urlParams = new URLSearchParams(torrentUrl.substring(torrentUrl.indexOf('?') + 1));
+        urlParams.forEach((value, key) => {
+            if (key === 'tr') {
+                magnetTrackers.push(decodeURIComponent(value)); 
             }
-          });
-        }
-        announceUrls = [...new Set(announceUrls)]; // Unique URLs
-        console.log('[RTWA Background] Extracted announce URLs:', announceUrls);
-
-        for (const rule of trackerUrlRules) {
-          for (const announceUrl of announceUrls) {
-            if (announceUrl.includes(rule.trackerUrlPattern)) {
-              console.log(`[RTWA Background] Tracker rule matched: Pattern "${rule.trackerUrlPattern}" found in "${announceUrl}"`);
-              if (rule.label) {
-                torrentOptions.category = rule.label; 
-                // Rebuild labelsArray if category changed by rule
-                torrentOptions.labels = [rule.label];
-                if (tagsToUse) torrentOptions.labels = torrentOptions.labels.concat(tagsToUse.split(',').map(t => t.trim()).filter(t => t && t !== rule.label));
-                console.log(`[RTWA Background] Applied label from rule: "${rule.label}"`);
-                wasRuleApplied = true;
-              }
-              if (rule.directory) {
-                torrentOptions.downloadDir = rule.directory;
-                console.log(`[RTWA Background] Applied directory from rule: "${rule.directory}"`);
-                wasRuleApplied = true;
-              }
-              if (wasRuleApplied) break; // First matching rule for this torrent wins
-            }
+        });
+    } catch(e) {
+        console.error('[RTWA Background] Error parsing magnet link for trackers:', e);
+    }
+    if (magnetTrackers.length > 0) {
+        console.log('[RTWA Background] Extracted magnet trackers:', magnetTrackers);
+        let tempOptions = {...torrentOptions}; // Operate on a copy for rule application
+        ruleApplicationResult = await applyTrackerRulesLogic(magnetTrackers, tempOptions, tagsToUse);
+        torrentOptions = ruleApplicationResult.torrentOptions; 
+    } else {
+        ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // No trackers, no rules applied
+    }
+  } else if (torrentOptions.torrentFileContentBase64) {
+    console.log('[RTWA Background] Applying tracker URL rules for .torrent file...');
+    try {
+      const torrentDataBuffer = Uint8Array.from(atob(torrentOptions.torrentFileContentBase64), c => c.charCodeAt(0));
+      const decodedTorrent = bencode.decode(torrentDataBuffer);
+      let announceUrls = [];
+      const decoder = new TextDecoder('utf-8');
+      if (decodedTorrent.announce) {
+        announceUrls.push(decoder.decode(decodedTorrent.announce));
+      }
+      if (decodedTorrent['announce-list'] && Array.isArray(decodedTorrent['announce-list'])) {
+        decodedTorrent['announce-list'].forEach(tier => {
+          if (Array.isArray(tier)) {
+            tier.forEach(tracker => announceUrls.push(decoder.decode(tracker)));
           }
-          if (wasRuleApplied) break; // First matching rule for this torrent wins
-        }
+        });
+      }
+      announceUrls = [...new Set(announceUrls)];
+      console.log('[RTWA Background] Extracted .torrent announce URLs:', announceUrls);
+      if (announceUrls.length > 0) {
+        let tempOptions = {...torrentOptions}; // Operate on a copy
+        ruleApplicationResult = await applyTrackerRulesLogic(announceUrls, tempOptions, tagsToUse);
+        torrentOptions = ruleApplicationResult.torrentOptions; 
+      } else {
+        ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // No announce URLs, no rules applied
       }
     } catch (e) {
-      console.error('[RTWA Background] Error processing tracker URL rules:', e);
+      console.error('[RTWA Background] Error decoding .torrent or extracting trackers for rules:', e);
+      ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // Error, no rules applied
     }
+  } else {
+    ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // Not a magnet, no .torrent content
   }
-
+  
+  wasRuleApplied = ruleApplicationResult.wasRuleApplied;
 
   const { name: serverName, clientType } = serverToUse; 
   const apiClient = getClientApi(clientType);

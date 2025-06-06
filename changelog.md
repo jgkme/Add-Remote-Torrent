@@ -15,9 +15,10 @@ All notable changes to this project will be documented in this file.
     -   Added a new section in the Options page to create, manage (edit/delete), and list these rules.
     -   Each rule consists of a "Tracker URL Pattern" (substring match), an optional "Assign Label", and an optional "Assign Directory".
     -   Logic implemented in `background.js` to:
-        -   Parse `.torrent` file content (using the `bencode` library) when a `.torrent` file is added.
-        -   Extract `announce` and `announce-list` URLs.
-        -   Match these URLs against the configured `trackerUrlRules`.
+        -   Refactor rule application into a helper function `applyTrackerRulesLogic`.
+        -   For magnet links, extract tracker URLs from `&tr=` parameters (URI decoded) and pass to `applyTrackerRulesLogic`.
+        -   For `.torrent` files, parse content (using `bencode` library), extract `announce` and `announce-list` URLs (using `TextDecoder`), and pass to `applyTrackerRulesLogic`.
+        -   The helper function matches these URLs against configured `trackerUrlRules`.
         -   If a rule matches, the torrent's category (label) and/or download directory are overridden. The first matching rule applies.
     -   The `trackerUrlRules` are included in the settings export/import functionality.
     -   Success notifications now indicate if a tracker rule was applied.
