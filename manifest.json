@@ -7,7 +7,8 @@
   "permissions": [
     "storage",
     "contextMenus",
-    "notifications"
+    "notifications",
+    "offscreen"
   ],
   "optional_host_permissions": [
     "http://*/*",
@@ -45,7 +46,11 @@
         "icons/icon-16x16.png",
         "icons/icon-48x48.png",
         "icons/icon-128x128.png",
-        "js/theme.js"
+        "js/theme.js",
+        "audio/success.mp3",
+        "audio/failure.mp3",
+        "offscreen_audio.html",
+        "offscreen_audio.js"
       ],
       "matches": ["<all_urls>"]
     }

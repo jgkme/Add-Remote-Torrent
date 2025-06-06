@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle'); 
     const linkMatchesInput = document.getElementById('linkMatchesInput'); 
     const registerDelayInput = document.getElementById('registerDelayInput'); 
+    const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle'); // New sound notification toggle
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -69,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
         catchfrompage: false, 
         linksfoundindicator: false, 
         linkmatches: '', 
-        registerDelay: 0 
+        registerDelay: 0,
+        enableSoundNotifications: false // New global setting for sound
     };
     let urlToServerMappings = [];
 
@@ -510,6 +512,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    enableSoundNotificationsToggle.addEventListener('change', () => {
+        globalSettings.enableSoundNotifications = enableSoundNotificationsToggle.checked;
+        chrome.storage.local.set({ enableSoundNotifications: globalSettings.enableSoundNotifications }, () => {
+            displayFormStatus('Global settings updated.', 'success');
+        });
+    });
+
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
         const settingsToExport = {
@@ -572,7 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         catchfrompage: importedSettings.catchfrompage || false, 
                         linksfoundindicator: importedSettings.linksfoundindicator || false, 
                         linkmatches: importedSettings.linkmatches || '', 
-                        registerDelay: importedSettings.registerDelay || 0 
+                        registerDelay: importedSettings.registerDelay || 0,
+                        enableSoundNotifications: importedSettings.enableSoundNotifications || false // Import sound setting
                     };
 
                     chrome.storage.local.set(settingsToSave, () => {
@@ -606,7 +616,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'catchfrompage', 
             'linksfoundindicator', 
             'linkmatches', 
-            'registerDelay' 
+            'registerDelay',
+            'enableSoundNotifications' // Load sound setting
         ], (result) => {
             servers = (result.servers || []).map(s => ({
                 ...s, 
@@ -640,6 +651,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             globalSettings.registerDelay = result.registerDelay || 0; 
             registerDelayInput.value = globalSettings.registerDelay;
+
+            globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; // Load sound setting
+            enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
 
             if (activeServerId && !servers.find(s => s.id === activeServerId)) {
                 activeServerId = servers.length > 0 ? servers[0].id : null;
