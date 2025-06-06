@@ -2,32 +2,53 @@
 // const RTA_BACKGROUND_LOADED = true; // Add a non-console statement
 
 import { getClientApi } from './api_handlers/api_client_factory.js';
+import bencode from 'bencode'; // Use 'bencode' library, consistent with confirmAdd.js
 
 // Global manager for the offscreen document
-let offscreenDocumentManager = {
+const offscreenDocumentManager = {
     creatingPromise: null,
     isReady: false,
     readyPromise: null,
     resolveReadyPromise: null,
     // Function to reset or initialize the readyPromise
-    setupReadyPromise: function() {
+    _setupReadyPromise: function() { 
         this.readyPromise = new Promise(resolve => {
             this.resolveReadyPromise = resolve;
         });
+    },
+    ensureReady: async function() {
+        if (this.isReady) return;
+        if (this.readyPromise) { 
+            console.log('[RTWA Background] Offscreen Manager: Waiting on existing readyPromise.');
+            await this.readyPromise;
+        }
+    },
+    markAsCreating: function() {
+        this._setupReadyPromise(); 
+        this.isReady = false; 
+    },
+    markAsReady: function() {
+        this.isReady = true;
+        if (this.resolveReadyPromise) {
+            this.resolveReadyPromise();
+        }
+    },
+    setCreatingPromise: function(promise) {
+        this.creatingPromise = promise;
+    },
+    clearCreatingPromise: function() {
+        this.creatingPromise = null;
     }
 };
-offscreenDocumentManager.setupReadyPromise(); // Initial setup
+offscreenDocumentManager._setupReadyPromise(); // Initial setup
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("[RTWA Background] Received message:", request); 
 
   if (request.action === 'offscreenReady') {
-    console.log('[RTWA Background] Received offscreenReady message.');
-    offscreenDocumentManager.isReady = true;
-    if (offscreenDocumentManager.resolveReadyPromise) {
-        offscreenDocumentManager.resolveReadyPromise();
-    }
-    sendResponse({ status: 'Offscreen document ready acknowledged.' });
+    console.log('[RTWA Background] Received offscreenReady message from offscreen document.');
+    offscreenDocumentManager.markAsReady();
+    sendResponse({ status: 'Offscreen document ready acknowledged by service worker.' });
     return false; 
   }
 
@@ -249,72 +270,67 @@ function arrayBufferToBase64(buffer) {
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen_audio.html';
 
 async function hasOffscreenDocument() {
-    // Check if any offscreen documents are running.
-    // Requires the "offscreen" permission.
-    if (chrome.runtime.getContexts) { // Check if getContexts is available (Chrome 109+)
+    if (chrome.runtime.getContexts) { 
         const existingContexts = await chrome.runtime.getContexts({
             contextTypes: ['OFFSCREEN_DOCUMENT'],
             documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
         });
         return existingContexts.length > 0;
     }
-    return false; // Fallback if getContexts is not available
+    return false; 
 }
 
 async function setupOffscreenDocument() {
-    // If we're already setup and ready, or document exists and we're waiting for ready.
-    if (offscreenDocumentManager.isReady || (await hasOffscreenDocument() && !offscreenDocumentManager.isReady)) {
+    console.log('[RTWA Background] setupOffscreenDocument: Checking status. isReady:', offscreenDocumentManager.isReady);
+    if (await hasOffscreenDocument()) {
+        console.log('[RTWA Background] setupOffscreenDocument: Document already exists.');
         if (!offscreenDocumentManager.isReady) {
-            console.log('[RTWA Background] Offscreen document exists, waiting for ready signal...');
+            console.log('[RTWA Background] setupOffscreenDocument: Document exists but not marked ready. Waiting for readyPromise.');
             await offscreenDocumentManager.readyPromise;
         }
-        console.log('[RTWA Background] Offscreen document is ready or already existed and became ready.');
+        console.log('[RTWA Background] setupOffscreenDocument: Document confirmed ready or became ready.');
         return;
     }
 
-    // If a creation attempt is already in progress, wait for it
     if (offscreenDocumentManager.creatingPromise) {
-        console.log('[RTWA Background] Waiting for in-progress offscreen document creation.');
+        console.log('[RTWA Background] setupOffscreenDocument: Creation already in progress. Waiting.');
         await offscreenDocumentManager.creatingPromise;
-        // After waiting, it should be ready (or an error would have been thrown)
-        if (!offscreenDocumentManager.isReady) { // Double check if ready signal was processed
-             console.log('[RTWA Background] Waited for creation, now waiting for ready signal.');
+        if (!offscreenDocumentManager.isReady) { 
+             console.log('[RTWA Background] setupOffscreenDocument: Waited for creation, now waiting for readyPromise again.');
              await offscreenDocumentManager.readyPromise;
         }
         return;
     }
 
-    console.log('[RTWA Background] Creating new offscreen document.');
-    offscreenDocumentManager.setupReadyPromise(); // Reset/setup ready promise for new creation
-    offscreenDocumentManager.isReady = false;
+    console.log('[RTWA Background] setupOffscreenDocument: Creating new offscreen document.');
+    offscreenDocumentManager.markAsCreating(); 
 
-    offscreenDocumentManager.creatingPromise = chrome.offscreen.createDocument({
+    const promise = chrome.offscreen.createDocument({
         url: OFFSCREEN_DOCUMENT_PATH,
         reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
         justification: 'Play notification sounds for torrent additions.',
     });
+    offscreenDocumentManager.setCreatingPromise(promise);
 
     try {
-        await offscreenDocumentManager.creatingPromise;
-        console.log('[RTWA Background] Offscreen document creation initiated by this call. Waiting for ready signal...');
-        await offscreenDocumentManager.readyPromise; // Wait for the 'offscreenReady' message
-        console.log('[RTWA Background] Offscreen document is now ready after creation.');
+        await promise;
+        console.log('[RTWA Background] setupOffscreenDocument: chrome.offscreen.createDocument resolved. Waiting for readyPromise (offscreenReady message).');
+        await offscreenDocumentManager.readyPromise; 
+        console.log('[RTWA Background] setupOffscreenDocument: Offscreen document is now fully ready.');
     } catch (error) {
-        // This specific error means another call created it before this one completed.
         if (error.message.startsWith('Only a single offscreen document may be created')) {
-            console.warn('[RTWA Background] Race condition: Offscreen document likely created by another concurrent call. Assuming ready or waiting for its ready signal.');
-            if (!offscreenDocumentManager.isReady) { // If not ready yet, wait for the other call's ready signal
-                await offscreenDocumentManager.readyPromise;
+            console.warn('[RTWA Background] setupOffscreenDocument: Race condition - document created by another call. Waiting for its readyPromise.');
+            if (!offscreenDocumentManager.isReady) {
+                 await offscreenDocumentManager.readyPromise;
             }
         } else {
-            console.error('[RTWA Background] Error creating or awaiting offscreen document:', error);
-            // Don't reset isReady here, as another call might have made it ready
-            // Re-setup promise in case of failure, so next attempt can try again
-            offscreenDocumentManager.setupReadyPromise(); 
-            throw error; // Re-throw to indicate failure to playSound
+            console.error('[RTWA Background] setupOffscreenDocument: Error creating offscreen document:', error);
+            offscreenDocumentManager.isReady = false;
+            offscreenDocumentManager._setupReadyPromise(); 
+            throw error; 
         }
     } finally {
-        offscreenDocumentManager.creatingPromise = null; // Clear the promise once this creation attempt is done
+        offscreenDocumentManager.clearCreatingPromise();
     }
 }
 
@@ -424,6 +440,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   };
 
   const isMagnet = torrentUrl.startsWith("magnet:");
+  let wasRuleApplied = false; // Flag to indicate if a tracker rule modified options
   
   if (!isMagnet) { 
     console.log(`[RTWA Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`);
@@ -453,6 +470,61 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     }
   }
 
+  // Apply Tracker URL Rules if it's a .torrent file with content
+  if (torrentOptions.torrentFileContentBase64) {
+    try {
+      console.log('[RTWA Background] Applying tracker URL rules...');
+      const { trackerUrlRules } = await chrome.storage.local.get('trackerUrlRules');
+      if (trackerUrlRules && trackerUrlRules.length > 0) {
+        const torrentDataBuffer = Uint8Array.from(atob(torrentOptions.torrentFileContentBase64), c => c.charCodeAt(0));
+        const decodedTorrent = bencode.decode(torrentDataBuffer);
+        // console.log('[RTWA Background] Decoded torrent for tracker rules:', decodedTorrent);
+
+        let announceUrls = [];
+        if (decodedTorrent.announce) {
+          announceUrls.push(Buffer.isBuffer(decodedTorrent.announce) ? decodedTorrent.announce.toString('utf-8') : String(decodedTorrent.announce));
+        }
+        if (decodedTorrent['announce-list'] && Array.isArray(decodedTorrent['announce-list'])) {
+          decodedTorrent['announce-list'].forEach(tier => {
+            if (Array.isArray(tier)) {
+              tier.forEach(tracker => {
+                announceUrls.push(Buffer.isBuffer(tracker) ? tracker.toString('utf-8') : String(tracker));
+              });
+            }
+          });
+        }
+        announceUrls = [...new Set(announceUrls)]; // Unique URLs
+        console.log('[RTWA Background] Extracted announce URLs:', announceUrls);
+
+        for (const rule of trackerUrlRules) {
+          for (const announceUrl of announceUrls) {
+            if (announceUrl.includes(rule.trackerUrlPattern)) {
+              console.log(`[RTWA Background] Tracker rule matched: Pattern "${rule.trackerUrlPattern}" found in "${announceUrl}"`);
+              if (rule.label) {
+                torrentOptions.category = rule.label; 
+                // Rebuild labelsArray if category changed by rule
+                torrentOptions.labels = [rule.label];
+                if (tagsToUse) torrentOptions.labels = torrentOptions.labels.concat(tagsToUse.split(',').map(t => t.trim()).filter(t => t && t !== rule.label));
+                console.log(`[RTWA Background] Applied label from rule: "${rule.label}"`);
+                wasRuleApplied = true;
+              }
+              if (rule.directory) {
+                torrentOptions.downloadDir = rule.directory;
+                console.log(`[RTWA Background] Applied directory from rule: "${rule.directory}"`);
+                wasRuleApplied = true;
+              }
+              if (wasRuleApplied) break; // First matching rule for this torrent wins
+            }
+          }
+          if (wasRuleApplied) break; // First matching rule for this torrent wins
+        }
+      }
+    } catch (e) {
+      console.error('[RTWA Background] Error processing tracker URL rules:', e);
+    }
+  }
+
+
   const { name: serverName, clientType } = serverToUse; 
   const apiClient = getClientApi(clientType);
 
@@ -480,6 +552,9 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
       }
       if (serverDeterminedByRule) {
         successMsg += ` (Rule based)`;
+      }
+      if (wasRuleApplied) {
+        successMsg += ` (Tracker rule applied)`;
       }
       console.log("[RTWA Background] Creating success notification:", successMsg);
       chrome.notifications.create({

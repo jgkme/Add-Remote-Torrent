@@ -160,6 +160,42 @@
         </div>
     </section>
 
+    <!-- Tracker URL Rules Section -->
+    <section id="trackerUrlRulesSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Tracker URL Rules (for .torrent files)</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Automatically assign labels or directories based on tracker announce URLs found within .torrent files.
+            These rules apply to the determined target server for the torrent. First matching rule wins.
+        </p>
+        <div id="trackerRulesListContainer" class="mt-2">
+            <ul id="trackerUrlRulesList" class="space-y-2 mb-4">
+                {/* Tracker rules will be populated here */}
+            </ul>
+            <button id="showAddTrackerRuleFormButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">Add New Tracker Rule</button>
+        </div>
+        <div id="trackerRuleFormSection" style="display:none;" class="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/30">
+            <h3 id="trackerRuleFormTitle" class="text-lg font-medium mb-3">Add New Tracker Rule</h3>
+            <input type="hidden" id="trackerRuleId">
+            <div class="form-group mb-4">
+                <label for="trackerUrlPatternInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tracker Announce URL Pattern (exact match or substring):</label>
+                <input type="text" id="trackerUrlPatternInput" placeholder="e.g., tracker.example.com/announce" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="form-group mb-4">
+                <label for="trackerRuleLabelInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Label (optional):</label>
+                <input type="text" id="trackerRuleLabelInput" placeholder="e.g., Linux ISOs" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="form-group mb-4">
+                <label for="trackerRuleDirectoryInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Directory (optional, full path):</label>
+                <input type="text" id="trackerRuleDirectoryInput" placeholder="e.g., /media/downloads/linux" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="flex space-x-3">
+                <button id="saveTrackerRuleButton" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-500 dark:hover:bg-green-600">Save Tracker Rule</button>
+                <button id="cancelTrackerRuleEditButton" type="button" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-600 dark:hover:bg-gray-700">Cancel</button>
+            </div>
+            <div id="trackerRuleFormStatusMessage" class="mt-3 text-sm"></div>
+        </div>
+    </section>
+
     <!-- Global Settings Section -->
     <section id="globalSettingsSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
         <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Other Global Settings</h2>

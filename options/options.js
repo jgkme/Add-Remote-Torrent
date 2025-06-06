@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const defaultTagsInput = document.getElementById('defaultTags');
     const defaultCategoryInput = document.getElementById('defaultCategory');
     const addPausedInput = document.getElementById('addPaused');
-    const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); // Reference for the new checkbox
+    const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); 
     const saveServerButton = document.getElementById('saveServerButton');
     const testConnectionButton = document.getElementById('testConnectionButton');
     const cancelEditButton = document.getElementById('cancelEditButton');
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle'); 
     const linkMatchesInput = document.getElementById('linkMatchesInput'); 
     const registerDelayInput = document.getElementById('registerDelayInput'); 
-    const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle'); // New sound notification toggle
+    const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle'); 
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -51,6 +51,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelMappingEditButton = document.getElementById('cancelMappingEditButton');
     const mappingFormStatusMessageDiv = document.getElementById('mappingFormStatusMessage');
 
+    // Tracker URL Rule elements
+    const trackerUrlRulesSection = document.getElementById('trackerUrlRulesSection');
+    const trackerRulesListContainer = document.getElementById('trackerRulesListContainer');
+    const trackerUrlRulesListUl = document.getElementById('trackerUrlRulesList');
+    const showAddTrackerRuleFormButton = document.getElementById('showAddTrackerRuleFormButton');
+    const trackerRuleFormSection = document.getElementById('trackerRuleFormSection');
+    const trackerRuleFormTitle = document.getElementById('trackerRuleFormTitle');
+    const trackerRuleIdInput = document.getElementById('trackerRuleId');
+    const trackerUrlPatternInput = document.getElementById('trackerUrlPatternInput');
+    const trackerRuleLabelInput = document.getElementById('trackerRuleLabelInput');
+    const trackerRuleDirectoryInput = document.getElementById('trackerRuleDirectoryInput');
+    const saveTrackerRuleButton = document.getElementById('saveTrackerRuleButton');
+    const cancelTrackerRuleEditButton = document.getElementById('cancelTrackerRuleEditButton');
+    const trackerRuleFormStatusMessageDiv = document.getElementById('trackerRuleFormStatusMessage');
+
     // Backup/Restore elements
     const exportSettingsButton = document.getElementById('exportSettingsButton');
     const importSettingsFile = document.getElementById('importSettingsFile');
@@ -61,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const extensionVersionSpan = document.getElementById('extensionVersion');
     const developerLink = document.getElementById('developerLink');
 
-
     let servers = [];
     let activeServerId = null;
     let globalSettings = {
@@ -71,39 +85,39 @@ document.addEventListener('DOMContentLoaded', () => {
         linksfoundindicator: false, 
         linkmatches: '', 
         registerDelay: 0,
-        enableSoundNotifications: false // New global setting for sound
+        enableSoundNotifications: false 
     };
     let urlToServerMappings = [];
+    let trackerUrlRules = []; 
 
     // --- Utility Functions ---
-    function generateId() {
-        return `server-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    function generateId(prefix = 'server') { 
+        return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
 
     function displayFormStatus(message, type) {
         formStatusMessageDiv.textContent = message;
-        formStatusMessageDiv.className = 'mt-4 text-sm p-3 rounded-md border'; // Base classes
+        formStatusMessageDiv.className = 'mt-4 text-sm p-3 rounded-md border'; 
         if (type === 'success') {
             formStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
         } else if (type === 'error') {
             formStatusMessageDiv.classList.add('bg-red-100', 'dark:bg-red-800', 'border-red-500', 'dark:border-red-600', 'text-red-700', 'dark:text-red-200');
-        } else { // Neutral / info
+        } else { 
             formStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
         }
-        
         if (message && (type === 'success' || type === 'error')) {
             setTimeout(() => {
                 formStatusMessageDiv.textContent = '';
-                formStatusMessageDiv.className = 'mt-4 text-sm'; // Reset to base, effectively hiding it if no content
+                formStatusMessageDiv.className = 'mt-4 text-sm'; 
             }, 5000);
         } else if (!message) {
-             formStatusMessageDiv.className = 'mt-4 text-sm'; // Hide if no message
+             formStatusMessageDiv.className = 'mt-4 text-sm'; 
         }
     }
     
     function displayMappingFormStatus(message, type) {
         mappingFormStatusMessageDiv.textContent = message;
-        mappingFormStatusMessageDiv.className = 'mt-3 text-sm p-3 rounded-md border'; // Base classes
+        mappingFormStatusMessageDiv.className = 'mt-3 text-sm p-3 rounded-md border'; 
         if (type === 'success') {
             mappingFormStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
         } else if (type === 'error') {
@@ -111,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             mappingFormStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
         }
-
         if (message && (type === 'success' || type === 'error')) {
             setTimeout(() => {
                 mappingFormStatusMessageDiv.textContent = '';
@@ -122,9 +135,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function displayTrackerRuleFormStatus(message, type) {
+        trackerRuleFormStatusMessageDiv.textContent = message;
+        trackerRuleFormStatusMessageDiv.className = 'mt-3 text-sm p-3 rounded-md border'; 
+        if (type === 'success') {
+            trackerRuleFormStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
+        } else if (type === 'error') {
+            trackerRuleFormStatusMessageDiv.classList.add('bg-red-100', 'dark:bg-red-800', 'border-red-500', 'dark:border-red-600', 'text-red-700', 'dark:text-red-200');
+        } else {
+            trackerRuleFormStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
+        }
+        if (message && (type === 'success' || type === 'error')) {
+            setTimeout(() => {
+                trackerRuleFormStatusMessageDiv.textContent = '';
+                trackerRuleFormStatusMessageDiv.className = 'mt-3 text-sm';
+            }, 5000);
+        } else if (!message) {
+            trackerRuleFormStatusMessageDiv.className = 'mt-3 text-sm';
+        }
+    }
+
     function displayBackupStatus(message, type) {
         backupStatusMessageDiv.textContent = message;
-        backupStatusMessageDiv.className = 'mt-4 text-sm p-3 rounded-md border'; // Base classes
+        backupStatusMessageDiv.className = 'mt-4 text-sm p-3 rounded-md border'; 
         if (type === 'success') {
             backupStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
         } else if (type === 'error') {
@@ -132,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             backupStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
         }
-        
         if (message && (type === 'success' || type === 'error')) {
             setTimeout(() => {
                 backupStatusMessageDiv.textContent = '';
@@ -146,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleClientSpecificFields(clientType) {
         rpcPathGroup.style.display = clientType === 'transmission' ? 'block' : 'none';
         scgiPathGroup.style.display = clientType === 'rtorrent' ? 'block' : 'none';
-        
         const serverUrlLabel = document.querySelector('label[for="qbUrl"]');
         if (clientType === 'rtorrent') {
             serverUrlLabel.textContent = 'rTorrent Web UI URL (e.g., ruTorrent, optional if SCGI direct):';
@@ -160,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         serverFormSection.style.display = 'block';
         serverFormTitle.textContent = isEditing ? 'Edit Server Profile' : 'Add New Server Profile';
         let currentClientType = 'qbittorrent'; 
-
         if (isEditing && server) {
             serverIdInput.value = server.id;
             serverNameInput.value = server.name;
@@ -174,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             defaultTagsInput.value = server.tags || '';
             defaultCategoryInput.value = server.category || '';
             addPausedInput.checked = server.addPaused || false;
-            askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false; // Load new flag
+            askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false; 
         } else {
             serverIdInput.value = ''; 
             serverNameInput.value = '';
@@ -188,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             defaultTagsInput.value = '';
             defaultCategoryInput.value = '';
             addPausedInput.checked = false;
-            askForLabelDirOnPageInput.checked = false; // Default for new server
+            askForLabelDirOnPageInput.checked = false; 
         }
         toggleClientSpecificFields(currentClientType); 
         formStatusMessageDiv.textContent = '';
@@ -209,92 +239,65 @@ document.addEventListener('DOMContentLoaded', () => {
         defaultTagsInput.value = '';
         defaultCategoryInput.value = '';
         addPausedInput.checked = false;
-        askForLabelDirOnPageInput.checked = false; // Clear new flag
+        askForLabelDirOnPageInput.checked = false; 
         formStatusMessageDiv.textContent = '';
         formStatusMessageDiv.className = 'status-message';
         toggleClientSpecificFields('qbittorrent'); 
     }
 
     function renderServerList() {
-        // Show loading state initially
-        serverListUl.innerHTML = '<li class="text-gray-500 dark:text-gray-400 italic">Loading server profiles...</li>';
-
-        // The actual rendering will happen once 'servers' data is loaded by loadSettings.
-        // This function is called from loadSettings AFTER data is fetched.
-        // So, the "Loading..." message will be quickly replaced.
-        // If the goal is to show "Loading..." *before* chrome.storage.local.get finishes,
-        // then this initial message should be in the HTML or set before calling loadSettings.
-        // For now, let's ensure it's cleared and correctly updated.
-
-        serverListUl.innerHTML = ''; // Clear loading message or previous list
-
+        serverListUl.innerHTML = ''; 
         if (servers.length === 0) {
             const li = document.createElement('li');
             li.textContent = 'No server profiles configured yet.';
-            li.className = 'text-gray-500 dark:text-gray-400 italic p-4 text-center'; // Added padding and centering
+            li.className = 'text-gray-500 dark:text-gray-400 italic p-4 text-center'; 
             serverListUl.appendChild(li);
             return;
         }
         servers.forEach(server => {
             const li = document.createElement('li');
-            // Added explicit background for light mode to differentiate from section background
             li.className = `p-4 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0 bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-shadow`;
             if (server.id === activeServerId) {
                 li.classList.add('active-server-item'); 
-                // For active server, let's ensure a distinct background that works with its text colors
-                li.classList.remove('bg-white', 'dark:bg-gray-700'); // remove default
-                li.classList.add('bg-blue-50', 'dark:bg-blue-900/30'); // Light blue for active
+                li.classList.remove('bg-white', 'dark:bg-gray-700'); 
+                li.classList.add('bg-blue-50', 'dark:bg-blue-900/30'); 
             }
-
             const serverInfoDiv = document.createElement('div');
             serverInfoDiv.className = 'grow';
-
             const nameSpan = document.createElement('span');
             nameSpan.className = 'font-semibold text-lg text-gray-800 dark:text-white';
             nameSpan.textContent = server.name;
             serverInfoDiv.appendChild(nameSpan);
-
             if (server.id === activeServerId) {
                 const activeBadge = document.createElement('span');
-                // Flipped dark mode contrast for badge: darker text on a lighter green background
                 activeBadge.className = 'ml-2 px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-200 dark:text-green-700 dark:bg-green-300 rounded-full';
                 activeBadge.textContent = 'Active';
                 nameSpan.appendChild(activeBadge);
             }
-            
             const clientTypeSpan = document.createElement('p');
             clientTypeSpan.className = 'text-sm text-gray-500 dark:text-gray-400';
             clientTypeSpan.textContent = `Client: ${server.clientType || 'N/A'}`;
             serverInfoDiv.appendChild(clientTypeSpan);
-
             const urlSpan = document.createElement('p');
             urlSpan.className = 'text-sm text-gray-500 dark:text-gray-400 break-all';
             urlSpan.textContent = `URL: ${server.url}`;
             serverInfoDiv.appendChild(urlSpan);
-
             li.appendChild(serverInfoDiv);
-
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'actions flex space-x-2 shrink-0 mt-2 md:mt-0';
-            
             const editButton = document.createElement('button');
             editButton.className = 'edit-button px-3 py-1 text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 dark:bg-yellow-400 dark:hover:bg-yellow-500';
             editButton.dataset.id = server.id;
             editButton.textContent = 'Edit';
             actionsDiv.appendChild(editButton);
-
             const deleteButton = document.createElement('button');
-            // Ensuring delete button has explicit text color for dark mode if needed, though white on red should be fine.
-            // The main issue is if bg-red-xxx is not applying. Let's use consistent red shades.
             deleteButton.className = 'delete-button px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-600 dark:hover:bg-red-700';
             deleteButton.dataset.id = server.id;
             deleteButton.textContent = 'Delete';
             actionsDiv.appendChild(deleteButton);
-
             li.appendChild(actionsDiv);
             serverListUl.appendChild(li);
         });
-
         document.querySelectorAll('.edit-button').forEach(button => {
             button.addEventListener('click', handleEditServer);
         });
@@ -307,11 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
     showAddServerFormButton.addEventListener('click', () => {
         showServerForm(false);
     });
-
     cancelEditButton.addEventListener('click', () => {
         hideServerForm();
     });
-
     saveServerButton.addEventListener('click', () => {
         const id = serverIdInput.value;
         const name = serverNameInput.value.trim();
@@ -324,39 +325,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const tags = defaultTagsInput.value.trim();
         const category = defaultCategoryInput.value.trim();
         const addPaused = addPausedInput.checked;
-        const askForLabelDirOnPage = askForLabelDirOnPageInput.checked; // Get new flag
-
+        const askForLabelDirOnPage = askForLabelDirOnPageInput.checked; 
         if (!name || !url) {
             displayFormStatus('Server Name and URL are required.', 'error');
             return;
         }
-        try {
-            new URL(url); 
-        } catch (e) {
+        try { new URL(url); } catch (e) {
             displayFormStatus('Invalid Server URL format.', 'error');
             return;
         }
-
-        const serverData = { name, clientType, url, username, password, tags, category, addPaused, askForLabelDirOnPage }; // Add new flag
-        if (clientType === 'transmission') {
-            serverData.rpcPath = rpcPath;
-        } else if (clientType === 'rtorrent') {
-            serverData.scgiPath = scgiPath; 
-        }
-
+        const serverData = { name, clientType, url, username, password, tags, category, addPaused, askForLabelDirOnPage }; 
+        if (clientType === 'transmission') serverData.rpcPath = rpcPath;
+        else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath; 
         if (id) { 
             const index = servers.findIndex(s => s.id === id);
-            if (index > -1) {
-                servers[index] = { ...servers[index], ...serverData };
-            }
+            if (index > -1) servers[index] = { ...servers[index], ...serverData };
         } else { 
             serverData.id = generateId();
             servers.push(serverData);
-            if (servers.length === 1 && !activeServerId) {
-                activeServerId = serverData.id;
-            }
+            if (servers.length === 1 && !activeServerId) activeServerId = serverData.id;
         }
-        
         chrome.permissions.request({ origins: [`${new URL(url).origin}/`] }, (granted) => {
             if (granted) {
                 chrome.storage.local.set({ servers, activeServerId }, () => {
@@ -370,29 +358,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
     function handleEditServer(event) {
         const serverIdToEdit = event.target.dataset.id;
         const serverToEdit = servers.find(s => s.id === serverIdToEdit);
-        if (serverToEdit) {
-            showServerForm(true, serverToEdit);
-        }
+        if (serverToEdit) showServerForm(true, serverToEdit);
     }
-
     function handleDeleteServer(event) {
         const serverIdToDelete = event.target.dataset.id;
         if (confirm(`Are you sure you want to delete server: ${servers.find(s=>s.id === serverIdToDelete)?.name}?`)) {
             servers = servers.filter(s => s.id !== serverIdToDelete);
-            if (activeServerId === serverIdToDelete) {
-                activeServerId = servers.length > 0 ? servers[0].id : null; 
-            }
+            if (activeServerId === serverIdToDelete) activeServerId = servers.length > 0 ? servers[0].id : null; 
             chrome.storage.local.set({ servers, activeServerId }, () => {
                 alert('Server deleted.'); 
                 loadSettings();
             });
         }
     }
-    
     testConnectionButton.addEventListener('click', () => {
         const serverConfig = {
             id: serverIdInput.value, 
@@ -404,177 +385,94 @@ document.addEventListener('DOMContentLoaded', () => {
             rpcPath: clientTypeSelect.value === 'transmission' ? rpcPathInput.value.trim() : undefined,
             scgiPath: clientTypeSelect.value === 'rtorrent' ? scgiPathInput.value.trim() : undefined,
         };
-
         if (!serverConfig.url && clientTypeSelect.value !== 'rtorrent') { 
-            displayFormStatus('Server URL is required to test connection.', 'error');
-            return;
+            displayFormStatus('Server URL is required to test connection.', 'error'); return;
         }
         if (clientTypeSelect.value === 'rtorrent' && !serverConfig.scgiPath && !serverConfig.url) {
-            displayFormStatus('For rTorrent, either Server URL (for WebUI) or SCGI/HTTPRPC URL is required.', 'error');
-            return;
+            displayFormStatus('For rTorrent, either Server URL (for WebUI) or SCGI/HTTPRPC URL is required.', 'error'); return;
         }
-        if (serverConfig.url) {
-            try {
-                new URL(serverConfig.url);
-            } catch (e) {
-                displayFormStatus('Invalid Server URL format.', 'error');
-                return;
-            }
-        }
-        if (serverConfig.scgiPath) {
-             try {
-                new URL(serverConfig.scgiPath); 
-            } catch (e) {
-                if (serverConfig.scgiPath.startsWith('http://') || serverConfig.scgiPath.startsWith('https://') || serverConfig.scgiPath.startsWith('scgi://')) {
-                    displayFormStatus('Invalid SCGI/HTTPRPC URL format.', 'error');
-                    return;
-                }
-            }
-        }
-
-        if (!serverConfig.clientType) { // This check was duplicated, one is enough
-            displayFormStatus('Client Type is required to test connection.', 'error');
-            return;
-        }
-
+        if (serverConfig.url) { try { new URL(serverConfig.url); } catch (e) { displayFormStatus('Invalid Server URL format.', 'error'); return; } }
+        if (serverConfig.scgiPath) { try { new URL(serverConfig.scgiPath); } catch (e) { if (serverConfig.scgiPath.startsWith('http://') || serverConfig.scgiPath.startsWith('https://') || serverConfig.scgiPath.startsWith('scgi://')) { displayFormStatus('Invalid SCGI/HTTPRPC URL format.', 'error'); return; } } }
+        if (!serverConfig.clientType) { displayFormStatus('Client Type is required to test connection.', 'error'); return; }
         displayFormStatus('Testing connection...', ''); 
-
         chrome.permissions.contains({ origins: [`${new URL(serverConfig.url).origin}/`] }, (granted) => {
             if (granted) {
-                chrome.runtime.sendMessage(
-                    { action: 'testConnection', config: serverConfig }, 
-                    (response) => {
-                        if (chrome.runtime.lastError) {
-                            displayFormStatus(`Error: ${chrome.runtime.lastError.message}`, 'error');
-                        } else if (response) {
-                            if (response.success) {
-                                displayFormStatus('Connection successful!', 'success');
-                            } else {
-                                let errorMessage = "Connection failed.";
-                                if (response.error && response.error.userMessage) {
-                                    errorMessage = `Connection failed: ${response.error.userMessage}`;
-                                    if (response.error.technicalDetail) console.error("Technical details for connection failure:", response.error.technicalDetail);
-                                } else if (response.message) {
-                                    errorMessage = `Connection failed: ${response.message}`;
-                                } else if (response.error) { // Fallback if error is not the structured object
-                                    errorMessage = `Connection failed: ${JSON.stringify(response.error)}`;
-                                }
-                                displayFormStatus(errorMessage, 'error');
-                            }
-                        } else {
-                            displayFormStatus('No response from service worker.', 'error');
+                chrome.runtime.sendMessage({ action: 'testConnection', config: serverConfig }, (response) => {
+                    if (chrome.runtime.lastError) displayFormStatus(`Error: ${chrome.runtime.lastError.message}`, 'error');
+                    else if (response) {
+                        if (response.success) displayFormStatus('Connection successful!', 'success');
+                        else {
+                            let errorMessage = "Connection failed.";
+                            if (response.error && response.error.userMessage) errorMessage = `Connection failed: ${response.error.userMessage}`;
+                            else if (response.message) errorMessage = `Connection failed: ${response.message}`;
+                            else if (response.error) errorMessage = `Connection failed: ${JSON.stringify(response.error)}`;
+                            displayFormStatus(errorMessage, 'error');
                         }
-                    }
-                );
-            } else {
-                 displayFormStatus('Host permission not granted for this URL. Please save the server configuration first to request permission.', 'error');
-            }
+                    } else displayFormStatus('No response from service worker.', 'error');
+                });
+            } else displayFormStatus('Host permission not granted for this URL. Please save the server configuration first to request permission.', 'error');
         });
     });
 
     // --- Event Handlers for Global Settings ---
-    clientTypeSelect.addEventListener('change', (event) => { 
-        toggleClientSpecificFields(event.target.value);
-    });
-
+    clientTypeSelect.addEventListener('change', (event) => { toggleClientSpecificFields(event.target.value); });
     showAdvancedAddDialogToggle.addEventListener('change', () => {
         globalSettings.showAdvancedAddDialog = showAdvancedAddDialogToggle.checked;
-        chrome.storage.local.set({ showAdvancedAddDialog: globalSettings.showAdvancedAddDialog }, () => {
-            displayFormStatus('Global settings updated.', 'success'); 
-        });
+        chrome.storage.local.set({ showAdvancedAddDialog: globalSettings.showAdvancedAddDialog }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-
     catchFromPageToggle.addEventListener('change', () => {
         globalSettings.catchfrompage = catchFromPageToggle.checked;
-        chrome.storage.local.set({ catchfrompage: globalSettings.catchfrompage }, () => {
-            displayFormStatus('Global settings updated.', 'success');
-        });
+        chrome.storage.local.set({ catchfrompage: globalSettings.catchfrompage }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-
     linksFoundIndicatorToggle.addEventListener('change', () => {
         globalSettings.linksfoundindicator = linksFoundIndicatorToggle.checked;
-        chrome.storage.local.set({ linksfoundindicator: globalSettings.linksfoundindicator }, () => {
-            displayFormStatus('Global settings updated.', 'success');
-        });
+        chrome.storage.local.set({ linksfoundindicator: globalSettings.linksfoundindicator }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-
     linkMatchesInput.addEventListener('change', () => { 
         globalSettings.linkmatches = linkMatchesInput.value;
-        chrome.storage.local.set({ linkmatches: globalSettings.linkmatches }, () => {
-            displayFormStatus('Global settings updated.', 'success');
-        });
+        chrome.storage.local.set({ linkmatches: globalSettings.linkmatches }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-
     registerDelayInput.addEventListener('change', () => { 
         globalSettings.registerDelay = parseInt(registerDelayInput.value, 10) || 0;
-        chrome.storage.local.set({ registerDelay: globalSettings.registerDelay }, () => {
-            displayFormStatus('Global settings updated.', 'success');
-        });
+        chrome.storage.local.set({ registerDelay: globalSettings.registerDelay }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-
     enableSoundNotificationsToggle.addEventListener('change', () => {
         globalSettings.enableSoundNotifications = enableSoundNotificationsToggle.checked;
-        chrome.storage.local.set({ enableSoundNotifications: globalSettings.enableSoundNotifications }, () => {
-            displayFormStatus('Global settings updated.', 'success');
-        });
+        chrome.storage.local.set({ enableSoundNotifications: globalSettings.enableSoundNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
 
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
         const settingsToExport = {
-            servers,
-            activeServerId,
-            ...globalSettings, // Spread all global settings
-            urlToServerMappings
+            servers, activeServerId, ...globalSettings, urlToServerMappings, trackerUrlRules 
         };
-
         const jsonString = JSON.stringify(settingsToExport, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'RemoteTorrentAdder_settings.json'; // Updated filename
+        a.download = 'Add Remote Torrent_settings.json'; 
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         displayBackupStatus('Settings exported successfully.', 'success');
     });
-
     importSettingsButton.addEventListener('click', () => {
         const file = importSettingsFile.files[0];
-        if (!file) {
-            displayBackupStatus('Please select a file to import.', 'error');
-            return;
-        }
-
+        if (!file) { displayBackupStatus('Please select a file to import.', 'error'); return; }
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
                 const importedSettings = JSON.parse(event.target.result);
-                
-                if (!importedSettings || typeof importedSettings.servers === 'undefined') { 
-                    throw new Error('Invalid settings file structure.');
-                }
-
+                if (!importedSettings || typeof importedSettings.servers === 'undefined') throw new Error('Invalid settings file structure.');
                 if (confirm('This will overwrite your current settings. Are you sure you want to import?')) {
-                    const newServers = (importedSettings.servers || []).map(s => ({
-                        ...s,
-                        clientType: s.clientType || 'qbittorrent',
-                        askForLabelDirOnPage: s.askForLabelDirOnPage || false // Ensure new flag on import
-                    }));
+                    const newServers = (importedSettings.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
                     let newActiveServerId = importedSettings.activeServerId || null;
-                    
-                    if (newActiveServerId && !newServers.find(s => s.id === newActiveServerId)) {
-                        newActiveServerId = newServers.length > 0 ? newServers[0].id : null;
-                    }
-                     if (!newActiveServerId && newServers.length > 0) {
-                        newActiveServerId = newServers[0].id;
-                    }
-
+                    if (newActiveServerId && !newServers.find(s => s.id === newActiveServerId)) newActiveServerId = newServers.length > 0 ? newServers[0].id : null;
+                    if (!newActiveServerId && newServers.length > 0) newActiveServerId = newServers[0].id;
                     const settingsToSave = {
-                        servers: newServers,
-                        activeServerId: newActiveServerId,
+                        servers: newServers, activeServerId: newActiveServerId,
                         showAdvancedAddDialog: importedSettings.showAdvancedAddDialog || false,
                         enableUrlBasedServerSelection: importedSettings.enableUrlBasedServerSelection || false,
                         urlToServerMappings: importedSettings.urlToServerMappings || [],
@@ -582,17 +480,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         linksfoundindicator: importedSettings.linksfoundindicator || false, 
                         linkmatches: importedSettings.linkmatches || '', 
                         registerDelay: importedSettings.registerDelay || 0,
-                        enableSoundNotifications: importedSettings.enableSoundNotifications || false // Import sound setting
+                        enableSoundNotifications: importedSettings.enableSoundNotifications || false,
+                        trackerUrlRules: importedSettings.trackerUrlRules || [] 
                     };
-
                     chrome.storage.local.set(settingsToSave, () => {
                         displayBackupStatus('Settings imported successfully! Reloading...', 'success');
                         loadSettings(); 
                     });
                 }
-            } catch (e) {
-                displayBackupStatus(`Error importing settings: ${e.message}`, 'error');
-            }
+            } catch (e) { displayBackupStatus(`Error importing settings: ${e.message}`, 'error'); }
         };
         reader.readAsText(file);
         importSettingsFile.value = ''; 
@@ -600,86 +496,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     function loadSettings() {
-        // Populate version in footer
         if (extensionVersionSpan) {
             const manifest = chrome.runtime.getManifest();
             extensionVersionSpan.textContent = manifest.version;
         }
-        // TODO: Update developerLink.href when a link is available
-
         chrome.storage.local.get([
-            'servers', 
-            'activeServerId', 
-            'showAdvancedAddDialog',
-            'enableUrlBasedServerSelection', 
-            'urlToServerMappings',
-            'catchfrompage', 
-            'linksfoundindicator', 
-            'linkmatches', 
-            'registerDelay',
-            'enableSoundNotifications' // Load sound setting
+            'servers', 'activeServerId', 'showAdvancedAddDialog', 'enableUrlBasedServerSelection', 
+            'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
+            'registerDelay', 'enableSoundNotifications', 'trackerUrlRules'
         ], (result) => {
-            servers = (result.servers || []).map(s => ({
-                ...s, 
-                clientType: s.clientType || 'qbittorrent', 
-                url: s.url || s.qbUrl, 
-                username: s.username || s.qbUsername,
-                password: s.password || s.qbPassword,
-                rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), 
-                scgiPath: s.scgiPath || '',
-                askForLabelDirOnPage: s.askForLabelDirOnPage || false // Load new flag, default to false
-            }));
+            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
-            
             globalSettings.showAdvancedAddDialog = result.showAdvancedAddDialog || false;
             showAdvancedAddDialogToggle.checked = globalSettings.showAdvancedAddDialog;
-            
             globalSettings.enableUrlBasedServerSelection = result.enableUrlBasedServerSelection || false;
             enableUrlBasedServerSelectionToggle.checked = globalSettings.enableUrlBasedServerSelection; 
-
             urlToServerMappings = result.urlToServerMappings || [];
             toggleMappingListVisibility(); 
-
             globalSettings.catchfrompage = result.catchfrompage || false; 
             catchFromPageToggle.checked = globalSettings.catchfrompage;
-
             globalSettings.linksfoundindicator = result.linksfoundindicator || false; 
             linksFoundIndicatorToggle.checked = globalSettings.linksfoundindicator;
-
             globalSettings.linkmatches = result.linkmatches || '';
             linkMatchesInput.value = globalSettings.linkmatches;
-
             globalSettings.registerDelay = result.registerDelay || 0; 
             registerDelayInput.value = globalSettings.registerDelay;
-
-            globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; // Load sound setting
+            globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; 
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
-
-            if (activeServerId && !servers.find(s => s.id === activeServerId)) {
-                activeServerId = servers.length > 0 ? servers[0].id : null;
-            }
-             if (!activeServerId && servers.length > 0) { 
-                activeServerId = servers[0].id;
-            }
-            
+            trackerUrlRules = result.trackerUrlRules || []; 
+            if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
+            if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;
             renderServerList();
             renderUrlMappingsList();
             populateMapToServerSelect(); 
+            renderTrackerUrlRulesList(); 
         });
     }
     
     // --- URL Mapping Functions ---
-    function generateMappingId() {
+    function generateMappingId() { 
         return `map-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
-
     function toggleMappingListVisibility() {
         mappingsListContainer.style.display = globalSettings.enableUrlBasedServerSelection ? 'block' : 'none';
-        if (!globalSettings.enableUrlBasedServerSelection) {
-            hideMappingForm(); 
-        }
+        if (!globalSettings.enableUrlBasedServerSelection) hideMappingForm(); 
     }
-
     function populateMapToServerSelect() {
         mapToServerSelect.innerHTML = '<option value="">-- Select Server --</option>';
         servers.forEach(server => {
@@ -689,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mapToServerSelect.appendChild(option);
         });
     }
-
     function renderUrlMappingsList() {
         urlMappingsListUl.innerHTML = '';
         if (!globalSettings.enableUrlBasedServerSelection || urlToServerMappings.length === 0) {
@@ -699,29 +559,18 @@ document.addEventListener('DOMContentLoaded', () => {
         urlToServerMappings.forEach((mapping, index) => {
             const li = document.createElement('li');
             const serverName = servers.find(s => s.id === mapping.serverId)?.name || 'Unknown Server';
-            li.innerHTML = `
-                <span>${index + 1}. Pattern: <span class="pattern">${mapping.websitePattern}</span> &rarr; <span class="target-server-name">${serverName}</span></span>
-                <span class="actions">
-                    <button class="edit-mapping-button" data-id="${mapping.id}">Edit</button>
-                    <button class="delete-mapping-button" data-id="${mapping.id}">Delete</button>
-                    ${index > 0 ? `<button class="move-mapping-up-button" data-id="${mapping.id}" title="Move Up">&uarr;</button>` : ''}
-                    ${index < urlToServerMappings.length - 1 ? `<button class="move-mapping-down-button" data-id="${mapping.id}" title="Move Down">&darr;</button>` : ''}
-                </span>
-            `;
+            li.innerHTML = `<span>${index + 1}. Pattern: <span class="pattern">${mapping.websitePattern}</span> &rarr; <span class="target-server-name">${serverName}</span></span> <span class="actions"> <button class="edit-mapping-button" data-id="${mapping.id}">Edit</button> <button class="delete-mapping-button" data-id="${mapping.id}">Delete</button> ${index > 0 ? `<button class="move-mapping-up-button" data-id="${mapping.id}" title="Move Up">&uarr;</button>` : ''} ${index < urlToServerMappings.length - 1 ? `<button class="move-mapping-down-button" data-id="${mapping.id}" title="Move Down">&darr;</button>` : ''} </span>`;
             urlMappingsListUl.appendChild(li);
         });
-
         document.querySelectorAll('.edit-mapping-button').forEach(b => b.addEventListener('click', handleEditMapping));
         document.querySelectorAll('.delete-mapping-button').forEach(b => b.addEventListener('click', handleDeleteMapping));
         document.querySelectorAll('.move-mapping-up-button').forEach(b => b.addEventListener('click', handleMoveMappingUp));
         document.querySelectorAll('.move-mapping-down-button').forEach(b => b.addEventListener('click', handleMoveMappingDown));
     }
-
     function showMappingForm(isEditing = false, mapping = null) {
         mappingFormSection.style.display = 'block';
         mappingFormTitle.textContent = isEditing ? 'Edit URL Rule' : 'Add New URL Rule';
         populateMapToServerSelect(); 
-
         if (isEditing && mapping) {
             mappingIdInput.value = mapping.id;
             websitePatternInput.value = mapping.websitePattern;
@@ -733,7 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         displayMappingFormStatus('', '');
     }
-
     function hideMappingForm() {
         mappingFormSection.style.display = 'none';
         mappingIdInput.value = '';
@@ -741,8 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mapToServerSelect.value = '';
         displayMappingFormStatus('', '');
     }
-    
-    // --- Event Handlers for URL Mappings ---
     enableUrlBasedServerSelectionToggle.addEventListener('change', () => {
         globalSettings.enableUrlBasedServerSelection = enableUrlBasedServerSelectionToggle.checked;
         chrome.storage.local.set({ enableUrlBasedServerSelection: globalSettings.enableUrlBasedServerSelection }, () => {
@@ -751,27 +597,17 @@ document.addEventListener('DOMContentLoaded', () => {
             renderUrlMappingsList(); 
         });
     });
-
     showAddMappingFormButton.addEventListener('click', () => showMappingForm(false));
     cancelMappingEditButton.addEventListener('click', hideMappingForm);
-
     saveMappingButton.addEventListener('click', () => {
         const id = mappingIdInput.value;
         const websitePattern = websitePatternInput.value.trim();
         const serverId = mapToServerSelect.value;
-
-        if (!websitePattern || !serverId) {
-            displayMappingFormStatus('Website Pattern and Target Server are required.', 'error');
-            return;
-        }
-
+        if (!websitePattern || !serverId) { displayMappingFormStatus('Website Pattern and Target Server are required.', 'error'); return; }
         const mappingData = { websitePattern, serverId };
-
         if (id) { 
             const index = urlToServerMappings.findIndex(m => m.id === id);
-            if (index > -1) {
-                urlToServerMappings[index] = { ...urlToServerMappings[index], ...mappingData };
-            }
+            if (index > -1) urlToServerMappings[index] = { ...urlToServerMappings[index], ...mappingData };
         } else { 
             mappingData.id = generateMappingId();
             urlToServerMappings.push(mappingData);
@@ -782,13 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(hideMappingForm, 1000);
         });
     });
-
     function handleEditMapping(event) {
         const idToEdit = event.target.dataset.id;
         const mappingToEdit = urlToServerMappings.find(m => m.id === idToEdit);
         if (mappingToEdit) showMappingForm(true, mappingToEdit);
     }
-
     function handleDeleteMapping(event) {
         const idToDelete = event.target.dataset.id;
         const mappingToDelete = urlToServerMappings.find(m => m.id === idToDelete);
@@ -800,20 +634,131 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-    
     function moveMapping(id, direction) { 
         const index = urlToServerMappings.findIndex(m => m.id === id);
         if (index === -1) return;
         const newIndex = index + direction;
         if (newIndex < 0 || newIndex >= urlToServerMappings.length) return;
-
         const item = urlToServerMappings.splice(index, 1)[0];
         urlToServerMappings.splice(newIndex, 0, item);
         chrome.storage.local.set({ urlToServerMappings }, () => loadSettings());
     }
-
     function handleMoveMappingUp(event) { moveMapping(event.target.dataset.id, -1); }
     function handleMoveMappingDown(event) { moveMapping(event.target.dataset.id, 1); }
+
+    // --- Tracker URL Rule Functions ---
+    function generateTrackerRuleId() {
+        return `trackerRule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    }
+
+    function renderTrackerUrlRulesList() {
+        trackerUrlRulesListUl.innerHTML = '';
+        if (trackerUrlRules.length === 0) {
+            trackerUrlRulesListUl.innerHTML = '<li>No tracker URL rules configured.</li>';
+            return;
+        }
+        trackerUrlRules.forEach((rule, index) => {
+            const li = document.createElement('li');
+            li.className = 'p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center';
+            
+            let ruleText = `<span>${index + 1}. Tracker Pattern: <strong class="text-indigo-600 dark:text-indigo-400">${rule.trackerUrlPattern}</strong>`;
+            if (rule.label) ruleText += ` &rarr; Label: <strong class="text-purple-600 dark:text-purple-400">${rule.label}</strong>`;
+            if (rule.directory) ruleText += ` &rarr; Dir: <strong class="text-teal-600 dark:text-teal-400">${rule.directory}</strong>`;
+            ruleText += `</span>`;
+
+            li.innerHTML = `
+                <div>${ruleText}</div>
+                <div class="actions flex space-x-2">
+                    <button class="edit-tracker-rule-button px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md" data-id="${rule.id}">Edit</button>
+                    <button class="delete-tracker-rule-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md" data-id="${rule.id}">Delete</button>
+                </div>
+            `;
+            trackerUrlRulesListUl.appendChild(li);
+        });
+
+        document.querySelectorAll('.edit-tracker-rule-button').forEach(b => b.addEventListener('click', handleEditTrackerRule));
+        document.querySelectorAll('.delete-tracker-rule-button').forEach(b => b.addEventListener('click', handleDeleteTrackerRule));
+    }
+
+    function showTrackerRuleForm(isEditing = false, rule = null) {
+        trackerRuleFormSection.style.display = 'block';
+        trackerRuleFormTitle.textContent = isEditing ? 'Edit Tracker Rule' : 'Add New Tracker Rule';
+        if (isEditing && rule) {
+            trackerRuleIdInput.value = rule.id;
+            trackerUrlPatternInput.value = rule.trackerUrlPattern;
+            trackerRuleLabelInput.value = rule.label || '';
+            trackerRuleDirectoryInput.value = rule.directory || '';
+        } else {
+            trackerRuleIdInput.value = '';
+            trackerUrlPatternInput.value = '';
+            trackerRuleLabelInput.value = '';
+            trackerRuleDirectoryInput.value = '';
+        }
+        displayTrackerRuleFormStatus('', '');
+    }
+
+    function hideTrackerRuleForm() {
+        trackerRuleFormSection.style.display = 'none';
+        trackerRuleIdInput.value = '';
+        trackerUrlPatternInput.value = '';
+        trackerRuleLabelInput.value = '';
+        trackerRuleDirectoryInput.value = '';
+        displayTrackerRuleFormStatus('', '');
+    }
+
+    showAddTrackerRuleFormButton.addEventListener('click', () => showTrackerRuleForm(false));
+    cancelTrackerRuleEditButton.addEventListener('click', hideTrackerRuleForm);
+
+    saveTrackerRuleButton.addEventListener('click', () => {
+        const id = trackerRuleIdInput.value;
+        const trackerUrlPattern = trackerUrlPatternInput.value.trim();
+        const label = trackerRuleLabelInput.value.trim();
+        const directory = trackerRuleDirectoryInput.value.trim();
+
+        if (!trackerUrlPattern) {
+            displayTrackerRuleFormStatus('Tracker URL Pattern is required.', 'error');
+            return;
+        }
+        if (!label && !directory) {
+            displayTrackerRuleFormStatus('Either a Label or a Directory (or both) must be specified.', 'error');
+            return;
+        }
+
+        const ruleData = { trackerUrlPattern };
+        if (label) ruleData.label = label;
+        if (directory) ruleData.directory = directory;
+
+        if (id) {
+            const index = trackerUrlRules.findIndex(r => r.id === id);
+            if (index > -1) trackerUrlRules[index] = { ...trackerUrlRules[index], ...ruleData };
+        } else {
+            ruleData.id = generateTrackerRuleId();
+            trackerUrlRules.push(ruleData);
+        }
+        chrome.storage.local.set({ trackerUrlRules }, () => {
+            displayTrackerRuleFormStatus(id ? 'Tracker rule updated!' : 'Tracker rule added!', 'success');
+            loadSettings(); 
+            setTimeout(hideTrackerRuleForm, 1000);
+        });
+    });
+
+    function handleEditTrackerRule(event) {
+        const idToEdit = event.target.dataset.id;
+        const ruleToEdit = trackerUrlRules.find(r => r.id === idToEdit);
+        if (ruleToEdit) showTrackerRuleForm(true, ruleToEdit);
+    }
+
+    function handleDeleteTrackerRule(event) {
+        const idToDelete = event.target.dataset.id;
+        const ruleToDelete = trackerUrlRules.find(r => r.id === idToDelete);
+        if (confirm(`Delete tracker rule for "${ruleToDelete?.trackerUrlPattern}"?`)) {
+            trackerUrlRules = trackerUrlRules.filter(r => r.id !== idToDelete);
+            chrome.storage.local.set({ trackerUrlRules }, () => {
+                displayTrackerRuleFormStatus('Tracker rule deleted.', 'success');
+                loadSettings();
+            });
+        }
+    }
 
     loadSettings(); // Initial load
 });
