@@ -37,5 +37,15 @@ All notable changes to this project will be documented in this file.
 -   **CSP for Theme Script:** Resolved Content Security Policy violations by moving the inline dark mode script to an external `js/theme.js` file.
 -   **Sound Notification Errors:** Iteratively fixed "Audio is not defined" and "Receiving end does not exist" errors by implementing and refining the Offscreen API usage with a ready-handshake mechanism.
 
+## [0.2.5] - 2025-06-06
+
+### Fixed
+-   **qBittorrent Directory Assignment:** Resolved `ReferenceError: downloadDir is not defined` in `qbittorrent_handler.js` and ensured the `savePath` parameter is correctly sent to qBittorrent's API for torrent additions.
+
+### Changed
+-   **Client-Specific UI Refinements (Options Page):**
+    -   Dynamically show/hide Username and Password fields based on `clientType` (e.g., hidden for Kodi Elementum).
+    -   Adjusted labels and placeholders for Server URL and Username fields based on `clientType` to provide more relevant guidance (e.g., "Username (optional for WebUI)" for Deluge, specific URL placeholders for uTorrent, Transmission, Synology/QNAP).
+
 ---
 *(Previous versions/changes before 0.2.3 would be documented here if available)*

@@ -31,7 +31,8 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     selectedFileIndices, 
     totalFileCount,
     torrentFileContentBase64, 
-    originalTorrentUrl 
+    originalTorrentUrl,
+    downloadDir // Add downloadDir to destructuring
   } = torrentOptions;
 
   const loginApiUrl = getApiUrl(url, 'auth/login');
@@ -174,11 +175,12 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (tags) addTorrentFormData.append('tags', tags);
     if (category) addTorrentFormData.append('category', category);
+    if (downloadDir) addTorrentFormData.append('savePath', downloadDir); // Add savePath for download directory
     
     const addPausedEffective = useFileSelection ? 'true' : String(userWantsPaused);
     addTorrentFormData.append('paused', addPausedEffective);
     
-    console.log(`qBittorrent: Adding torrent. Paused: ${addPausedEffective}. File selection active: ${useFileSelection}`);
+    console.log(`qBittorrent: Adding torrent. Paused: ${addPausedEffective}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');

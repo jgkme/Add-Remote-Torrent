@@ -72,6 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const importSettingsButton = document.getElementById('importSettingsButton');
     const backupStatusMessageDiv = document.getElementById('backupStatusMessage');
 
+    // Specific field groups for dynamic visibility (ensure these are defined if not already)
+    const usernameGroup = document.getElementById('usernameGroup');
+    const passwordGroup = document.getElementById('passwordGroup');
+    const serverUrlLabel = document.querySelector('label[for="qbUrl"]'); // qbUrl is the ID of serverUrlInput
+
+
     // Footer elements
     const extensionVersionSpan = document.getElementById('extensionVersion');
     const developerLink = document.getElementById('developerLink');
@@ -176,13 +182,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function toggleClientSpecificFields(clientType) {
-        rpcPathGroup.style.display = clientType === 'transmission' ? 'block' : 'none';
-        scgiPathGroup.style.display = clientType === 'rtorrent' ? 'block' : 'none';
-        const serverUrlLabel = document.querySelector('label[for="qbUrl"]');
-        if (clientType === 'rtorrent') {
-            serverUrlLabel.textContent = 'rTorrent Web UI URL (e.g., ruTorrent, optional if SCGI direct):';
-        } else {
-            serverUrlLabel.textContent = 'Server URL (e.g., http://localhost:8080 or http://localhost:9091):';
+        // Ensure elements exist before trying to set style or textContent
+        const rpcPathGrp = document.getElementById('rpcPathGroup');
+        const scgiPathGrp = document.getElementById('scgiPathGroup');
+        const userGroup = document.getElementById('usernameGroup');
+        const passGroup = document.getElementById('passwordGroup');
+        const urlLabel = document.querySelector('label[for="qbUrl"]');
+        const userInput = document.getElementById('qbUsername'); // Assuming this is serverUsernameInput
+        const userLabel = document.querySelector('label[for="qbUsername"]');
+
+        // Default visibility and labels
+        if(rpcPathGrp) rpcPathGrp.style.display = 'none';
+        if(scgiPathGrp) scgiPathGrp.style.display = 'none';
+        if(userGroup) userGroup.style.display = 'block'; 
+        if(passGroup) passGroup.style.display = 'block'; 
+        
+        serverUrlInput.placeholder = 'http://localhost:8080';
+        if (urlLabel) urlLabel.textContent = 'Server URL:';
+        
+        if (userLabel) userLabel.textContent = 'Username:';
+        if (userInput) userInput.placeholder = ''; // Reset placeholder
+
+        switch (clientType) {
+            case 'transmission':
+                if(rpcPathGrp) rpcPathGrp.style.display = 'block';
+                serverUrlInput.placeholder = 'http://localhost:9091';
+                if (urlLabel) urlLabel.textContent = 'Server URL (e.g., http://localhost:9091):';
+                break;
+            case 'rtorrent':
+                if(scgiPathGrp) scgiPathGrp.style.display = 'block';
+                if (urlLabel) urlLabel.textContent = 'rTorrent Web UI URL (e.g., ruTorrent, optional if SCGI direct):';
+                serverUrlInput.placeholder = 'http://localhost/rutorrent';
+                break;
+            case 'deluge':
+                if (userLabel) userLabel.textContent = 'Username (optional for WebUI):';
+                if (userInput) userInput.placeholder = '(Usually not needed for WebUI)';
+                serverUrlInput.placeholder = 'http://localhost:8112';
+                break;
+            case 'utorrent':
+            case 'bittorrent':
+                serverUrlInput.placeholder = 'http://localhost:8080/gui/';
+                break;
+            case 'kodi_elementum':
+                if (userGroup) userGroup.style.display = 'none';
+                if (passGroup) passGroup.style.display = 'none';
+                serverUrlInput.placeholder = 'http://localhost:65220';
+                break;
+            case 'synology_download_station':
+            case 'qnap_download_station':
+                serverUrlInput.placeholder = 'http://<NAS_IP_OR_HOSTNAME>:<PORT>';
+                break;
+            default:
+                // Defaults are already set above
+                break;
         }
     }
 
