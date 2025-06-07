@@ -34,6 +34,11 @@ Synology Download Station
 *   **Manifest V3 Compliant:** Built according to the latest Chrome extension standards.
 *   **Build Process:** Uses Webpack for optimized builds.
 
+*   2025/06/05 - Added Fix for qbitorrent Webui 5.1 (untick CSRF under Security)
+*   2025/06/06 - Added Audio Notification Option in settings (v0.2.4)
+               - Fixed File Name for Export Settings json
+               - Added Tracker URL-based assignment option in settings
+
 ## Technologies Used
 
 *   JavaScript (ES6+ Modules)
@@ -51,6 +56,8 @@ Synology Download Station
 4.  Load the `dist/` folder as an unpacked extension in Chrome's Developer Mode.
 5.  Configure your torrent servers in the extension's options page.
 
+## Known Issues
+1. qbitorrent Webui 5.1 - Need to untick CSRF under Security, limitation of Chrome Extension and browser security measure.
 
 
 
