@@ -68,7 +68,8 @@ chrome.runtime.sendMessage({ action: "getStorageData" }, function(response) {
 });
 
 function registerLinks(response) {
-    if (response.catchfrompage !== "true") return;
+    // Correctly check for boolean true, not string "true"
+    if (response.catchfrompage !== true) return;
 
     var links = [];
     var rL = document.getElementsByTagName('a');
@@ -122,7 +123,8 @@ function registerLinks(response) {
         rtwa_modal_open_func = modals[0];
         rtwa_modal_close_func = modals[1];
 
-        if (response.linksfoundindicator === "true") {
+        // Correctly check for boolean true
+        if (response.linksfoundindicator === true) {
             chrome.runtime.sendMessage({ action: "pageActionToggle" }); // V3: Consider chrome.action.setIcon or other indicators
         }
         

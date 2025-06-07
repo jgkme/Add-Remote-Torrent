@@ -776,15 +776,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const ruleData = { trackerUrlPattern };
-        if (label) ruleData.label = label;
-        if (directory) ruleData.directory = directory;
+        const ruleData = { 
+            id: id || generateTrackerRuleId(),
+            trackerUrlPattern,
+            label,
+            directory
+        };
 
         if (id) {
             const index = trackerUrlRules.findIndex(r => r.id === id);
-            if (index > -1) trackerUrlRules[index] = { ...trackerUrlRules[index], ...ruleData };
+            if (index > -1) {
+                trackerUrlRules[index] = ruleData;
+            }
         } else {
-            ruleData.id = generateTrackerRuleId();
             trackerUrlRules.push(ruleData);
         }
         chrome.storage.local.set({ trackerUrlRules }, () => {

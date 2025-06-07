@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.6] - 2025-06-07
+
+### Fixed
+-   **On-Page Link Catching:** Corrected a bug in `content_script.js` where settings for `catchfrompage` and `linksfoundindicator` were being compared to the string `"true"` instead of the boolean `true`, which prevented the feature from activating correctly.
+-   **Tracker Rule Editing:** Fixed an issue in `options.js` where clearing the "Assign Label" or "Assign Directory" field for a Tracker URL Rule would not save the change. The empty value is now correctly saved, allowing users to remove a label or directory from a rule.
+
+## [0.2.5] - 2025-06-06
+
+### Fixed
+-   **qBittorrent Directory Assignment:** Resolved `ReferenceError: downloadDir is not defined` in `qbittorrent_handler.js` and ensured the `savePath` parameter is correctly sent to qBittorrent's API for torrent additions.
+
+### Changed
+-   **Client-Specific UI Refinements (Options Page):**
+    -   Dynamically show/hide Username and Password fields based on `clientType` (e.g., hidden for Kodi Elementum).
+    -   Adjusted labels and placeholders for Server URL and Username fields based on `clientType` to provide more relevant guidance (e.g., "Username (optional for WebUI)" for Deluge, specific URL placeholders for uTorrent, Transmission, Synology/QNAP).
+
 ## [0.2.4] - 2025-06-06 
 ### Added
 -   **Sound Notifications:**

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Add torrents/magnets to remote/local clients via WebUI. Supports multiple servers, per-site rules, tags, labels, and paused state.",
   "permissions": [
     "storage",
