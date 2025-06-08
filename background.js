@@ -92,9 +92,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     });
     return true;
-  } else if (request.action === 'pageActionToggle') {
-    console.log("pageActionToggle requested by content script. Tab ID:", sender.tab ? sender.tab.id : "unknown");
-    sendResponse({ status: "Logged pageActionToggle request." }); 
+  } else if (request.action === 'updateBadge') {
+    const { count } = request;
+    const text = count > 0 ? count.toString() : '';
+    chrome.action.setBadgeText({ text: text, tabId: sender.tab.id });
+    chrome.action.setBadgeBackgroundColor({ color: '#4CAF50', tabId: sender.tab.id });
+    sendResponse({ status: "Badge updated." });
     return false;
   } else if (request.action === 'testConnection') {
     const serverConfig = request.config; 
@@ -120,48 +123,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     addTorrentToClient(url, server, tags, category, addPaused, null, null, selectedFileIndices, totalFileCount); 
     return false; 
   } else if (request.action === 'addTorrent' && request.url) { 
-    const { url, label, dir, server, referer } = request;
-    let serverToUse = server; 
-    if (!serverToUse || !serverToUse.id || !serverToUse.clientType) {
-        console.error("Incomplete server data received from content script for addTorrent:", server);
-    }
-    addTorrentToClient(url, serverToUse, null, label, null, referer, dir);
-    sendResponse({ status: "Torrent add request sent to background." }); 
-    return false;
-  } else if (request.action === 'getTorrentAddPreflightInfo') {
-    const { linkUrl, pageUrl } = request;
-    console.log(`[RTWA Background] Action getTorrentAddPreflightInfo: linkUrl=${linkUrl}, pageUrl=${pageUrl}`);
+    const { url, pageUrl } = request;
     (async () => {
       try {
         const targetServer = await determineTargetServer(pageUrl);
-        console.log("[RTWA Background] Preflight - Determined targetServer:", targetServer ? {id: targetServer.id, name: targetServer.name, ask: targetServer.askForLabelDirOnPage} : null);
-        if (targetServer && targetServer.askForLabelDirOnPage) {
-          const serverInfo = { 
-            id: targetServer.id, 
-            name: targetServer.name, 
-            clientType: targetServer.clientType,
-            defaultLabel: targetServer.category || '', 
-            defaultDir: targetServer.downloadDir || '',
-            dirlist: targetServer.dirlist || '[]', 
-            labellist: targetServer.labellist || '[]'
-          };
-          console.log("[RTWA Background] Preflight - Responding: shouldShowModal=true, serverInfo:", serverInfo);
-          sendResponse({ shouldShowModal: true, serverInfo: serverInfo, linkUrl: linkUrl });
-        } else if (targetServer) {
-          console.log(`[RTWA Background] Preflight: Modal not needed for ${targetServer.name}. Adding directly.`);
-          addTorrentToClient(linkUrl, targetServer, null, null, null, pageUrl); 
-          console.log("[RTWA Background] Preflight - Responding: shouldShowModal=false, addedDirectly=true");
-          sendResponse({ shouldShowModal: false, addedDirectly: true }); 
+        if (targetServer) {
+          addTorrentToClient(url, targetServer, null, null, null, pageUrl);
+          sendResponse({ status: "Torrent add request sent to background." });
         } else {
-          console.log("[RTWA Background] Preflight - Responding: shouldShowModal=false, error: No target server.");
-          sendResponse({ shouldShowModal: false, error: "No target server determined." });
+          const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
+          console.log("[RTWA Background] Creating error notification (no target server):", msg);
+          chrome.notifications.create({
+            type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+            message: msg
+          });
+          chrome.storage.local.set({ lastActionStatus: msg });
+          sendResponse({ error: msg });
         }
-      } catch (e) {
-        console.error("[RTWA Background] Error in getTorrentAddPreflightInfo:", e);
-        sendResponse({ shouldShowModal: false, error: e.message });
+      } catch (error) {
+        console.error("Error in addTorrent action:", error);
+        const errorMsg = `Error processing torrent link: ${error.message}`;
+        chrome.notifications.create({
+          type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+          message: errorMsg
+        });
+        chrome.storage.local.set({ lastActionStatus: errorMsg });
+        sendResponse({ error: errorMsg });
       }
     })();
-    return true; 
+    return true;
   }
 });
 

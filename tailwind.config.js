@@ -11,7 +11,11 @@ module.exports = {
     "./content_script.js", 
   ],
   theme: {
-    extend: {},
+    extend: {
+      zIndex: {
+        '9999': '9999',
+      }
+    },
   },
   plugins: [],
 }
