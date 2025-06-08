@@ -485,9 +485,10 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
           torrentOptions.torrentFileContentBase64 = null; 
         }
       } else {
-        console.log(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Will send URL to client as is.`);
-        torrentOptions.torrentFileContentBase64 = null; 
+        console.log(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Aborting add.`);
+        return;
       }
+
     } catch (fetchError) {
       console.warn(`[RTWA Background] Error attempting to fetch content for ${torrentUrl}:`, fetchError.message, ". Will send URL to client as is.");
       torrentOptions.torrentFileContentBase64 = null; 

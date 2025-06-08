@@ -1,24 +1,34 @@
 // Content script for Remote Torrent WebUI Adder
 
-// Inject Tailwind CSS into the page
-(function() {
-    const styleLink = document.createElement('link');
-    styleLink.rel = 'stylesheet';
-    styleLink.type = 'text/css';
-    styleLink.href = chrome.runtime.getURL('css/tailwind.css');
-    document.head.appendChild(styleLink);
-})();
-
 var rtwa_modal_open_func, rtwa_modal_close_func;
 
 // Modal initialization function
 function rtwa_initModalLogic() {
     let modalWrapper = null;
     let modalWindow = null;
+    let styleLink = null;
     console.log("[RTWA ContentScript] rtwa_initModalLogic: Initializing modal functions.");
+
+    const injectCss = () => {
+        if (document.getElementById('rtwa-tailwind-styles')) return;
+        styleLink = document.createElement('link');
+        styleLink.id = 'rtwa-tailwind-styles';
+        styleLink.rel = 'stylesheet';
+        styleLink.type = 'text/css';
+        styleLink.href = chrome.runtime.getURL('css/tailwind.css');
+        document.head.appendChild(styleLink);
+    };
+
+    const removeCss = () => {
+        const existingLink = document.getElementById('rtwa-tailwind-styles');
+        if (existingLink) {
+            existingLink.remove();
+        }
+    };
 
     const openModal = () => {
         console.log("[RTWA ContentScript] openModal: Attempting to open modal.");
+        injectCss();
         // The modal HTML is injected by rtwa_showLabelDirChooser
         modalWrapper = document.getElementById("rtwa_modal_wrapper");
         modalWindow = document.getElementById("rtwa_modal_window");
@@ -37,6 +47,7 @@ function rtwa_initModalLogic() {
         if (modalWrapper) {
             modalWrapper.remove(); 
         }
+        removeCss();
         document.removeEventListener("click", clickOutsideHandler);
         document.removeEventListener("keydown", keydownHandler);
     };
