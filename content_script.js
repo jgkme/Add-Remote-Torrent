@@ -161,40 +161,50 @@ function registerLinks(response) {
         for (var key = 0; key < links.length; key++) {
             if (links[key].addEventListener) {
                 links[key].addEventListener('click', function(e) {
-                    if (!(e.ctrlKey || e.shiftKey || e.altKey)) {
-                        e.preventDefault();
+                                       if (!(e.ctrlKey || e.shiftKey || e.altKey)) {
                         var url = this.href || this.dataset.rtwaHref; // Use dataset for form elements
                         if (!url) return;
 
-                        console.log("[RTWA ContentScript] Link clicked:", url); // Log link click
+                        // Check if it's a magnet link or a .torrent file link
+                        let isMagnet = url.startsWith("magnet:");
+                        let isTorrentFile = /\.torrent($|\?|#)/i.test(url);
 
-                        // Assuming 'servers' is a JSON string in the response from getStorageData
-                        var servers = response.servers ? JSON.parse(response.servers) : [];
-                        if (servers.length === 0) {
-                            console.warn("No servers configured.");
-                            // Optionally, notify user to configure servers
-                            alert("No torrent servers configured. Please configure one in extension options.");
-                            return;
+                        if (isMagnet || isTorrentFile) {
+                            e.preventDefault(); // Only prevent default if it's a torrent link
+                            console.log("[RTWA ContentScript] Torrent link clicked:", url); // Log torrent link click
+
+                            // Assuming 'servers' is a JSON string in the response from getStorageData
+                            var servers = response.servers ? JSON.parse(response.servers) : [];
+                            if (servers.length === 0) {
+                                console.warn("No servers configured.");
+                                // Optionally, notify user to configure servers
+                                alert("No torrent servers configured. Please configure one in extension options.");
+                                return;
+                            }
+                            
+                            // Determine active/target server - this logic might need to align with background.js's determineTargetServer
+                            // For now, using the first server or a specific server if passed explicitly (not available here yet)
+                            // The old code used servers[0] or a specific server if passed to showLabelDirChooser
+                            // This needs to be robust, perhaps by getting activeServerId from response.
+                            let activeServer = servers.find(s => s.id === response.activeServerId) || servers[0];
+                            
+                            // Check for client-specific "ask" flags.
+                            // These flags (e.g., "rutorrentdirlabelask") need to be defined in server objects.
+                            // And mapped from our generic clientType (e.g., "rtorrent", "qbittorrent")
+                            // For now, let's assume a generic 'askForLabelDirOnPage' flag.
+                            // NEW PREFLIGHT LOGIC:
+                            const pageUrl = window.location.href;
+                            chrome.runtime.sendMessage({
+                                action: "addTorrent",
+                                url: url,
+                                pageUrl: pageUrl
+                            });
+                        } else {
+                            console.log("[RTWA ContentScript] Non-torrent link clicked, allowing default navigation:", url);
+                            // Allow default navigation for non-torrent links
                         }
-                        
-                        // Determine active/target server - this logic might need to align with background.js's determineTargetServer
-                        // For now, using the first server or a server passed explicitly (not available here yet)
-                        // The old code used servers[0] or a specific server if passed to showLabelDirChooser
-                        // This needs to be robust, perhaps by getting activeServerId from response.
-                        let activeServer = servers.find(s => s.id === response.activeServerId) || servers[0];
-                        
-                        // Check for client-specific "ask" flags.
-                        // These flags (e.g., "rutorrentdirlabelask") need to be defined in server objects.
-                        // And mapped from our generic clientType (e.g., "rtorrent", "qbittorrent")
-                        // For now, let's assume a generic 'askForLabelDirOnPage' flag.
-                        // NEW PREFLIGHT LOGIC:
-                        const pageUrl = window.location.href;
-                        chrome.runtime.sendMessage({
-                            action: "addTorrent",
-                            url: url,
-                            pageUrl: pageUrl
-                        });
                     }
+
                 });
             }
         }
