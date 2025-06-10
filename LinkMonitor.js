@@ -7,18 +7,18 @@ const handleMutations = (mutationsList, callback) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     if (node.tagName === 'A') {
                         // console.log('linkMonitor: New link added:', node.href);
-                        callback && callback(node, 'added');
+                        callback && callback(node, 'node added');
                     }
                     node.querySelectorAll?.('a').forEach(a => {
                         // console.log('linkMonitor: New link added in subtree:', a.href);
-                        callback && callback(a, 'added');
+                        callback && callback(a, 'node added in subtree');
                     });
                 }
             });
         } else if (mutation.type === 'attributes') {
             if (mutation.target.tagName === 'A' && mutation.attributeName === 'href') {
                 // console.log('Link href changed:', mutation.target.href);
-                callback && callback(mutation.target, 'changed');
+                callback && callback(mutation.target, 'node href changed');
             }
         }
     }

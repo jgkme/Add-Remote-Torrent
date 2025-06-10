@@ -81,6 +81,13 @@ const getOptions = async () => new Promise((resolve, reject) => {
         } else if (!response) {
             reject(new Error('No response from getStorageData or response is undefined.'));
         } else {
+            // Create all url matcher RegExps statically and add them to options before resolving
+            // (instead of recreating them on every link when analyzing!)
+            const urlPatterns = [
+                ...(response.linkmatches && response.linkmatches.split?.('~') || []),
+                '^magnet:'
+            ];
+            response.urlMatchers = urlPatterns.map(p => new RegExp(p, 'gi'));
             resolve(response);
         }
     });
@@ -99,9 +106,21 @@ const isTorrentUrl = (url, options = {}) => {
     return false;
 }
 
-const registerLinks = options => {
-    let torrentLinksFound = 0;
+const checkLinkElement = (el, options, logAction) => {
+    if (el._rtwa_handler_added) {
+        // Element already has a click handler, but we want to re-check its url (may have changed)
+        el._rtwa_is_torrent = false; // Reset to re-check
+    }
+    const url = el.href || (el.form?.action?.match && el.form.action);
+    if (isTorrentUrl(url, options)) {
+        console.log(`[RTWA ContentScript] Found torrent link${logAction ? ` (${logAction})` : ''}:`, url);
+        el._rtwa_is_torrent = true;
+        addClickHandler(el, options);
+        return true;
+    }
+}
 
+const registerLinks = options => {
     // Check all anchor elements and some specific input elements/forms (less common for torrents, but kept from original logic)
     const elements = [
         ...Array.from(document.getElementsByTagName('a')),
@@ -109,19 +128,10 @@ const registerLinks = options => {
         ...Array.from(document.getElementsByTagName('input'))
     ];
 
+    let torrentLinksFound = 0;
     elements.forEach(el => {
-        if (el._rtwa_handler_added) {
-            // el already has a click handler!
-            // But its url could have changed, so reset "_rtwa_is_torrent" to false
-            // ...and check it again
-            el._rtwa_is_torrent = false;
-        }
-        const url = el.href || (el.form?.action?.match && el.form.action);
-        if (isTorrentUrl(url, options)) {
+        if (checkLinkElement(el, options, 'registerLinks crawler')) {
             torrentLinksFound++;
-            console.log('[RTWA ContentScript] Found torrent link:', url); // Added log
-            el._rtwa_is_torrent = true;
-            addClickHandler(el, options);
         }
     });
     console.log('[RTWA ContentScript] Found links:', torrentLinksFound); // Added log
@@ -143,7 +153,7 @@ const addClickHandler = (el = {}, options) => {
         el._rtwa_handler_added = true;
 
         el.addEventListener('click', (e) => {
-            const url = el.href || el.form.action;
+            const url = el.href || el.form?.action;
             if (el._rtwa_is_torrent && url && !(e.ctrlKey || e.shiftKey || e.altKey)) {
                 // The element contains a verified torrent-link, has a url, and no modifier keys are pressed
 
@@ -192,26 +202,9 @@ const initLinkMonitor = async (options) => {
             return;
         }
 
-        // Create all linkMatcher RegExps statically (from "options.linkmatches") and add them to options
-        const patterns = [
-            ...(options.linkmatches && options.linkmatches.split?.('~') || []),
-            '^magnet:'
-        ];
-        options.urlMatchers = patterns.map(p => new RegExp(p, 'gi'));
-
         // Start link monitor
-        linkMonitor = new LinkMonitor((el, action) => {
-            if (el?._rtwa_handler_added) {
-                // el has changed, but already has a click handler!
-                // Reset "_rtwa_is_torrent" to false before checking its href again
-                el._rtwa_is_torrent = false;
-            }
-            const url = el?.href || (el?.form?.action?.match && el.form.action);
-            if (isTorrentUrl(url, options)) {
-                console.log(`LinkMonitor detected torrent url (${action ? action : '?'}):`, url);
-                el._rtwa_is_torrent = true;
-                addClickHandler(el, options);
-            }
+        linkMonitor = new LinkMonitor((el, logAction) => {
+            checkLinkElement(el, options, `LinkMonitor: ${logAction}`);
         });
 
         // Run initial link registration
