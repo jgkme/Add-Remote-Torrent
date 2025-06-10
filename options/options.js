@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAddServerFormButton = document.getElementById('showAddServerFormButton');
 
     // Global settings elements
-    const showAdvancedAddDialogToggle = document.getElementById('showAdvancedAddDialogToggle');
+    const advancedAddDialogInput = document.getElementById('advancedAddDialogInput');
     const enableUrlBasedServerSelectionToggle = document.getElementById('enableUrlBasedServerSelectionToggle');
     const catchFromPageToggle = document.getElementById('catchFromPageToggle'); 
     const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle'); 
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let servers = [];
     let activeServerId = null;
     let globalSettings = {
-        showAdvancedAddDialog: false,
+        advancedAddDialog: 'never',
         enableUrlBasedServerSelection: false,
         catchfrompage: false, 
         linksfoundindicator: false, 
@@ -468,9 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Handlers for Global Settings ---
     clientTypeSelect.addEventListener('change', (event) => { toggleClientSpecificFields(event.target.value); });
-    showAdvancedAddDialogToggle.addEventListener('change', () => {
-        globalSettings.showAdvancedAddDialog = showAdvancedAddDialogToggle.checked;
-        chrome.storage.local.set({ showAdvancedAddDialog: globalSettings.showAdvancedAddDialog }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    advancedAddDialogInput.addEventListener('change', () => {
+        globalSettings.advancedAddDialog = advancedAddDialogInput.value || 'never';
+        chrome.storage.local.set({ advancedAddDialog: globalSettings.advancedAddDialog }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
     catchFromPageToggle.addEventListener('change', () => {
         globalSettings.catchfrompage = catchFromPageToggle.checked;
@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!newActiveServerId && newServers.length > 0) newActiveServerId = newServers[0].id;
                     const settingsToSave = {
                         servers: newServers, activeServerId: newActiveServerId,
-                        showAdvancedAddDialog: importedSettings.showAdvancedAddDialog || false,
+                        advancedAddDialog: importedSettings.advancedAddDialog || importedSettings.showAdvancedAddDialog && 'manual' || 'never',  // Migrate showAdvancedAddDialog -> advancedAddDialog
                         enableUrlBasedServerSelection: importedSettings.enableUrlBasedServerSelection || false,
                         urlToServerMappings: importedSettings.urlToServerMappings || [],
                         catchfrompage: importedSettings.catchfrompage || false, 
@@ -553,14 +553,14 @@ document.addEventListener('DOMContentLoaded', () => {
             extensionVersionSpan.textContent = manifest.version;
         }
         chrome.storage.local.get([
-            'servers', 'activeServerId', 'showAdvancedAddDialog', 'enableUrlBasedServerSelection', 
+            'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
             'registerDelay', 'enableSoundNotifications', 'trackerUrlRules'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
-            globalSettings.showAdvancedAddDialog = result.showAdvancedAddDialog || false;
-            showAdvancedAddDialogToggle.checked = globalSettings.showAdvancedAddDialog;
+            globalSettings.advancedAddDialog = (result.advancedAddDialog || result.showAdvancedAddDialog && 'manual' || 'never'); // Migrate showAdvancedAddDialog -> advancedAddDialog
+            advancedAddDialogInput.value = globalSettings.advancedAddDialog;
             globalSettings.enableUrlBasedServerSelection = result.enableUrlBasedServerSelection || false;
             enableUrlBasedServerSelectionToggle.checked = globalSettings.enableUrlBasedServerSelection; 
             urlToServerMappings = result.urlToServerMappings || [];
