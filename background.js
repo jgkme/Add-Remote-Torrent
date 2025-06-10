@@ -41,11 +41,20 @@ const offscreenDocumentManager = {
 };
 offscreenDocumentManager._setupReadyPromise(); // Initial setup
 
-const popAdvancedDialog = (url, targetServer) => {
+let dialogWindow = null;
+const popAdvancedDialog = async (url, targetServer) => {
     console.log("[RTWA Background] Creating advanced dialog. Link URL:", url, "Server ID:", targetServer.id, "Server Name:", targetServer.name);
+
+    if (dialogWindow?.id) {
+        // Make sure existing popups are closed before opening a new one
+        chrome.windows.remove(dialogWindow.id).catch(() => {}); // Silently ignore errors
+        dialogWindow = null;
+    }
+
     const dialogUrl = chrome.runtime.getURL('confirmAdd/confirmAdd.html') +
         `?url=${encodeURIComponent(url || '')}&serverId=${encodeURIComponent(targetServer.id || '')}`;
-    chrome.windows.create({
+
+    dialogWindow = await chrome.windows.create({
         url: dialogUrl,
         type: 'popup',
         width: 600,
