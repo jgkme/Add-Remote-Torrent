@@ -41,6 +41,27 @@ const offscreenDocumentManager = {
 };
 offscreenDocumentManager._setupReadyPromise(); // Initial setup
 
+let dialogWindow = null;
+const popAdvancedDialog = async (url, targetServer) => {
+    console.log("[RTWA Background] Creating advanced dialog. Link URL:", url, "Server ID:", targetServer.id, "Server Name:", targetServer.name);
+
+    if (dialogWindow?.id) {
+        // Make sure existing popups are closed before opening a new one
+        chrome.windows.remove(dialogWindow.id).catch(() => {}); // Silently ignore errors
+        dialogWindow = null;
+    }
+
+    const dialogUrl = chrome.runtime.getURL('confirmAdd/confirmAdd.html') +
+        `?url=${encodeURIComponent(url || '')}&serverId=${encodeURIComponent(targetServer.id || '')}`;
+
+    dialogWindow = await chrome.windows.create({
+        url: dialogUrl,
+        type: 'popup',
+        width: 600,
+        height: 580
+    });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("[RTWA Background] Received message:", request); 
 
@@ -122,13 +143,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount } = request.params; 
     addTorrentToClient(url, server, tags, category, addPaused, null, null, selectedFileIndices, totalFileCount); 
     return false; 
-  } else if (request.action === 'addTorrent' && request.url) { 
+  } else if (request.action === 'addTorrent' && request.url) {
     const { url, pageUrl } = request;
     (async () => {
       try {
         const targetServer = await determineTargetServer(pageUrl);
         if (targetServer) {
-          addTorrentToClient(url, targetServer, null, null, null, pageUrl);
+          const { advancedAddDialog } = await chrome.storage.local.get(['advancedAddDialog']);
+          const showAdvancedDialog = ['always', 'catch'].includes(advancedAddDialog);
+          if (showAdvancedDialog) {
+              popAdvancedDialog(url, targetServer);
+          } else {
+              addTorrentToClient(url, targetServer, null, null, null, pageUrl);
+          }
           sendResponse({ status: "Torrent add request sent to background." });
         } else {
           const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
@@ -639,9 +666,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
     console.log(`[RTWA Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
     console.log(`[RTWA Background] Link type detection: isMagnet=${isMagnet}, isTorrentFile=${isTorrentFile}`);
-    const settings = await chrome.storage.local.get(['showAdvancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
-    const showAdvancedDialog = settings.showAdvancedAddDialog || false;
-    console.log("[RTWA Background] showAdvancedAddDialog from storage:", settings.showAdvancedAddDialog, "Effective value:", showAdvancedDialog);
+    const settings = await chrome.storage.local.get(['advancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
+    const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
+    console.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
     let serverForDialog = null; 
     let pageUrlForRules = info.pageUrl; 
     try {
@@ -675,15 +702,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         return;
     }
     if (showAdvancedDialog) {
-      console.log("[RTWA Background] Creating advanced dialog. Link URL:", info.linkUrl, "Server ID:", serverForDialog.id, "Server Name:", serverForDialog.name);
-      const dialogUrl = chrome.runtime.getURL('confirmAdd/confirmAdd.html') +
-                        `?url=${encodeURIComponent(info.linkUrl || '')}&serverId=${encodeURIComponent(serverForDialog.id || '')}`; 
-      chrome.windows.create({
-        url: dialogUrl,
-        type: 'popup',
-        width: 600, 
-        height: 580 
-      });
+      popAdvancedDialog(info.linkUrl, serverForDialog);
     } else {
       addTorrentToClient(info.linkUrl, serverForDialog, null, null, null, pageUrlForRules); 
     }
