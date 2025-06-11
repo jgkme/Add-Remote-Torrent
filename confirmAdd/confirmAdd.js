@@ -48,15 +48,41 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.innerHTML = '<p class="p-4 text-red-600 dark:text-red-400">Error: Missing torrent URL or server ID. Please close this window and try again. Check console for details.</p>';
         return;
     }
-
     chrome.storage.local.get(['servers'], (result) => {
         const servers = result.servers || [];
         activeServer = servers.find(s => s.id === activeServerId);
 
         if (activeServer) {
             serverNameDisplay.textContent = activeServer.name;
-            tagsInput.value = activeServer.tags || '';
-            categoryInput.value = activeServer.category || '';
+            
+            // Handle tags input - use defaultTags from the server config
+            tagsInput.value = activeServer.defaultTags || '';
+            
+            // Handle category dropdown - populate from comma-separated 'categories' field
+            if (activeServer.categories) {
+                const categoryOptions = activeServer.categories.split(',').map(cat => cat.trim()).filter(cat => cat.length > 0);
+                
+                // Clear existing options except the first placeholder
+                categoryInput.innerHTML = '<option value="">Select a category...</option>';
+                
+                // Add options from comma-separated categories
+                categoryOptions.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    categoryInput.appendChild(option);
+                });
+                
+                // Set default selection if defaultCategory is defined and exists in the dropdown
+                const defaultCat = activeServer.defaultCategory || activeServer.category;
+                if (defaultCat && categoryOptions.includes(defaultCat.trim())) {
+                    categoryInput.value = defaultCat.trim();
+                }
+            } else {
+                // If no categories defined, just keep the placeholder
+                categoryInput.innerHTML = '<option value="">Select a category...</option>';
+            }
+            
             pausedInput.checked = activeServer.addPaused || false;
         } else {
             document.body.innerHTML = `<p>Error: Could not find server with ID ${activeServerId}. Please close this window.</p>`;
@@ -190,11 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeServer) return; 
 
         const selectedFileIndices = [];
-        let totalFileCount = 0; // Initialize totalFileCount
+        let totalFileCount = 0;
 
         if (!isMagnetLink && selectFilesToggle.checked) {
             const fileCheckboxes = fileListContainer.querySelectorAll('.rtwa-file-select-checkbox');
-            totalFileCount = fileCheckboxes.length; // Get total number of files listed
+            totalFileCount = fileCheckboxes.length;
             fileCheckboxes.forEach(cb => {
                 if (cb.checked) {
                     selectedFileIndices.push(parseInt(cb.dataset.fileIndex, 10));
@@ -207,10 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
             url: torrentUrl,
             server: activeServer, 
             tags: tagsInput.value.trim(),
-            category: categoryInput.value.trim(),
+            category: categoryInput.value, // No need to trim since it's a selected value from dropdown
             addPaused: pausedInput.checked,
             selectedFileIndices: (!isMagnetLink && selectFilesToggle.checked) ? selectedFileIndices : undefined,
-            totalFileCount: (!isMagnetLink && selectFilesToggle.checked && totalFileCount > 0) ? totalFileCount : undefined, // Add totalFileCount
+            totalFileCount: (!isMagnetLink && selectFilesToggle.checked && totalFileCount > 0) ? totalFileCount : undefined,
         };
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {
