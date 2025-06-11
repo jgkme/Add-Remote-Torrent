@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scgiPathInput = document.getElementById('scgiPath'); 
     const defaultTagsInput = document.getElementById('defaultTags');
     const defaultCategoryInput = document.getElementById('defaultCategory');
+    const categoriesInput = document.getElementById('categories');
     const addPausedInput = document.getElementById('addPaused');
     const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); 
     const saveServerButton = document.getElementById('saveServerButton');
@@ -255,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scgiPathInput.value = server.scgiPath || ''; 
             defaultTagsInput.value = server.tags || '';
             defaultCategoryInput.value = server.category || '';
+            categoriesInput.value = server.categories || '';
             addPausedInput.checked = server.addPaused || false;
             askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false; 
         } else {
@@ -269,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scgiPathInput.value = ''; 
             defaultTagsInput.value = '';
             defaultCategoryInput.value = '';
+            categoriesInput.value = '';
             addPausedInput.checked = false;
             askForLabelDirOnPageInput.checked = false; 
         }
@@ -290,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scgiPathInput.value = ''; 
         defaultTagsInput.value = '';
         defaultCategoryInput.value = '';
+        categoriesInput.value = '';
         addPausedInput.checked = false;
         askForLabelDirOnPageInput.checked = false; 
         formStatusMessageDiv.textContent = '';
@@ -376,8 +380,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const scgiPath = scgiPathInput.value.trim(); 
         const tags = defaultTagsInput.value.trim();
         const category = defaultCategoryInput.value.trim();
+        const categories = document.getElementById('categories').value.trim(); // Add this line
         const addPaused = addPausedInput.checked;
         const askForLabelDirOnPage = askForLabelDirOnPageInput.checked; 
+        
         if (!name || !url) {
             displayFormStatus('Server Name and URL are required.', 'error');
             return;
@@ -386,7 +392,20 @@ document.addEventListener('DOMContentLoaded', () => {
             displayFormStatus('Invalid Server URL format.', 'error');
             return;
         }
-        const serverData = { name, clientType, url, username, password, tags, category, addPaused, askForLabelDirOnPage }; 
+        
+        const serverData = { 
+            name, 
+            clientType, 
+            url, 
+            username, 
+            password, 
+            tags, 
+            category, 
+            categories,
+            addPaused, 
+            askForLabelDirOnPage 
+        }; 
+        
         if (clientType === 'transmission') serverData.rpcPath = rpcPath;
         else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath; 
         if (id) { 
