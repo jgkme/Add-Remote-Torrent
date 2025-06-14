@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // QNAP Download Station API Handler
 
 // Session ID (SID) for QNAP
@@ -74,12 +76,12 @@ async function getQnapSid(serverConfig) {
             lastQnapLoginTime = now;
             return qnapSid; // Success
         } else {
-            console.error("QNAP Login response (couldn't find SID/qtoken in XML or JSON):", responseText);
+            debug.error("QNAP Login response (couldn't find SID/qtoken in XML or JSON):", responseText);
             // This error will be caught by the catch block below
             throw new Error('QNAP login failed: SID/qtoken not found in response.');
         }
     } catch (error) { // Catches fetch errors or errors thrown above
-        console.error('Error fetching QNAP SID:', error);
+        debug.error('Error fetching QNAP SID:', error);
         qnapSid = null;
         // This error is thrown and expected to be caught by the caller (makeQnapApiRequest)
         throw new Error(`SIDFetchErrorQNAP: ${error.message}`);
@@ -133,12 +135,12 @@ async function makeQnapApiRequest(serverConfig, command, params = {}, httpMethod
         if (!response.ok) {
              // QNAP error handling might involve checking response body for error codes/messages
             const errorText = await response.text();
-            console.error("QNAP API Raw Error Response:", errorText);
+            debug.error("QNAP API Raw Error Response:", errorText);
             // Attempt to parse as JSON if possible
             try {
                 const errorJson = JSON.parse(errorText);
                 if (errorJson && (errorJson.error_code === -6 || errorJson.error_code === -7 || String(errorJson.error_code) === "104") && !params.retriedWithNewSid) { // SID invalid/expired (104 is common for invalid SID)
-                    console.log('QNAP request failed, possibly stale SID. Refetching SID and retrying.');
+                    debug.log('QNAP request failed, possibly stale SID. Refetching SID and retrying.');
                     qnapSid = null; 
                     params.retriedWithNewSid = true;
                     return makeQnapApiRequest(serverConfig, command, params, httpMethod); // Retry
@@ -167,7 +169,7 @@ async function makeQnapApiRequest(serverConfig, command, params = {}, httpMethod
         if (data && (data.status === 1 || data.status === '1' || typeof data.error_code === 'undefined' || data.error_code === 0 || data.error_code === "0" || data.success === true)) { // Added data.success for some QNAP APIs
             return { success: true, data: data.data || data }; 
         } else {
-            console.error("QNAP API Error Data:", data);
+            debug.error("QNAP API Error Data:", data);
             return { 
                 success: false, 
                 error: {
@@ -178,7 +180,7 @@ async function makeQnapApiRequest(serverConfig, command, params = {}, httpMethod
             };
         }
     } catch (error) { // Catches network errors or errors from getQnapSid if not handled above
-        console.error('Error in QNAP API request:', error);
+        debug.error('Error in QNAP API request:', error);
         if (error.message && error.message.startsWith("SIDFetchErrorQNAP:")) {
             return {
                 success: false,
@@ -221,7 +223,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     if (torrentOptions.paused) {
         // Parameter for paused state is unknown. Common patterns: 'start=0', 'paused=1', 'add_paused=true'.
         // Needs verification from QNAP Download Station API documentation.
-        console.warn("QNAP: 'add paused' requested but specific parameter is unknown/not implemented. Torrent may start active.");
+        debug.warn("QNAP: 'add paused' requested but specific parameter is unknown/not implemented. Torrent may start active.");
     }
     
     // API analysis suggests 'task_add_url'. HTTP method (GET/POST) also needs verification.

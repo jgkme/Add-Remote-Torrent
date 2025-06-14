@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // uTorrent API Handler
 // This file will contain the logic for interacting with the uTorrent WebUI API.
 
@@ -38,7 +40,7 @@ async function getCsrfToken(serverConfig) {
             throw new Error('CSRF token not found in uTorrent /gui/token.html response.');
         }
     } catch (error) {
-        console.error('Error fetching uTorrent CSRF token:', error);
+        debug.error('Error fetching uTorrent CSRF token:', error);
         uTorrentToken = null; 
         // Propagate a structured error. getCsrfToken is called by makeApiRequest,
         // which will then return its own structured error.
@@ -100,7 +102,7 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
     } else if (method === 'POST') {
         // Handle other POST types if needed, e.g., application/x-www-form-urlencoded
         // For now, assuming POST with FormData or GET
-        console.warn("uTorrent makeApiRequest: POST method used without FormData. This might not be handled correctly.");
+        debug.warn("uTorrent makeApiRequest: POST method used without FormData. This might not be handled correctly.");
     }
 
 
@@ -110,7 +112,7 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
         if (!response.ok) {
             // If token expired (often 401 or 403, though uTorrent might just fail), try to refetch token once.
             if ((response.status === 401 || response.status === 403) && !params.retriedWithNewToken) {
-                console.log('uTorrent request failed, possibly stale token. Refetching token and retrying.');
+                debug.log('uTorrent request failed, possibly stale token. Refetching token and retrying.');
                 uTorrentToken = null; // Force refetch
                 params.retriedWithNewToken = true;
                 return makeApiRequest(baseUrl, action, params, serverConfig, method); // Retry
@@ -137,7 +139,7 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
         return { success: true };
 
     } catch (error) { // Catch network errors or errors from getCsrfToken if it wasn't caught above
-        console.error('Error in uTorrent API request:', error);
+        debug.error('Error in uTorrent API request:', error);
         // Check if it's a TokenFetchError re-thrown from getCsrfToken
         if (error.message && error.message.startsWith("TokenFetchError:")) {
             return {
@@ -171,7 +173,7 @@ function base64ToBlob(base64, type = 'application/x-bittorrent') {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], {type});
   } catch (e) {
-    console.error("base64ToBlob conversion error:", e);
+    debug.error("base64ToBlob conversion error:", e);
     throw e; 
   }
 }
@@ -207,7 +209,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             if (base32Match && base32Match[1]) {
                 // This would require a base32 to hex conversion library.
                 // For now, we'll skip hash extraction for base32 magnets if file selection is needed.
-                console.warn("uTorrent: Base32 magnet hash detected. File selection might not work without hash conversion.");
+                debug.warn("uTorrent: Base32 magnet hash detected. File selection might not work without hash conversion.");
                 if (useFileSelection) {
                     return { success: false, error: { userMessage: "File selection for Base32 magnet links not yet supported by this handler.", errorCode: "BASE32_HASH_UNSUPPORTED" }};
                 }
@@ -225,10 +227,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                 // uTorrent might return the hash on add-url if it's a new torrent.
                 // For now, we'll proceed without the hash for .torrent files and hope add-url gives it,
                 // or accept that file selection might not work for .torrent URLs if hash isn't returned.
-                console.warn("uTorrent: For .torrent file URLs, hash extraction is complex. File selection relies on server returning hash on add.");
+                debug.warn("uTorrent: For .torrent file URLs, hash extraction is complex. File selection relies on server returning hash on add.");
             }
         } catch (e) {
-            console.error("uTorrent: Error fetching/parsing .torrent for hash:", e);
+            debug.error("uTorrent: Error fetching/parsing .torrent for hash:", e);
             if (useFileSelection) {
                 return { success: false, error: { userMessage: "Failed to process .torrent file for selection.", technicalDetail: e.message, errorCode: "TORRENT_PROCESS_FAIL" }};
             }
@@ -238,7 +240,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     let addResult;
 
     if (torrentFileContentBase64 && !isMagnet) {
-        console.log("uTorrent: Adding torrent using file content (action=add-file).");
+        debug.log("uTorrent: Adding torrent using file content (action=add-file).");
         const formData = new FormData();
         try {
             const blob = base64ToBlob(torrentFileContentBase64);
@@ -274,11 +276,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             // For now, this will just upload the file.
 
         } catch (e) {
-            console.error("uTorrent: Error preparing FormData for add-file:", e);
+            debug.error("uTorrent: Error preparing FormData for add-file:", e);
             return { success: false, error: { userMessage: "Failed to prepare torrent file for upload.", technicalDetail: e.message, errorCode: "FORMDATA_ERROR" }};
         }
     } else {
-        console.log(`uTorrent: Adding torrent using URL (action=add-url): ${torrentUrl}`);
+        debug.log(`uTorrent: Adding torrent using URL (action=add-url): ${torrentUrl}`);
         const addUrlParams = { s: torrentUrl };
         if (torrentOptions.downloadDir) addUrlParams.path = torrentOptions.downloadDir;
         if (torrentOptions.labels && torrentOptions.labels.length > 0) addUrlParams.label = torrentOptions.labels[0];
@@ -301,14 +303,14 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             // A common workaround is to fetch the list, get the 'cid' (cache ID), add, then fetch again
             // and look for torrents not in the old 'cid' list.
             // For now, we'll log a warning if hash is needed but not available.
-            console.warn(`uTorrent: Torrent added. Hash not available for post-add operations (file selection/pause). Manual adjustment in uTorrent may be needed.`);
+            debug.warn(`uTorrent: Torrent added. Hash not available for post-add operations (file selection/pause). Manual adjustment in uTorrent may be needed.`);
             if (useFileSelection) {
                  return { success: true, data: { warning: "Torrent added, but file priorities could not be set as hash was not identified." } };
             }
         }
 
         if (torrentHash && useFileSelection) {
-            console.log(`uTorrent: Torrent hash ${torrentHash}. Setting file priorities.`);
+            debug.log(`uTorrent: Torrent hash ${torrentHash}. Setting file priorities.`);
             const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
             
             for (const index of allFileIndices) {
@@ -316,19 +318,19 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                 const prioParams = { hash: torrentHash, s: 'priority', f: index, v: priority };
                 const prioResult = await makeApiRequest(serverConfig.url, 'setprops', prioParams, serverConfig, 'GET');
                 if (!prioResult.success) {
-                    console.warn(`uTorrent: Failed to set priority for file ${index} of torrent ${torrentHash}.`);
+                    debug.warn(`uTorrent: Failed to set priority for file ${index} of torrent ${torrentHash}.`);
                     // Continue trying for other files
                 }
             }
-            console.log(`uTorrent: File priorities set for ${torrentHash}.`);
+            debug.log(`uTorrent: File priorities set for ${torrentHash}.`);
         }
 
         if (torrentHash && typeof userWantsPaused === 'boolean') {
             const action = userWantsPaused ? 'stop' : 'start';
-            console.log(`uTorrent: Setting paused state to ${userWantsPaused} for ${torrentHash} via action ${action}.`);
+            debug.log(`uTorrent: Setting paused state to ${userWantsPaused} for ${torrentHash} via action ${action}.`);
             const pauseResult = await makeApiRequest(serverConfig.url, action, { hash: torrentHash }, serverConfig, 'GET');
             if (!pauseResult.success) {
-                console.warn(`uTorrent: Failed to ${action} torrent ${torrentHash}.`);
+                debug.warn(`uTorrent: Failed to ${action} torrent ${torrentHash}.`);
             }
         }
     }

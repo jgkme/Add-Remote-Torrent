@@ -1,8 +1,16 @@
 import bencode from 'bencode'; // Changed from 'bencode-js'
 import { Buffer } from 'buffer'; // Import Buffer polyfill
+import { debug } from '../debug';
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("[RTWA ConfirmAdd] DOMContentLoaded triggered.");
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const { debugEnabled } = await chrome.storage.local.get('bgDebugEnabled');
+        debug.setEnabled(debugEnabled);
+    } catch (error) {
+        debug.setEnabled(true);
+    }
+
+    debug.log("[RTWA ConfirmAdd] DOMContentLoaded triggered.");
     const serverNameDisplay = document.getElementById('serverNameDisplay');
     const torrentUrlDisplay = document.getElementById('torrentUrlDisplay');
     const tagsInput = document.getElementById('tagsInput');
@@ -21,29 +29,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeServerId = '';
     let activeServer = null;
 
-    console.log("[RTWA ConfirmAdd] window.location.search:", window.location.search);
+    debug.log("[RTWA ConfirmAdd] window.location.search:", window.location.search);
     const urlParams = new URLSearchParams(window.location.search);
     const rawUrlParam = urlParams.get('url');
     const rawServerIdParam = urlParams.get('serverId');
-    console.log("[RTWA ConfirmAdd] Raw params - url:", rawUrlParam, "serverId:", rawServerIdParam);
+    debug.log("[RTWA ConfirmAdd] Raw params - url:", rawUrlParam, "serverId:", rawServerIdParam);
 
     torrentUrl = decodeURIComponent(rawUrlParam || '');
     activeServerId = rawServerIdParam;
-    console.log("[RTWA ConfirmAdd] Decoded params - torrentUrl:", torrentUrl, "activeServerId:", activeServerId);
+    debug.log("[RTWA ConfirmAdd] Decoded params - torrentUrl:", torrentUrl, "activeServerId:", activeServerId);
 
     torrentUrlDisplay.textContent = torrentUrl || 'N/A';
 
     const isMagnetLink = torrentUrl.startsWith('magnet:');
     if (!isMagnetLink && torrentUrl) {
-        console.log("[RTWA ConfirmAdd] Not a magnet link, showing file selection section.");
+        debug.log("[RTWA ConfirmAdd] Not a magnet link, showing file selection section.");
         fileSelectionSection.style.display = 'block';
     } else if (isMagnetLink) {
-        console.log("[RTWA ConfirmAdd] Is a magnet link, file selection section remains hidden.");
+        debug.log("[RTWA ConfirmAdd] Is a magnet link, file selection section remains hidden.");
     }
 
 
     if (!torrentUrl || !activeServerId) {
-        console.error("[RTWA ConfirmAdd] Error: Missing torrent URL or server ID. Params were:", 
+        debug.error("[RTWA ConfirmAdd] Error: Missing torrent URL or server ID. Params were:", 
             "url:", torrentUrl, "serverId:", activeServerId);
         document.body.innerHTML = '<p class="p-4 text-red-600 dark:text-red-400">Error: Missing torrent URL or server ID. Please close this window and try again. Check console for details.</p>';
         return;
@@ -96,13 +104,13 @@ document.addEventListener('DOMContentLoaded', () => {
             fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Fetching torrent file info...</p>';
             
             try {
-                console.log("[RTWA ConfirmAdd] Attempting to fetch .torrent file from URL:", torrentUrl);
+                debug.log("[RTWA ConfirmAdd] Attempting to fetch .torrent file from URL:", torrentUrl);
                 const response = await fetch(torrentUrl);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch .torrent file: ${response.status} ${response.statusText}`);
                 }
                 const arrayBuffer = await response.arrayBuffer();
-                console.log("[RTWA ConfirmAdd] Fetched ArrayBuffer.byteLength:", arrayBuffer.byteLength);
+                debug.log("[RTWA ConfirmAdd] Fetched ArrayBuffer.byteLength:", arrayBuffer.byteLength);
                 
                 if (arrayBuffer.byteLength === 0) {
                     throw new Error("Fetched .torrent file is empty.");
@@ -110,12 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Convert ArrayBuffer to Buffer for 'bencode' library
                 const buffer = Buffer.from(arrayBuffer);
-                console.log("[RTWA ConfirmAdd] Created Buffer object (first few bytes):", buffer.slice(0, 20)); // Log a slice to avoid huge output
-                console.log("[RTWA ConfirmAdd] Is 'buffer' an instance of Buffer?:", buffer instanceof Buffer);
+                debug.log("[RTWA ConfirmAdd] Created Buffer object (first few bytes):", buffer.slice(0, 20)); // Log a slice to avoid huge output
+                debug.log("[RTWA ConfirmAdd] Is 'buffer' an instance of Buffer?:", buffer instanceof Buffer);
                 
                 // Decode. Even with 'utf8' option, values might still be Buffers/Uint8Arrays, so we'll .toString() them.
                 const torrentData = bencode.decode(buffer); // Using default decode, will handle toString below
-                console.log("[RTWA ConfirmAdd] Decoded torrent data (raw):", torrentData);
+                debug.log("[RTWA ConfirmAdd] Decoded torrent data (raw):", torrentData);
 
                 let files = [];
                 if (torrentData && torrentData.info) {
@@ -191,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             } catch (error) {
-                console.error("Error fetching, parsing, or displaying .torrent file list:", error);
+                debug.error("Error fetching, parsing, or displaying .torrent file list:", error);
                 fileListContainer.innerHTML = `<p class="text-xs text-red-500 dark:text-red-400">Error: Could not load torrent file details. ${error.message}</p>`;
                 fileActionsContainer.style.display = 'none'; // Hide actions if error
             }
@@ -226,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectedFileIndices.push(parseInt(cb.dataset.fileIndex, 10));
                 }
             });
-            console.log("Selected file indices:", selectedFileIndices, "Total files:", totalFileCount);
+            debug.log("Selected file indices:", selectedFileIndices, "Total files:", totalFileCount);
         }
 
         const finalParams = {
@@ -241,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {
             if (chrome.runtime.lastError) {
-                console.error("Error sending message from confirmAdd:", chrome.runtime.lastError.message);
+                debug.error("Error sending message from confirmAdd:", chrome.runtime.lastError.message);
             }
             window.close(); 
         });

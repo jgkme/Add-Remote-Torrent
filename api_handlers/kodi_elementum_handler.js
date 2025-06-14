@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Kodi Elementum API Handler
 
 // Kodi's JSON-RPC doesn't typically use session IDs in the same way as web UIs.
@@ -43,7 +45,7 @@ async function makeKodiJsonRpcRequest(serverConfig, methodName, params = {}) {
 
         const data = await response.json();
         if (data.error) {
-            console.error('Kodi JSON-RPC error:', data.error);
+            debug.error('Kodi JSON-RPC error:', data.error);
             return { 
                 success: false, 
                 error: {
@@ -56,7 +58,7 @@ async function makeKodiJsonRpcRequest(serverConfig, methodName, params = {}) {
         return { success: true, data: data.result };
 
     } catch (error) {
-        console.error('Error in Kodi JSON-RPC request:', error);
+        debug.error('Error in Kodi JSON-RPC request:', error);
         return { 
             success: false, 
             error: {
@@ -93,9 +95,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     
     // Download directory, paused state, labels are not typically applicable here
     // as Elementum is geared towards streaming.
-    if (torrentOptions.downloadDir) console.warn("Kodi Elementum: downloadDir option is not applicable.");
-    if (torrentOptions.paused) console.warn("Kodi Elementum: paused option is not applicable.");
-    if (torrentOptions.labels && torrentOptions.labels.length > 0) console.warn("Kodi Elementum: labels/tags/category are not applicable.");
+    if (torrentOptions.downloadDir) debug.warn("Kodi Elementum: downloadDir option is not applicable.");
+    if (torrentOptions.paused) debug.warn("Kodi Elementum: paused option is not applicable.");
+    if (torrentOptions.labels && torrentOptions.labels.length > 0) debug.warn("Kodi Elementum: labels/tags/category are not applicable.");
 
     return makeKodiJsonRpcRequest(serverConfig, 'Addons.ExecuteAddon', params);
 }

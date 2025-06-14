@@ -1,4 +1,13 @@
-document.addEventListener('DOMContentLoaded', () => {
+import { debug } from '../debug';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const { debugEnabled } = await chrome.storage.local.get('bgDebugEnabled');
+        debug.setEnabled(debugEnabled);
+    } catch (error) {
+        debug.setEnabled(true);
+    }
+
     const activeServerSelect = document.getElementById('activeServerSelect');
     const lastActionStatusSpan = document.getElementById('lastActionStatus');
     const clearLastActionStatusButton = document.getElementById('clearLastActionStatusButton');
@@ -97,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newActiveServerId) {
             currentActiveServerId = newActiveServerId;
             chrome.storage.local.set({ activeServerId: newActiveServerId }, () => {
-                // console.log('Active server changed to:', newActiveServerId);
+                // debug.log('Active server changed to:', newActiveServerId);
                 displayActiveServerDetails(newActiveServerId);
             });
         }
@@ -145,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearLastActionStatusButton.addEventListener('click', () => {
         chrome.storage.local.set({ lastActionStatus: 'N/A' }, () => {
             lastActionStatusSpan.textContent = 'N/A';
-            // console.log('Last action status cleared.');
+            // debug.log('Last action status cleared.');
         });
     });
 

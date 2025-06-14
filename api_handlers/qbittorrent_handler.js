@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // qBittorrent API Handler
 // This file will contain the logic for interacting with the qBittorrent WebUI API.
 
@@ -66,7 +68,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (!loginResp.ok) throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}. URL: ${loginApiUrl}. Check credentials and ensure qBittorrent is reachable and Referer/Origin headers are allowed if behind a reverse proxy.`);
     const loginTxt = await loginResp.text();
-    if (loginTxt.trim().toLowerCase() !== 'ok.') console.warn(`qBit login not 'Ok.': ${loginTxt}`);
+    if (loginTxt.trim().toLowerCase() !== 'ok.') debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
 
     const options = { 
         method,
@@ -98,7 +100,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         credentials: 'include'
     });
     if (!loginResp.ok) throw new Error(`Login failed before fetching torrent list: ${loginResp.status}`);
-    if ((await loginResp.text()).trim().toLowerCase() !== 'ok.') console.warn('Login not Ok before fetching list.');
+    if ((await loginResp.text()).trim().toLowerCase() !== 'ok.') debug.warn('Login not Ok before fetching list.');
 
     const response = await fetch(torrentsInfoUrl, { headers: commonHeadersForApi, credentials: 'include' }); // Uses corrected referer 
     if (!response.ok) throw new Error(`Failed to fetch torrent list: ${response.status} ${response.statusText}. URL: ${torrentsInfoUrl}`);
@@ -117,10 +119,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const response = await makeAuthenticatedQbitRequest(setPrioUrl, formData, 'POST');
     if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to set file priorities for hash ${hash}, indices ${fileIndices.join(',')}, priority ${priority}. Server response: ${errorText}`);
+        debug.error(`Failed to set file priorities for hash ${hash}, indices ${fileIndices.join(',')}, priority ${priority}. Server response: ${errorText}`);
         throw new Error(`Failed to set file priorities. Status: ${response.status}`);
     }
-    console.log(`qBittorrent: Set priority ${priority} for files ${fileIndices.join(',')} of torrent ${hash}`);
+    debug.log(`qBittorrent: Set priority ${priority} for files ${fileIndices.join(',')} of torrent ${hash}`);
     return response.ok;
   }
 
@@ -131,10 +133,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const response = await makeAuthenticatedQbitRequest(resumeUrl, formData, 'POST');
      if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to resume torrent ${hash}. Server response: ${errorText}`);
+        debug.error(`Failed to resume torrent ${hash}. Server response: ${errorText}`);
         throw new Error(`Failed to resume torrent. Status: ${response.status}`);
     }
-    console.log(`qBittorrent: Resumed torrent ${hash}`);
+    debug.log(`qBittorrent: Resumed torrent ${hash}`);
     return response.ok;
   }
 
@@ -150,7 +152,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const addTorrentFormData = new FormData(); 
 
     if (torrentFileContentBase64) {
-        console.log("qBittorrent: Adding torrent using file content.");
+        debug.log("qBittorrent: Adding torrent using file content.");
         try {
             const blob = base64ToBlob(torrentFileContentBase64);
             let fileName = 'file.torrent'; 
@@ -165,11 +167,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             }
             addTorrentFormData.append('torrents', blob, fileName);
         } catch (e) {
-            console.error("Error creating Blob from base64 content:", e);
+            debug.error("Error creating Blob from base64 content:", e);
             addTorrentFormData.append('urls', originalTorrentUrl);
         }
     } else {
-        console.log("qBittorrent: Adding torrent using URL:", originalTorrentUrl);
+        debug.log("qBittorrent: Adding torrent using URL:", originalTorrentUrl);
         addTorrentFormData.append('urls', originalTorrentUrl);
     }
 
@@ -180,7 +182,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const addPausedEffective = useFileSelection ? 'true' : String(userWantsPaused);
     addTorrentFormData.append('paused', addPausedEffective);
     
-    console.log(`qBittorrent: Adding torrent. Paused: ${addPausedEffective}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
+    debug.log(`qBittorrent: Adding torrent. Paused: ${addPausedEffective}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');
@@ -201,7 +203,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         newHash = currentHashes.find(h => !initialHashes.includes(h));
 
         if (newHash) {
-            console.log(`qBittorrent: New torrent hash identified: ${newHash}`);
+            debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
             const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
             const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
 
@@ -212,7 +214,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                 await _resumeTorrent(newHash);
             }
         } else {
-            console.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", addPausedEffective);
+            debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", addPausedEffective);
             return { success: true, data: { warning: "Torrent added, but file priorities might not have been set due to hash identification failure."} };
         }
     }
@@ -220,7 +222,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     return { success: true };
 
   } catch (error) {
-    console.error('Error in qBittorrent addTorrent flow:', error);
+    debug.error('Error in qBittorrent addTorrent flow:', error);
     return { 
       success: false, 
       error: {
@@ -242,7 +244,7 @@ function base64ToBlob(base64, type = 'application/x-bittorrent') {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], {type});
   } catch (e) {
-    console.error("base64ToBlob conversion error:", e);
+    debug.error("base64ToBlob conversion error:", e);
     throw e; 
   }
 }
@@ -289,7 +291,7 @@ export async function testConnection(serverConfig) {
       'Content-Type': 'application/x-www-form-urlencoded'
   };
 
-  console.log('[qBittorrent Handler] testConnection: Attempting login with:', {
+  debug.log('[qBittorrent Handler] testConnection: Attempting login with:', {
     url: loginUrl,
     method: 'POST',
     headers: requestHeaders,
@@ -305,9 +307,9 @@ export async function testConnection(serverConfig) {
       credentials: 'include' 
     });
 
-    console.log('[qBittorrent Handler] testConnection: Login response status:', response.status);
+    debug.log('[qBittorrent Handler] testConnection: Login response status:', response.status);
     const responseText = await response.text(); 
-    console.log('[qBittorrent Handler] testConnection: Login response text:', responseText);
+    debug.log('[qBittorrent Handler] testConnection: Login response text:', responseText);
 
     if (response.ok) {
       if (responseText.trim().toLowerCase() === 'ok.') {
@@ -333,7 +335,7 @@ export async function testConnection(serverConfig) {
       };
     }
   } catch (error) {
-    console.error('[qBittorrent Handler] testConnection: Network or other error during fetch:', error);
+    debug.error('[qBittorrent Handler] testConnection: Network or other error during fetch:', error);
     return { 
       success: false, 
       error: {
