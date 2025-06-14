@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // BitTorrent API Handler
 // This file will contain the logic for interacting with the BitTorrent WebUI API.
 // It is often very similar to uTorrent's API.
@@ -36,7 +38,7 @@ async function getCsrfTokenBt(serverConfig) {
             throw new Error('BitTorrent CSRF token not found in response.');
         }
     } catch (error) {
-        console.error('Error fetching BitTorrent CSRF token:', error);
+        debug.error('Error fetching BitTorrent CSRF token:', error);
         bitTorrentToken = null;
         throw new Error(`TokenFetchErrorBt: ${error.message}`); // Custom error for makeApiRequestBt to catch
     }
@@ -87,7 +89,7 @@ async function makeApiRequestBt(baseUrl, action, params = {}, serverConfig, meth
 
         if (!response.ok) {
             if ((response.status === 401 || response.status === 403) && !params.retriedWithNewToken) {
-                console.log('BitTorrent request failed, possibly stale token. Refetching token and retrying.');
+                debug.log('BitTorrent request failed, possibly stale token. Refetching token and retrying.');
                 bitTorrentToken = null; 
                 params.retriedWithNewToken = true;
                 return makeApiRequestBt(baseUrl, action, params, serverConfig, method); // Retry
@@ -110,7 +112,7 @@ async function makeApiRequestBt(baseUrl, action, params = {}, serverConfig, meth
         return { success: true };
 
     } catch (error) {
-        console.error('Error in BitTorrent API request:', error);
+        debug.error('Error in BitTorrent API request:', error);
         if (error.message && error.message.startsWith("TokenFetchErrorBt:")) {
             return {
                 success: false,
@@ -148,7 +150,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const result = await makeApiRequestBt(serverConfig.url, 'add-url', params, serverConfig, 'GET');
     
     if (result.success && torrentOptions.paused) {
-        console.warn("BitTorrent 'add paused' requested but not implemented via add-url. Torrent will be active.");
+        debug.warn("BitTorrent 'add paused' requested but not implemented via add-url. Torrent will be active.");
     }
     return result;
 }

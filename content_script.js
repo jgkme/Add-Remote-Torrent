@@ -1,5 +1,6 @@
 // Content script for Remote Torrent WebUI Adder
 import { LinkMonitor } from './LinkMonitor';
+import { debug } from './debug';
 
 let rtwa_modal_open_func, rtwa_modal_close_func;
 
@@ -8,7 +9,7 @@ const rtwa_initModalLogic = () => {
     let modalWrapper = null;
     let modalWindow = null;
     let styleLink = null;
-    console.log('[RTWA ContentScript] rtwa_initModalLogic: Initializing modal functions.');
+    debug.log('[RTWA ContentScript] rtwa_initModalLogic: Initializing modal functions.');
 
     const injectCss = () => {
         if (document.getElementById('rtwa-tailwind-styles')) return;
@@ -28,18 +29,18 @@ const rtwa_initModalLogic = () => {
     };
 
     const openModal = () => {
-        console.log('[RTWA ContentScript] openModal: Attempting to open modal.');
+        debug.log('[RTWA ContentScript] openModal: Attempting to open modal.');
         injectCss();
         // The modal HTML is injected by rtwa_showLabelDirChooser
         modalWrapper = document.getElementById('rtwa_modal_wrapper');
         modalWindow = document.getElementById('rtwa_modal_window');
 
         if (modalWrapper && modalWindow) {
-            console.log('[RTWA ContentScript] openModal: Modal elements found. Setting display to flex.');
+            debug.log('[RTWA ContentScript] openModal: Modal elements found. Setting display to flex.');
             modalWrapper.style.display = 'flex';
-            console.log('[RTWA ContentScript] openModal: Modal display set. Current display:', modalWrapper.style.display);
+            debug.log('[RTWA ContentScript] openModal: Modal display set. Current display:', modalWrapper.style.display);
         } else {
-            console.error('RTWA Modal: Wrapper or window not found after HTML injection.');
+            debug.error('RTWA Modal: Wrapper or window not found after HTML injection.');
         }
     };
 
@@ -81,6 +82,8 @@ const getOptions = async () => new Promise((resolve, reject) => {
         } else if (!response) {
             reject(new Error('No response from getStorageData or response is undefined.'));
         } else {
+            debug.setEnabled(response?.contentDebugEnabled);
+
             // Create all url matcher RegExps statically and add them to options before resolving
             // (instead of recreating them on every link when analyzing!)
             const urlPatterns = [
@@ -99,7 +102,7 @@ const isTorrentUrl = (url, options = {}) => {
             try {
                 return url.match(matcher);
             } catch (e) {
-                console.warn('Regex error matching url:', url, 'with pattern:', matcher, e);
+                debug.log('Regex error matching url:', url, 'with pattern:', matcher, e);
             }
         });
     }
@@ -113,7 +116,7 @@ const checkLinkElement = (el, options, logAction) => {
     }
     const url = el.href || (el.form?.action?.match && el.form.action);
     if (isTorrentUrl(url, options)) {
-        console.log(`[RTWA ContentScript] Found torrent link${logAction ? ` (${logAction})` : ''}:`, url);
+        debug.log(`[RTWA ContentScript] Found torrent link${logAction ? ` (${logAction})` : ''}:`, url);
         el._rtwa_is_torrent = true;
         addClickHandler(el, options);
         return true;
@@ -134,7 +137,7 @@ const registerLinks = options => {
             torrentLinksFound++;
         }
     });
-    console.log('[RTWA ContentScript] Found links:', torrentLinksFound); // Added log
+    debug.log('[RTWA ContentScript] Found links:', torrentLinksFound); // Added log
 
     if (torrentLinksFound > 0) {
         [rtwa_modal_open_func, rtwa_modal_close_func] = rtwa_initModalLogic();
@@ -158,12 +161,12 @@ const addClickHandler = (el = {}, options) => {
                 // The element contains a verified torrent-link, has a url, and no modifier keys are pressed
 
                 e.preventDefault();
-                console.log('[RTWA ContentScript] Torrent link clicked:', url); // Log torrent link click
+                debug.log('[RTWA ContentScript] Torrent link clicked:', url); // Log torrent link click
 
                 // Assuming 'servers' is a JSON string in the response from getStorageData
                 const servers = options?.servers ? JSON.parse(options.servers) : [];
                 if (servers.length === 0) {
-                    console.warn('No servers configured.');
+                    debug.warn('No servers configured.');
                     // Optionally, notify user to configure servers
                     alert('No torrent servers configured. Please configure one in extension options.');
                     return;
@@ -188,7 +191,7 @@ const addClickHandler = (el = {}, options) => {
                 });
             } else {
                 if (!el._rtwa_is_torrent) {
-                    console.log('[RTWA ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
+                    debug.log('[RTWA ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
                 }
             }
         });
@@ -212,13 +215,13 @@ const initLinkMonitor = async (options) => {
             // There should be no need for setting a registerDelay > 0,
             // because LinkMonitor catches any added/changed links in the DOM.
             // But it was in the original code...
-            console.log('Registering links with delay:', options.registerDelay);
+            debug.log('Registering links with delay:', options.registerDelay);
             registerLinks(options);
         }, options.registerDelay || 0);
 
     } catch (error) {
         linkMonitor && linkMonitor.stop();	// Stop linkMonitor on errors
-        console.error(error);
+        debug.error(error);
     }
 };
 

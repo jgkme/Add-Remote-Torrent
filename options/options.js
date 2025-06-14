@@ -1,6 +1,29 @@
-import '../css/input.css'; // Import Tailwind CSS entry point
+import '../css/input.css';
+import { debug } from '../debug'; // Import Tailwind CSS entry point
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const { debugEnabled } = await chrome.storage.local.get('bgDebugEnabled');
+        debug.setEnabled(debugEnabled);
+    } catch (error) {
+        debug.setEnabled(true);
+    }
+
+    document.getElementById('accordion-1').addEventListener('click', (e) => {
+        const index = 1;
+        const content = document.getElementById(`content-${index}`);
+        const icon = document.getElementById(`icon-${index}`);
+
+        // Toggle the content's max-height for smooth opening and closing
+        if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+            content.style.maxHeight = '0';
+            icon.classList.remove('rotate-180');
+        } else {
+            content.style.maxHeight = content.scrollHeight + 'px';
+            icon.classList.add('rotate-180');
+        }
+    })
+
     // Form elements
     const serverFormSection = document.getElementById('serverFormSection');
     const serverFormTitle = document.getElementById('serverFormTitle');
@@ -78,6 +101,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordGroup = document.getElementById('passwordGroup');
     const serverUrlLabel = document.querySelector('label[for="qbUrl"]'); // qbUrl is the ID of serverUrlInput
 
+    // Debug & Log elements
+    const contentDebugEnabled_log = document.getElementById('contentDebugEnabled_log');
+    const contentDebugEnabled_warn = document.getElementById('contentDebugEnabled_warn');
+    const contentDebugEnabled_error = document.getElementById('contentDebugEnabled_error');
+    const contentDebugEnabled_default = document.getElementById('contentDebugEnabled_default');
+    const bgDebugEnabled_log = document.getElementById('bgDebugEnabled_log');
+    const bgDebugEnabled_warn = document.getElementById('bgDebugEnabled_warn');
+    const bgDebugEnabled_error = document.getElementById('bgDebugEnabled_error');
+    const bgDebugEnabled_default = document.getElementById('bgDebugEnabled_default');
 
     // Footer elements
     const extensionVersionSpan = document.getElementById('extensionVersion');
@@ -92,7 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         linksfoundindicator: false, 
         linkmatches: '', 
         registerDelay: 0,
-        enableSoundNotifications: false 
+        enableSoundNotifications: false,
+        contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
+        bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
     let urlToServerMappings = [];
     let trackerUrlRules = []; 
@@ -552,7 +586,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         linkmatches: importedSettings.linkmatches || '', 
                         registerDelay: importedSettings.registerDelay || 0,
                         enableSoundNotifications: importedSettings.enableSoundNotifications || false,
-                        trackerUrlRules: importedSettings.trackerUrlRules || [] 
+                        trackerUrlRules: importedSettings.trackerUrlRules || [],
+                        contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
+                        bgDebugEnabled: Array.isArray(importedSettings.bgDebugEnabled) && importedSettings.bgDebugEnabled || ['log', 'warn', 'error'],
                     };
                     chrome.storage.local.set(settingsToSave, () => {
                         displayBackupStatus('Settings imported successfully! Reloading...', 'success');
@@ -565,6 +601,39 @@ document.addEventListener('DOMContentLoaded', () => {
         importSettingsFile.value = ''; 
     });
 
+    // --- Event Handlers for Debug/Log ---
+    const debugChangeHandlerFactory = (settingName, method) => (event) => {
+        globalSettings[settingName] = Array.isArray(globalSettings[settingName]) && globalSettings[settingName] || [];
+        const enable = event.target.checked;
+        const alreadyEnabled = globalSettings[settingName].includes(method);
+        if (enable && !alreadyEnabled) {
+            globalSettings[settingName].push(method);
+        } else if (!enable && alreadyEnabled) {
+            globalSettings[settingName] = globalSettings[settingName].filter(m => m !== method);
+        }
+        chrome.storage.local.set({ [settingName]: globalSettings[settingName] }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    };
+
+    contentDebugEnabled_log.addEventListener('change', debugChangeHandlerFactory('contentDebugEnabled', 'log'));
+    contentDebugEnabled_warn.addEventListener('change', debugChangeHandlerFactory('contentDebugEnabled', 'warn'));
+    contentDebugEnabled_error.addEventListener('change', debugChangeHandlerFactory('contentDebugEnabled', 'error'));
+    contentDebugEnabled_default.addEventListener('click', (e) => {
+        e.preventDefault();
+        globalSettings.contentDebugEnabled = ['error'];
+        chrome.storage.local.set({ contentDebugEnabled: globalSettings.contentDebugEnabled }, () => { displayFormStatus('Global settings updated.', 'success'); });
+        renderDebugSettings();
+    });
+
+    bgDebugEnabled_log.addEventListener('change', debugChangeHandlerFactory('bgDebugEnabled', 'log'));
+    bgDebugEnabled_warn.addEventListener('change', debugChangeHandlerFactory('bgDebugEnabled', 'warn'));
+    bgDebugEnabled_error.addEventListener('change', debugChangeHandlerFactory('bgDebugEnabled', 'error'));
+    bgDebugEnabled_default.addEventListener('click', (e) => {
+        e.preventDefault();
+        globalSettings.bgDebugEnabled = ['log', 'warn', 'error'];
+        chrome.storage.local.set({ bgDebugEnabled: globalSettings.bgDebugEnabled }, () => { displayFormStatus('Global settings updated.', 'success'); });
+        renderDebugSettings();
+    });
+
     // --- Initialization ---
     function loadSettings() {
         if (extensionVersionSpan) {
@@ -574,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
-            'registerDelay', 'enableSoundNotifications', 'trackerUrlRules'
+            'registerDelay', 'enableSoundNotifications', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -594,9 +663,12 @@ document.addEventListener('DOMContentLoaded', () => {
             registerDelayInput.value = globalSettings.registerDelay;
             globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; 
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
-            trackerUrlRules = result.trackerUrlRules || []; 
+            trackerUrlRules = result.trackerUrlRules || [];
             if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
             if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;
+            globalSettings.contentDebugEnabled = (Array.isArray(result.contentDebugEnabled) ? result.contentDebugEnabled : ['error']);
+            globalSettings.bgDebugEnabled = (Array.isArray(result.bgDebugEnabled) ? result.bgDebugEnabled : ['log', 'warn', 'error']);
+            renderDebugSettings()
             renderServerList();
             renderUrlMappingsList();
             populateMapToServerSelect(); 
@@ -833,6 +905,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadSettings();
             });
         }
+    }
+
+    function renderDebugSettings() {
+        contentDebugEnabled_log.checked = globalSettings.contentDebugEnabled.includes('log');
+        contentDebugEnabled_warn.checked = globalSettings.contentDebugEnabled.includes('warn');
+        contentDebugEnabled_error.checked = globalSettings.contentDebugEnabled.includes('error');
+        bgDebugEnabled_log.checked = globalSettings.bgDebugEnabled.includes('log');
+        bgDebugEnabled_warn.checked = globalSettings.bgDebugEnabled.includes('warn');
+        bgDebugEnabled_error.checked = globalSettings.bgDebugEnabled.includes('error');
     }
 
     loadSettings(); // Initial load
