@@ -2,6 +2,7 @@
 // This module imports all client-specific handlers and provides a factory function
 // to get the correct handler based on the clientType.
 
+import { debug } from '../debug';
 import * as qbittorrent from './qbittorrent_handler.js';
 import * as transmission from './transmission_handler.js';
 import * as deluge from './deluge_handler.js';
@@ -34,7 +35,7 @@ const clientHandlers = {
 export function getClientApi(clientType) {
     const handler = clientHandlers[clientType];
     if (!handler) {
-        console.error(`No API handler found for client type: ${clientType}`);
+        debug.error(`No API handler found for client type: ${clientType}`);
         // Return a dummy handler or throw an error to indicate an unsupported client
         return {
             addTorrent: async () => ({ success: false, error: `Unsupported client type: ${clientType}` }),
@@ -43,7 +44,7 @@ export function getClientApi(clientType) {
     }
     // Ensure the handler exports the expected functions
     if (typeof handler.addTorrent !== 'function' || typeof handler.testConnection !== 'function') {
-        console.error(`API handler for ${clientType} does not implement required functions.`);
+        debug.error(`API handler for ${clientType} does not implement required functions.`);
         return {
             addTorrent: async () => ({ success: false, error: `Handler for ${clientType} is misconfigured (missing addTorrent)` }),
             testConnection: async () => ({ success: false, error: `Handler for ${clientType} is misconfigured (missing testConnection)` }),

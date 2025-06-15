@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Buffalo LinkStation (BitTorrent Client) API Handler
 // Assumed to be a modified uTorrent WebUI.
 
@@ -33,7 +35,7 @@ async function getCsrfTokenBuffalo(serverConfig) {
             throw new Error('Buffalo CSRF token not found in response.');
         }
     } catch (error) {
-        console.error('Error fetching Buffalo CSRF token:', error);
+        debug.error('Error fetching Buffalo CSRF token:', error);
         buffaloToken = null; 
         throw new Error(`TokenFetchErrorBuffalo: ${error.message}`);
     }
@@ -80,7 +82,7 @@ async function makeApiRequestBuffalo(baseUrl, action, params = {}, serverConfig,
 
         if (!response.ok) {
             if ((response.status === 401 || response.status === 403) && !params.retriedWithNewToken) {
-                console.log('Buffalo request failed, possibly stale token. Refetching token and retrying.');
+                debug.log('Buffalo request failed, possibly stale token. Refetching token and retrying.');
                 buffaloToken = null; 
                 params.retriedWithNewToken = true;
                 return makeApiRequestBuffalo(baseUrl, action, params, serverConfig, method); // Retry
@@ -103,7 +105,7 @@ async function makeApiRequestBuffalo(baseUrl, action, params = {}, serverConfig,
         return { success: true };
 
     } catch (error) {
-        console.error('Error in Buffalo API request:', error);
+        debug.error('Error in Buffalo API request:', error);
         if (error.message && error.message.startsWith("TokenFetchErrorBuffalo:")) {
             return {
                 success: false,
@@ -136,7 +138,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     } else {
         // If dir is strictly required and not provided, this might be an issue.
         // For now, we'll proceed without it if not specified by user.
-        console.warn("Buffalo: downloadDir not specified. Default path will be used by the client.");
+        debug.warn("Buffalo: downloadDir not specified. Default path will be used by the client.");
     }
     
     if (torrentOptions.labels && torrentOptions.labels.length > 0) {
@@ -147,7 +149,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const result = await makeApiRequestBuffalo(serverConfig.url, 'add-url', params, serverConfig, 'GET');
     
     if (result.success && torrentOptions.paused) {
-        console.warn("Buffalo 'add paused' requested but not implemented via add-url. Torrent will be active.");
+        debug.warn("Buffalo 'add paused' requested but not implemented via add-url. Torrent will be active.");
     }
     
     return result;

@@ -1,4 +1,4 @@
-// tTorrent API Handler
+import { debug } from '../debug';
 
 // tTorrent API Handler
 
@@ -11,7 +11,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // Authentication is often none or basic, not explicitly covered in the summary for /api/add.
     
     if (!torrentUrl.startsWith("magnet:")) {
-        console.warn("tTorrent handler: Received non-magnet URI. tTorrent WebUI might only support magnet links via this method.");
+        debug.warn("tTorrent handler: Received non-magnet URI. tTorrent WebUI might only support magnet links via this method.");
         // Depending on strictness, could return an error here.
         // For now, will attempt to send it, but it might fail.
     }
@@ -22,11 +22,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     // Other options like downloadDir, paused, labels are highly speculative for tTorrent WebUI.
     if (torrentOptions.downloadDir) {
-        console.warn("tTorrent: downloadDir parameter is unknown for this unofficial API.");
+        debug.warn("tTorrent: downloadDir parameter is unknown for this unofficial API.");
         // formData.append('download_dir', torrentOptions.downloadDir); // Example if known
     }
     if (torrentOptions.paused) {
-        console.warn("tTorrent: paused parameter is unknown for this unofficial API.");
+        debug.warn("tTorrent: paused parameter is unknown for this unofficial API.");
         // formData.append('paused', 'true'); // Example if known
     }
 
@@ -56,7 +56,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         return { success: true, data: { message: "Torrent submitted to tTorrent (actual status unknown)." } };
 
     } catch (error) {
-        console.error('Error adding torrent to tTorrent:', error);
+        debug.error('Error adding torrent to tTorrent:', error);
         return { 
             success: false, 
             error: {
