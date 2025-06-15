@@ -1,6 +1,7 @@
 // Content script for Remote Torrent WebUI Adder
 import { LinkMonitor } from './LinkMonitor';
 import { debug } from './debug';
+import { debounce } from './utils';
 
 let rtwa_modal_open_func, rtwa_modal_close_func;
 
@@ -125,11 +126,7 @@ const checkLinkElement = (el, options, logAction) => {
 
 const registerLinks = options => {
     // Check all anchor elements and some specific input elements/forms (less common for torrents, but kept from original logic)
-    const elements = [
-        ...Array.from(document.getElementsByTagName('a')),
-        ...Array.from(document.getElementsByTagName('button')),
-        ...Array.from(document.getElementsByTagName('input'))
-    ];
+    const elements = Array.from(document.querySelectorAll('a, input, button'));
 
     let torrentLinksFound = 0;
     elements.forEach(el => {
@@ -198,6 +195,16 @@ const addClickHandler = (el = {}, options) => {
     }
 }
 
+const updateBadge = () => {
+    const torrentLinksOnPage = Array.from(document.querySelectorAll('a, input, button'))
+        .filter(el => el._rtwa_is_torrent)
+        .length;
+
+    debug.log('[RTWA ContentScript] updateBadge(): updateBadge message with count:', torrentLinksOnPage);
+    chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksOnPage });
+};
+const updateBadgeDebounced = debounce(updateBadge, 50);
+
 const initLinkMonitor = async (options) => {
     let linkMonitor;
     try {
@@ -208,6 +215,11 @@ const initLinkMonitor = async (options) => {
         // Start link monitor
         linkMonitor = new LinkMonitor((el, logAction) => {
             checkLinkElement(el, options, `LinkMonitor: ${logAction}`);
+            if (options.linksfoundindicator === true) {
+                // Call updateBadge(), but 50ms debounced
+                // to avoid excessive calls on rapid DOM mutation callbacks
+                updateBadgeDebounced();
+            }
         });
 
         // Run initial link registration
@@ -225,7 +237,11 @@ const initLinkMonitor = async (options) => {
     }
 };
 
-getOptions().then(initLinkMonitor);
+window.addEventListener('pageshow', () => {
+    // Run on 'pageshow' event (should also trigger on browser back/forward when the page is cached)
+    debug.log('[RTWA ContentScript] pageshow event detected, (re)initializing link monitor');
+    getOptions().then(initLinkMonitor);
+});
 
 // Register a listener for messages from the background script
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
