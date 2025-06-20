@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Vuze (Azureus) API Handler
 // Leverages Transmission-compatible RPC API via Vuze Web Remote plugin.
 
@@ -87,7 +89,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             let errorCode = "ADD_FAILED";
             // The 409 should be handled by fetchWithAuth, but if it somehow propagates or another auth error occurs:
             if (response.status === 401 || response.status === 403) errorCode = "AUTH_ERROR"; 
-            console.error(`Vuze (as Transmission) API error: ${response.status} ${errorText}`);
+            debug.error(`Vuze (as Transmission) API error: ${response.status} ${errorText}`);
             return { 
                 success: false, 
                 error: {
@@ -108,7 +110,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             }
             return { success: true, data: result.arguments || { message: "Torrent added successfully (no specific details returned)." } }; 
         } else {
-            console.error('Vuze (as Transmission) RPC error:', result);
+            debug.error('Vuze (as Transmission) RPC error:', result);
             return { 
                 success: false, 
                 error: {
@@ -119,7 +121,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             };
         }
     } catch (error) {
-        console.error('Error adding torrent to Vuze (as Transmission):', error);
+        debug.error('Error adding torrent to Vuze (as Transmission):', error);
         return { 
             success: false, 
             error: {

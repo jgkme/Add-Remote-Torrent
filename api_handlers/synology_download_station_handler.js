@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Synology Download Station API Handler
 
 // Session ID (SID) for Synology. This is cached in memory for the service worker's lifetime.
@@ -45,7 +47,7 @@ async function getSynologySid(serverConfig) {
             throw new Error(data.error ? `Synology login API error: ${data.error.code}` : 'Synology login failed, SID not found in response.');
         }
     } catch (error) { // Catches fetch errors or errors thrown above
-        console.error('Error fetching Synology SID:', error);
+        debug.error('Error fetching Synology SID:', error);
         synologySid = null;
         // This error is thrown and expected to be caught by the caller (makeSynologyApiRequest)
         // which will then return a structured error.
@@ -132,7 +134,7 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
             if (response.status === 200) { // Synology sometimes returns 200 OK with success:false
                 const errorData = await response.json();
                 if (errorData && !errorData.success && errorData.error && errorData.error.code === 119 && !params.retriedWithNewSid) { // SID invalid or expired
-                    console.log('Synology request failed due to invalid/expired SID (Code 119). Refetching SID and retrying.');
+                    debug.log('Synology request failed due to invalid/expired SID (Code 119). Refetching SID and retrying.');
                     synologySid = null; 
                     params.retriedWithNewSid = true;
                     return makeSynologyApiRequest(serverConfig, apiName, version, methodName, params, httpMethod); // Retry
@@ -176,7 +178,7 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
             };
         }
     } catch (error) { // Catches network errors or errors from getSynologySid if not handled above
-        console.error('Error in Synology API request:', error);
+        debug.error('Error in Synology API request:', error);
         if (error.message && error.message.startsWith("SIDFetchError:")) {
              return {
                 success: false,
@@ -240,7 +242,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         // 5. Once ID is found, call SYNO.DownloadStation.Task, method 'resume' with the ID.
         // This is a complex multi-step process and prone to race conditions or identification issues.
         // A future enhancement could attempt this, or users might need to manually resume.
-        console.warn("Synology: Torrent added (likely paused by default by Synology API). Auto-resume if 'paused: false' is a complex feature not yet implemented due to API limitations in getting the new task ID directly from the 'create' call.");
+        debug.warn("Synology: Torrent added (likely paused by default by Synology API). Auto-resume if 'paused: false' is a complex feature not yet implemented due to API limitations in getting the new task ID directly from the 'create' call.");
     }
     
     // The 'create' task (v1) response 'data' is often empty or just true on success, not detailed torrent info.
@@ -264,7 +266,7 @@ export async function testConnection(serverConfig) {
 
         if (result.success && result.data && result.data['SYNO.DownloadStation.Task']) {
             const dsInfo = result.data['SYNO.DownloadStation.Task'];
-            console.log(`Synology DownloadStation.Task API Info: minVersion=${dsInfo.minVersion}, maxVersion=${dsInfo.maxVersion}, path=${dsInfo.path}`); // Log versions
+            debug.log(`Synology DownloadStation.Task API Info: minVersion=${dsInfo.minVersion}, maxVersion=${dsInfo.maxVersion}, path=${dsInfo.path}`); // Log versions
             return { 
                 success: true, 
                 data: { 
