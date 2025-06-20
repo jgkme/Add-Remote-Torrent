@@ -209,22 +209,34 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         return { success: false, error: addResult.error || { userMessage: 'Failed to add torrent to Deluge or unexpected response.', errorCode: "ADD_FAILED_UNKNOWN" }};
     }
     
-    // web.add_torrents returns an array of results, one for each torrent.
-    // Example success: [[true, "torrent_id_hash"]]
-    // Example failure: [[false, "Error message"]]
-    if (!addResult.data || !Array.isArray(addResult.data) || addResult.data.length === 0 || !Array.isArray(addResult.data[0]) || addResult.data[0].length < 2) {
+    let torrentId = null;
+
+    if (typeof addResult.data === 'string') {
+        // Data only contains the hash
+        torrentId = addResult.data; // This is the hash
+    } else if (Array.isArray(addResult.data) && addResult.data.length > 0 && Array.isArray(addResult.data[0]) && addResult.data[0].length >= 2) {
+        // Array of results, one for each torrent.
+        // Example success: [[true, "torrent_id_hash"]]
+        // Example failure: [[false, "Error message"]]
+
+        const [successFlag, torrentIdOrError] = addResult.data[0];
+
+        if (!successFlag) {
+            return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError, errorCode: "ADD_RPC_ERROR" }};
+        }
+
+        torrentId = torrentIdOrError; // This is the hash
+    } else {
+        // Unexpected format
         return { success: false, error: { userMessage: "Deluge add torrent response format unexpected.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_UNEXPECTED_RESPONSE_FORMAT" }};
     }
 
-    const [successFlag, torrentIdOrError] = addResult.data[0];
-
-    if (!successFlag) {
-        return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError, errorCode: "ADD_RPC_ERROR" }};
+    // torrentId should be defined if we reached here
+    if (!torrentId) {
+        return { success: false, error: { userMessage: "Torrent hash missing from Deluge response.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_MISSING_HASH" } };
     }
 
-    const torrentId = torrentIdOrError; // This is the hash
-
-    if (useFileSelection && torrentId) {
+    if (useFileSelection) {
         try {
             console.log(`Deluge: Torrent added with ID ${torrentId}, proceeding with file selection.`);
             const filePriorities = new Array(totalFileCount).fill(0); // 0: Do Not Download
