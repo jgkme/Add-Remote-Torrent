@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Transmission API Handler
 // This file will contain the logic for interacting with the Transmission RPC API.
 
@@ -81,7 +83,7 @@ async function makeRpcCall(rpcUrl, method, callArguments, serverConfig) {
         const errorText = await response.text();
         let errorCode = "RPC_CALL_FAILED";
         if (response.status === 401) errorCode = "AUTH_FAILED_SESSION";
-        console.error(`Transmission API error for method ${method}: ${response.status} ${errorText}`);
+        debug.error(`Transmission API error for method ${method}: ${response.status} ${errorText}`);
         throw { // Throw an object that can be caught and processed
             userMessage: `Transmission API call '${method}' failed.`,
             technicalDetail: `API Error: ${response.status} ${errorText}`,
@@ -90,7 +92,7 @@ async function makeRpcCall(rpcUrl, method, callArguments, serverConfig) {
     }
     const result = await response.json();
     if (result.result !== 'success') {
-        console.error(`Transmission RPC error for method ${method}:`, result);
+        debug.error(`Transmission RPC error for method ${method}:`, result);
         throw {
             userMessage: `Transmission server reported an error for '${method}'.`,
             technicalDetail: `RPC response: ${result.result}`,
@@ -122,13 +124,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const originalPausedState = torrentOptions.paused; // Store original intent
 
     if (torrentFileContentBase64) {
-        console.log('Transmission: Using pre-fetched torrent file content (base64).');
+        debug.log('Transmission: Using pre-fetched torrent file content (base64).');
         addArguments.metainfo = torrentFileContentBase64;
     } else if (isTorrentFileExtension) {
         // Fallback: If background didn't provide content, try fetching it directly (less likely to work for private trackers)
-        console.warn(`Transmission: torrentFileContentBase64 not provided. Attempting to fetch ${torrentUrl} directly.`);
+        debug.warn(`Transmission: torrentFileContentBase64 not provided. Attempting to fetch ${torrentUrl} directly.`);
         try {
-            console.log(`Transmission: Fetching .torrent file content from: ${torrentUrl}`);
+            debug.log(`Transmission: Fetching .torrent file content from: ${torrentUrl}`);
             const response = await fetch(torrentUrl); // This fetch won't have user's browser cookies
             if (!response.ok) {
                 throw new Error(`Failed to fetch .torrent file directly: ${response.status} ${response.statusText}`);
@@ -136,9 +138,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             const arrayBuffer = await response.arrayBuffer();
             const byteArray = new Uint8Array(arrayBuffer); // b64_encode expects Uint8Array
             addArguments.metainfo = b64_encode(byteArray); 
-            console.log('Transmission: Successfully fetched and encoded .torrent file directly.');
+            debug.log('Transmission: Successfully fetched and encoded .torrent file directly.');
         } catch (fetchError) {
-            console.error(`Transmission: Error processing .torrent file URL directly: ${fetchError.message}`);
+            debug.error(`Transmission: Error processing .torrent file URL directly: ${fetchError.message}`);
             return { 
                 success: false, 
                 error: {
@@ -215,14 +217,14 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                         // setArgs['files-unwanted'] = allClientIndices.filter(idx => !filesToSetWanted.includes(idx));
                     }
                     await makeRpcCall(rpcUrl, 'torrent-set', setArgs, serverConfig);
-                    console.log(`Transmission: Set file selection for torrent ${torrentId}: wanted indices ${filesToSetWanted.join(',')}`);
+                    debug.log(`Transmission: Set file selection for torrent ${torrentId}: wanted indices ${filesToSetWanted.join(',')}`);
                 }
             }
 
             // Resume torrent if it was not originally meant to be paused
             if (originalPausedState === false) { // Check original user intent
                 await makeRpcCall(rpcUrl, 'torrent-start-now', { ids: [torrentId] }, serverConfig);
-                console.log(`Transmission: Resumed torrent ${torrentId} after file selection.`);
+                debug.log(`Transmission: Resumed torrent ${torrentId} after file selection.`);
             }
         }
         
@@ -230,7 +232,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     } catch (error) {
         // Error object from makeRpcCall or other network issues
-        console.error('Error adding torrent to Transmission or setting files:', error);
+        debug.error('Error adding torrent to Transmission or setting files:', error);
         const errDetail = typeof error === 'object' ? error.technicalDetail || error.message : String(error);
         const errCode = typeof error === 'object' ? error.errorCode || "NETWORK_ERROR" : "NETWORK_ERROR";
         const usrMsg = typeof error === 'object' ? error.userMessage || "Failed to add torrent or set files." : "Failed to add torrent or set files.";

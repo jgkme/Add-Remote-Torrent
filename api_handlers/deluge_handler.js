@@ -1,3 +1,5 @@
+import { debug } from '../debug';
+
 // Deluge API Handler
 // This file will contain the logic for interacting with the Deluge WebUI API (JSON-RPC).
 
@@ -53,7 +55,7 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
         if (!response.ok) {
             // Deluge might return 401 or 403 for auth issues, or other errors.
              const errorText = await response.text();
-            console.error(`Deluge API error: ${response.status} ${errorText}`);
+            debug.error(`Deluge API error: ${response.status} ${errorText}`);
             let errorCode = "API_ERROR";
             if (response.status === 401 || response.status === 403) errorCode = "AUTH_FAILED_SESSION";
             return { 
@@ -69,7 +71,7 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
 
         const result = await response.json();
         if (result.error) {
-            console.error('Deluge RPC error:', result.error);
+            debug.error('Deluge RPC error:', result.error);
             return { 
                 success: false, 
                 error: {
@@ -82,7 +84,7 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
         return { success: true, data: result.result };
 
     } catch (error) {
-        console.error('Error in Deluge RPC request:', error);
+        debug.error('Error in Deluge RPC request:', error);
         return { 
             success: false, 
             error: {
@@ -185,12 +187,12 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             } catch (e) { /* ignore, use default */ }
         }
         rpcParams = [fileName, torrentFileContentBase64, addOptions];
-        console.log(`Deluge: Adding torrent using file content (core.add_torrent_file). Filename: ${fileName}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
+        debug.log(`Deluge: Adding torrent using file content (core.add_torrent_file). Filename: ${fileName}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
     } else {
         rpcMethod = 'web.add_torrents';
         const webAddParams = { path: torrentUrl, options: addOptions };
         rpcParams = [[webAddParams]]; // web.add_torrents expects an array of torrent objects
-        console.log(`Deluge: Adding torrent using URL (web.add_torrents). URL: ${torrentUrl}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
+        debug.log(`Deluge: Adding torrent using URL (web.add_torrents). URL: ${torrentUrl}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
     }
     
     const addResult = await makeRpcRequest(serverConfig.url, rpcMethod, rpcParams, serverConfig);
@@ -209,24 +211,36 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         return { success: false, error: addResult.error || { userMessage: 'Failed to add torrent to Deluge or unexpected response.', errorCode: "ADD_FAILED_UNKNOWN" }};
     }
     
-    // web.add_torrents returns an array of results, one for each torrent.
-    // Example success: [[true, "torrent_id_hash"]]
-    // Example failure: [[false, "Error message"]]
-    if (!addResult.data || !Array.isArray(addResult.data) || addResult.data.length === 0 || !Array.isArray(addResult.data[0]) || addResult.data[0].length < 2) {
+    let torrentId = null;
+
+    if (typeof addResult.data === 'string') {
+        // Data only contains the hash
+        torrentId = addResult.data; // This is the hash
+    } else if (Array.isArray(addResult.data) && addResult.data.length > 0 && Array.isArray(addResult.data[0]) && addResult.data[0].length >= 2) {
+        // Array of results, one for each torrent.
+        // Example success: [[true, "torrent_id_hash"]]
+        // Example failure: [[false, "Error message"]]
+
+        const [successFlag, torrentIdOrError] = addResult.data[0];
+
+        if (!successFlag) {
+            return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError, errorCode: "ADD_RPC_ERROR" }};
+        }
+
+        torrentId = torrentIdOrError; // This is the hash
+    } else {
+        // Unexpected format
         return { success: false, error: { userMessage: "Deluge add torrent response format unexpected.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_UNEXPECTED_RESPONSE_FORMAT" }};
     }
 
-    const [successFlag, torrentIdOrError] = addResult.data[0];
-
-    if (!successFlag) {
-        return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError, errorCode: "ADD_RPC_ERROR" }};
+    // torrentId should be defined if we reached here
+    if (!torrentId) {
+        return { success: false, error: { userMessage: "Torrent hash missing from Deluge response.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_MISSING_HASH" } };
     }
 
-    const torrentId = torrentIdOrError; // This is the hash
-
-    if (useFileSelection && torrentId) {
+    if (useFileSelection) {
         try {
-            console.log(`Deluge: Torrent added with ID ${torrentId}, proceeding with file selection.`);
+            debug.log(`Deluge: Torrent added with ID ${torrentId}, proceeding with file selection.`);
             const filePriorities = new Array(totalFileCount).fill(0); // 0: Do Not Download
             selectedFileIndices.forEach(index => {
                 if (index >= 0 && index < totalFileCount) {
@@ -238,22 +252,22 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             const setPrioResult = await makeRpcRequest(serverConfig.url, 'core.set_torrent_options', [[torrentId], setPrioOptions], serverConfig);
 
             if (!setPrioResult.success) {
-                console.warn(`Deluge: Failed to set file priorities for ${torrentId}. Error: ${setPrioResult.error?.technicalDetail || 'Unknown'}`);
+                debug.warn(`Deluge: Failed to set file priorities for ${torrentId}. Error: ${setPrioResult.error?.technicalDetail || 'Unknown'}`);
                 // Continue, but torrent might download all files or respect only initial paused state.
             } else {
-                console.log(`Deluge: File priorities set for ${torrentId}. Priorities: ${filePriorities.join(',')}`);
+                debug.log(`Deluge: File priorities set for ${torrentId}. Priorities: ${filePriorities.join(',')}`);
             }
 
             if (userWantsPaused === false) { // If user originally wanted it started
                 const resumeResult = await makeRpcRequest(serverConfig.url, 'core.resume_torrent', [[torrentId]], serverConfig);
                 if (resumeResult.success) {
-                    console.log(`Deluge: Resumed torrent ${torrentId}.`);
+                    debug.log(`Deluge: Resumed torrent ${torrentId}.`);
                 } else {
-                    console.warn(`Deluge: Failed to resume torrent ${torrentId} after setting priorities.`);
+                    debug.warn(`Deluge: Failed to resume torrent ${torrentId} after setting priorities.`);
                 }
             }
         } catch (prioError) {
-            console.error(`Deluge: Error during post-add file priority setting for ${torrentId}:`, prioError);
+            debug.error(`Deluge: Error during post-add file priority setting for ${torrentId}:`, prioError);
             // Return success for add, but with a warning about file selection
              return { success: true, data: { id: torrentId, name: torrentId, warning: `Torrent added, but an error occurred setting file priorities: ${prioError.message}` } };
         }
