@@ -28,20 +28,20 @@ function b64_encode_bytes(inputBytes) {
 	return output;
 }
 
+// Use DOM to escape XML entities if available, otherwise do nothing (let the XML parser handle it)
+function escapeXml(unsafe) {
+	if (typeof window !== "undefined" && window.document && window.document.createElement) {
+		const div = window.document.createElement('div');
+		div.textContent = unsafe;
+		return div.innerHTML;
+	} else {
+		// Fallback: return the string as-is (assume server-side or JavaScript XML parser will handle escaping)
+		return unsafe;
+	}
+}
+
 async function makeXmlRpcRequest(serverConfig, methodName, params = []) {
 	const rpcEndpoint = serverConfig.scgiPath || serverConfig.url;
-	function escapeXml(unsafe) {
-		return unsafe.replace(/[<>&'"]/g, function (c) {
-			switch (c) {
-				case '<': return '<';
-				case '>': return '>';
-				case '&': return '&';
-				case '\'': return ''';
-				case '"': return '"';
-			}
-			return c;
-		});
-	}
 	const paramsXml = params.map(p => {
 		let valueXml;
 		if (p && typeof p === 'object' && p.type === 'base64') {
