@@ -1,5 +1,14 @@
 {
   "name": "add-remote-torrent",
   "version": "0.2.9b",
-  // ... (rest of the package.json remains unchanged)
+  "description": "Add torrents to remote clients from your browser",
+  "main": "background.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "start": "webpack --mode development --watch"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
 }
