@@ -59,7 +59,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle'); 
     const linkMatchesInput = document.getElementById('linkMatchesInput'); 
     const registerDelayInput = document.getElementById('registerDelayInput'); 
-    const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle'); 
+    const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
+    const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -125,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         linkmatches: '', 
         registerDelay: 0,
         enableSoundNotifications: false,
+        enableServerSpecificContextMenu: false,
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
@@ -545,6 +547,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.enableSoundNotifications = enableSoundNotificationsToggle.checked;
         chrome.storage.local.set({ enableSoundNotifications: globalSettings.enableSoundNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    enableServerSpecificContextMenuToggle.addEventListener('change', () => {
+        globalSettings.enableServerSpecificContextMenu = enableServerSpecificContextMenuToggle.checked;
+        chrome.storage.local.set({ enableServerSpecificContextMenu: globalSettings.enableServerSpecificContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
 
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
@@ -586,6 +592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         linkmatches: importedSettings.linkmatches || '', 
                         registerDelay: importedSettings.registerDelay || 0,
                         enableSoundNotifications: importedSettings.enableSoundNotifications || false,
+                        enableServerSpecificContextMenu: importedSettings.enableServerSpecificContextMenu || false,
                         trackerUrlRules: importedSettings.trackerUrlRules || [],
                         contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
                         bgDebugEnabled: Array.isArray(importedSettings.bgDebugEnabled) && importedSettings.bgDebugEnabled || ['log', 'warn', 'error'],
@@ -643,7 +650,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
-            'registerDelay', 'enableSoundNotifications', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
+            'registerDelay', 'enableSoundNotifications', 'enableServerSpecificContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -663,6 +670,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             registerDelayInput.value = globalSettings.registerDelay;
             globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; 
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
+            globalSettings.enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false; 
+            enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
             trackerUrlRules = result.trackerUrlRules || [];
             if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
             if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;
