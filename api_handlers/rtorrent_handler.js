@@ -166,7 +166,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 	if (!result.success) return result;
 
 	// Post-add: set directory, label, file priorities if needed
-	let hash = await getLatestTorrentHash(serverConfig);
+	let hash = result.data;
+	if (!hash || typeof hash !== 'string' || hash.length !== 40) {
+		hash = await getLatestTorrentHash(serverConfig);
+	}
 	if (!hash) {
 		debug.warn("rTorrent: Could not determine torrent hash after add. Skipping post-add steps.");
 		return result;

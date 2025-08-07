@@ -10,7 +10,7 @@
     -   Handles notifications.
     -   **Stricter Content-Type Check:** Aborts add operation if `Content-Type` is not a recognized torrent type, preventing non-torrent links from being sent to the client.
 -   **API Handlers (`api_handlers/` directory):**
-    -   Contains individual JavaScript modules for each supported torrent client (e.g., `qbittorrent_handler.js`, `transmission_handler.js`, `deluge_handler.js`).
+    -   Contains individual JavaScript modules for each supported torrent client (e.g., `qbittorrent_handler.js`, `transmission_handler.js`, `deluge_handler.js`, `rutorrent_handler.js`).
     -   Each handler encapsulates the specific API logic (authentication, request formatting, endpoint URLs, response parsing) for its client type.
     -   Exports common functions like `addTorrent(torrentUrl, serverConfig, torrentOptions)` and `testConnection(serverConfig)`.
 -   **API Client Factory (`api_handlers/api_client_factory.js`):**

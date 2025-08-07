@@ -228,6 +228,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
 
         torrentId = torrentIdOrError; // This is the hash
+    } else if (addResult.data === true) {
+        // Some versions might just return true on success for web.add_torrents
+        // We won't have the hash, but we can report success.
+        return { success: true, data: { message: "Torrent added successfully (hash not returned)." } };
     } else {
         // Unexpected format
         return { success: false, error: { userMessage: "Deluge add torrent response format unexpected.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_UNEXPECTED_RESPONSE_FORMAT" }};

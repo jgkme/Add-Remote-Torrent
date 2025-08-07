@@ -73,6 +73,7 @@
     -   [X] Fixed a bug in `content_script.js` where clicking non-torrent links would prevent navigation.
 -   **Placeholder Handler Creation & UI Integration (Completed for initial list):**
     -   [X] Created placeholder API handlers for uTorrent, rTorrent, Synology DS, QNAP DS, Kodi Elementum, BitTorrent, Buffalo, Vuze, tTorrent.
+    -   [X] Created `rutorrent_handler.js` to support the ruTorrent web front-end.
     -   [X] Integrated these new client types into `api_client_factory.js`.
     -   [X] Added corresponding options to the "Client Type" dropdown in `options.html`.
 -   **Client-Specific UI Refinements (In Progress):**
@@ -80,6 +81,8 @@
     -   [X] Updated `transmission_handler.js` to use the configured RPC Path.
     -   [X] Added "SCGI/HTTPRPC URL" field to `options.html` for rTorrent, with dynamic visibility handled in `options.js`.
     -   [X] Updated `rtorrent_handler.js` to use the configured SCGI/HTTPRPC Path.
+    -   [X] Added "ruTorrent Relative Path" and other ruTorrent-specific options to `options.html` and `options.js`.
+    -   [X] Renamed "rTorrent" to "rTorrent (XML-RPC)" and "ruTorrent" to "ruTorrent (WebUI)" in `options.html` for clarity.
     -   [X] Refined `toggleClientSpecificFields` in `options.js` to dynamically show/hide Username and Password fields and adjust URL/Username labels and placeholders based on `clientType` (e.g., for Deluge, Kodi Elementum, uTorrent).
     -   [X] Added "Categories/Labels" input to `options.html` to define available categories for the advanced add dialog.
     -   [ ] Further refine UI in `options.html` for other client-specific configuration fields as their handlers are developed.

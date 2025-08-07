@@ -57,7 +57,8 @@
             <option value="transmission">Transmission</option>
             <option value="deluge">Deluge</option>
             <option value="utorrent">uTorrent</option>
-            <option value="rtorrent">rTorrent</option>
+            <option value="rtorrent">rTorrent (XML-RPC)</option>
+            <option value="rutorrent">ruTorrent (WebUI)</option>
             <option value="synology_download_station">Synology Download Station</option>
             <option value="qnap_download_station">QNAP Download Station</option>
             <option value="kodi_elementum">Kodi Elementum</option>
@@ -95,6 +96,11 @@
         <label for="scgiPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SCGI/HTTPRPC URL (for rTorrent):</label>
         <input type="text" id="scgiPath" name="scgiPath" placeholder="http://localhost:5000 or scgi://localhost:5000" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
       </div>
+
+      <div class="form-group mt-6" id="ruTorrentPathGroup" style="display:none;">
+        <label for="ruTorrentPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ruTorrent Relative Path:</label>
+        <input type="text" id="ruTorrentPath" name="ruTorrentPath" placeholder="/rutorrent" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <div class="form-group">
@@ -121,6 +127,17 @@
       <div class="form-group mt-4 flex items-center space-x-2">
         <input type="checkbox" id="askForLabelDirOnPage" name="askForLabelDirOnPage" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
         <label for="askForLabelDirOnPage" class="text-sm font-medium text-gray-700 dark:text-gray-300">Ask for Label/Directory on page (if link catching enabled)</label>
+      </div>
+
+      <div id="ruTorrentOptions" style="display:none;">
+        <div class="form-group mt-4 flex items-center space-x-2">
+            <input type="checkbox" id="rutorrentdontaddnamepath" name="rutorrentdontaddnamepath" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+            <label for="rutorrentdontaddnamepath" class="text-sm font-medium text-gray-700 dark:text-gray-300">Don't add torrent's name to path</label>
+        </div>
+        <div class="form-group mt-4 flex items-center space-x-2">
+            <input type="checkbox" id="rutorrentalwaysurl" name="rutorrentalwaysurl" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+            <label for="rutorrentalwaysurl" class="text-sm font-medium text-gray-700 dark:text-gray-300">Always send URL instead of torrent file</label>
+        </div>
       </div>
 
       <div class="mt-8 flex space-x-3">

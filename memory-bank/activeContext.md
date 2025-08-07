@@ -15,12 +15,15 @@
     -   Refactored `content_script.js` to use the `LinkMonitor`, making the link detection more efficient and reliable.
 -   **Click Handling Fix (via Pull Request):**
     -   Modified `content_script.js` to only prevent the default browser action (`e.preventDefault()`) for links that are confirmed to be torrents (`magnet:` or `.torrent`). This fixes a critical bug where the extension would block navigation to non-torrent links.
+-   **API Handler Architecture:**
+    -   Created `api_handlers/rutorrent_handler.js` to support the ruTorrent web front-end.
 -   **Advanced Add Dialog Improvements (via Pull Request):**
     -   The category/label input in the advanced add dialog is now a dropdown menu, populated from a new "Categories/Labels" field in the server settings. This improves user experience by preventing typos and showing available options.
     -   The file selection logic in the dialog has been enhanced to correctly parse `.torrent` files and display a list of files with their sizes.
 -   **Options Page Enhancements (via Pull Request):**
     -   Added a "Categories/Labels" input field to the server configuration form to define the options for the new dropdown in the advanced add dialog.
     -   Replaced the "Show advanced options dialog" checkbox with a dropdown menu, providing more granular control (`Never`, `Always`, `Only when added manually`, `Only on link/form catching`).
+    -   Added new fields for ruTorrent-specific settings (`ruTorrentrelativepath`, `rutorrentdontaddnamepath`, `rutorrentalwaysurl`).
 -   **Stricter Content-Type Check:**
     -   Modified `background.js` to abort the add operation if the `Content-Type` of a fetched URL is not a recognized torrent type. This prevents the extension from attempting to add non-torrent files to the client.
 -   **CSS Injection Fix:**
@@ -30,7 +33,7 @@
 ## 3. Next Steps (High-Level Plan)
 
 1.  **Testing:**
-    -   Thoroughly test the new features and bug fixes, especially the dynamic link monitoring and the improved click handling.
+    -   Thoroughly test the new features and bug fixes, especially the dynamic link monitoring, the improved click handling, and the new `ruTorrent` handler.
 2.  **Memory Bank Update:**
     -   Ensure all Memory Bank files are updated to reflect the latest changes.
 3.  **Prepare for Release:**

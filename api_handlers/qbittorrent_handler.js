@@ -179,10 +179,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     if (category) addTorrentFormData.append('category', category);
     if (downloadDir) addTorrentFormData.append('savePath', downloadDir); // Add savePath for download directory
     
-    const addPausedEffective = useFileSelection ? 'true' : String(userWantsPaused);
-    addTorrentFormData.append('paused', addPausedEffective);
+    if (useFileSelection) {
+        addTorrentFormData.append('paused', 'true');
+    } else if (userWantsPaused) {
+        addTorrentFormData.append('paused', 'true');
+    }
     
-    debug.log(`qBittorrent: Adding torrent. Paused: ${addPausedEffective}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
+    debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');
@@ -196,7 +199,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
       return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" }};
     }
 
-    if (useFileSelection) {
+    if (useFileSelection || userWantsPaused) {
         let newHash = null;
         await new Promise(resolve => setTimeout(resolve, 1000)); 
         const currentHashes = await _fetchTorrentListHashes();
@@ -204,17 +207,19 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
         if (newHash) {
             debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
-            const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
-            const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
+            if (useFileSelection) {
+                const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
+                const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
 
-            await _setFilePriorities(newHash, deselectedFileIndices, 0); 
-            await _setFilePriorities(newHash, selectedFileIndices, 1);   
+                await _setFilePriorities(newHash, deselectedFileIndices, 0); 
+                await _setFilePriorities(newHash, selectedFileIndices, 1);   
+            }
             
-            if (String(userWantsPaused).toLowerCase() === 'false') { 
+            if (!userWantsPaused) { 
                 await _resumeTorrent(newHash);
             }
         } else {
-            debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", addPausedEffective);
+            debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", userWantsPaused);
             return { success: true, data: { warning: "Torrent added, but file priorities might not have been set due to hash identification failure."} };
         }
     }

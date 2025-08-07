@@ -36,7 +36,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rpcPathGroup = document.getElementById('rpcPathGroup'); 
     const rpcPathInput = document.getElementById('rpcPath'); 
     const scgiPathGroup = document.getElementById('scgiPathGroup'); 
-    const scgiPathInput = document.getElementById('scgiPath'); 
+    const scgiPathInput = document.getElementById('scgiPath');
+    const ruTorrentPathGroup = document.getElementById('ruTorrentPathGroup');
+    const ruTorrentPathInput = document.getElementById('ruTorrentPath');
+    const ruTorrentOptions = document.getElementById('ruTorrentOptions');
+    const rutorrentdontaddnamepathInput = document.getElementById('rutorrentdontaddnamepath');
+    const rutorrentalwaysurlInput = document.getElementById('rutorrentalwaysurl');
     const defaultTagsInput = document.getElementById('defaultTags');
     const defaultCategoryInput = document.getElementById('defaultCategory');
     const categoriesInput = document.getElementById('categories');
@@ -231,6 +236,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Default visibility and labels
         if(rpcPathGrp) rpcPathGrp.style.display = 'none';
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
+        if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
+        if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
         if(userGroup) userGroup.style.display = 'block'; 
         if(passGroup) passGroup.style.display = 'block'; 
         
@@ -249,6 +256,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'rtorrent':
                 if(scgiPathGrp) scgiPathGrp.style.display = 'block';
                 if (urlLabel) urlLabel.textContent = 'rTorrent Web UI URL (e.g., ruTorrent, optional if SCGI direct):';
+                serverUrlInput.placeholder = 'http://localhost/rutorrent';
+                break;
+            case 'rutorrent':
+                if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'block';
+                if(ruTorrentOptions) ruTorrentOptions.style.display = 'block';
+                if (urlLabel) urlLabel.textContent = 'ruTorrent URL:';
                 serverUrlInput.placeholder = 'http://localhost/rutorrent';
                 break;
             case 'deluge':
@@ -289,7 +302,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverUsernameInput.value = server.username; 
             serverPasswordInput.value = server.password; 
             rpcPathInput.value = server.rpcPath || ''; 
-            scgiPathInput.value = server.scgiPath || ''; 
+            scgiPathInput.value = server.scgiPath || '';
+            ruTorrentPathInput.value = server.ruTorrentrelativepath || '';
+            rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
+            rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
             defaultTagsInput.value = server.tags || '';
             defaultCategoryInput.value = server.category || '';
             categoriesInput.value = server.categories || '';
@@ -304,7 +320,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverUsernameInput.value = '';
             serverPasswordInput.value = '';
             rpcPathInput.value = ''; 
-            scgiPathInput.value = ''; 
+            scgiPathInput.value = '';
+            ruTorrentPathInput.value = '';
+            rutorrentdontaddnamepathInput.checked = false;
+            rutorrentalwaysurlInput.checked = false;
             defaultTagsInput.value = '';
             defaultCategoryInput.value = '';
             categoriesInput.value = '';
@@ -413,7 +432,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const username = serverUsernameInput.value.trim();
         const password = serverPasswordInput.value;
         const rpcPath = rpcPathInput.value.trim();
-        const scgiPath = scgiPathInput.value.trim(); 
+        const scgiPath = scgiPathInput.value.trim();
+        const ruTorrentrelativepath = ruTorrentPathInput.value.trim();
+        const rutorrentdontaddnamepath = rutorrentdontaddnamepathInput.checked;
+        const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
         const tags = defaultTagsInput.value.trim();
         const category = defaultCategoryInput.value.trim();
         const categories = document.getElementById('categories').value.trim(); // Add this line
@@ -439,11 +461,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             category, 
             categories,
             addPaused, 
-            askForLabelDirOnPage 
+            askForLabelDirOnPage,
+            ruTorrentrelativepath,
+            rutorrentdontaddnamepath,
+            rutorrentalwaysurl
         }; 
         
         if (clientType === 'transmission') serverData.rpcPath = rpcPath;
-        else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath; 
+        else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath;
         if (id) { 
             const index = servers.findIndex(s => s.id === id);
             if (index > -1) servers[index] = { ...servers[index], ...serverData };
@@ -491,6 +516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             password: serverPasswordInput.value,
             rpcPath: clientTypeSelect.value === 'transmission' ? rpcPathInput.value.trim() : undefined,
             scgiPath: clientTypeSelect.value === 'rtorrent' ? scgiPathInput.value.trim() : undefined,
+            ruTorrentrelativepath: clientTypeSelect.value === 'rutorrent' ? ruTorrentPathInput.value.trim() : undefined,
         };
         if (!serverConfig.url && clientTypeSelect.value !== 'rtorrent') { 
             displayFormStatus('Server URL is required to test connection.', 'error'); return;
