@@ -203,34 +203,117 @@ chrome.runtime.onInstalled.addListener(async () => {
   debug.setEnabled(bgDebugEnabled);
 
   debug.log("[RTWA Background] onInstalled event triggered.");
+  createContextMenus();
+});
+
+// Listen for storage changes to update context menu when servers are modified
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && (changes.servers || changes.enableServerSpecificContextMenu)) {
+    debug.log("[RTWA Background] Servers or context menu setting changed, updating context menu.");
+    createContextMenus();
+  }
+});
+
+// Function to create context menus dynamically based on registered servers
+async function createContextMenus() {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
       debug.error("Error removing context menus:", chrome.runtime.lastError.message);
     }
-    chrome.contextMenus.create({
-      id: "addTorrentGeneric",
-      title: "Add Torrent to Remote WebUI",
-      contexts: ["link"] 
-    }, () => {
-      if (chrome.runtime.lastError) {
-        debug.error("Error creating 'Add Torrent to Remote WebUI' context menu:", chrome.runtime.lastError.message);
-        debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
-        chrome.notifications.create({
-            type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Torrent Adder - Menu Error',
-            message: 'Failed to create context menu. Please report this.'
-        }, (notificationId) => {
+    
+    // Get servers and settings from storage
+    chrome.storage.local.get(['servers', 'enableServerSpecificContextMenu'], (result) => {
+      const servers = result.servers || [];
+      const enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false;
+      
+      if (servers.length === 0) {
+        // No servers configured, create a disabled menu item
+        chrome.contextMenus.create({
+          id: "addTorrentSubmenu",
+          title: "Add Torrent to Remote WebUI (No servers configured)",
+          contexts: ["link"],
+          enabled: false
+        }, () => {
           if (chrome.runtime.lastError) {
-            debug.error("[RTWA Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
+            debug.error("Error creating disabled context menu:", chrome.runtime.lastError.message);
           } else {
-            debug.log("[RTWA Background] Notification created (context menu error), ID:", notificationId);
+            debug.log('[RTWA Background] Disabled context menu created (no servers configured).');
+          }
+        });
+        return;
+      }
+      
+      if (enableServerSpecificContextMenu) {
+        // Create server-specific context menu
+        chrome.contextMenus.create({
+          id: "addTorrentSubmenu",
+          title: "Add Torrent to Remote WebUI",
+          contexts: ["link"] 
+        }, () => {
+          if (chrome.runtime.lastError) {
+            debug.error("Error creating 'Add Torrent to Remote WebUI' submenu:", chrome.runtime.lastError.message);
+            debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
+            chrome.notifications.create({
+                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Torrent Adder - Menu Error',
+                message: 'Failed to create context menu. Please report this.'
+            }, (notificationId) => {
+              if (chrome.runtime.lastError) {
+                debug.error("[RTWA Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
+              } else {
+                debug.log("[RTWA Background] Notification created (context menu error), ID:", notificationId);
+              }
+            });
+          } else {
+            debug.log('[RTWA Background] Parent submenu ("addTorrentSubmenu") registered.');
+            
+            // Create menu items for each server
+            servers.forEach((server, index) => {
+              const menuId = `addTorrentServer_${server.id}`;
+              const menuTitle = `Add to ${server.name} (${server.clientType || 'unknown'})`;
+              
+              chrome.contextMenus.create({
+                id: menuId,
+                parentId: "addTorrentSubmenu",
+                title: menuTitle,
+                contexts: ["link"] 
+              }, () => {
+                if (chrome.runtime.lastError) {
+                  debug.error(`Error creating menu item for server ${server.name}:`, chrome.runtime.lastError.message);
+                } else {
+                  debug.log(`[RTWA Background] Menu item created for server "${server.name}" (${menuId}).`);
+                }
+              });
+            });
           }
         });
       } else {
-        debug.log('[RTWA Background] Generic torrent context menu ("addTorrentGeneric") registered.'); 
+        // Create original single menu item
+        chrome.contextMenus.create({
+          id: "addTorrentGeneric",
+          title: "Add Torrent to Remote WebUI",
+          contexts: ["link"] 
+        }, () => {
+          if (chrome.runtime.lastError) {
+            debug.error("Error creating 'Add Torrent to Remote WebUI' context menu:", chrome.runtime.lastError.message);
+            debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
+            chrome.notifications.create({
+                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Torrent Adder - Menu Error',
+                message: 'Failed to create context menu. Please report this.'
+            }, (notificationId) => {
+              if (chrome.runtime.lastError) {
+                debug.error("[RTWA Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
+              } else {
+                debug.log("[RTWA Background] Notification created (context menu error), ID:", notificationId);
+              }
+            });
+          } else {
+            debug.log('[RTWA Background] Generic torrent context menu ("addTorrentGeneric") registered.'); 
+          }
+        });
       }
     });
   });
-});
+}
 
 async function getActiveServerSettings() {
   return new Promise((resolve, reject) => {
@@ -676,7 +759,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === "addTorrentGeneric" && info.linkUrl) {
+  if ((info.menuItemId === "addTorrentGeneric" || info.menuItemId.startsWith("addTorrentServer_")) && info.linkUrl) {
     const linkUrl = info.linkUrl;
     let isMagnet = linkUrl.startsWith("magnet:");
     let isTorrentFile = /\.torrent($|\?|#)/i.test(linkUrl); 
@@ -685,45 +768,93 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
     debug.log(`[RTWA Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
     debug.log(`[RTWA Background] Link type detection: isMagnet=${isMagnet}, isTorrentFile=${isTorrentFile}`);
-    const settings = await chrome.storage.local.get(['advancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
-    const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
-    debug.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
-    let serverForDialog = null; 
-    let pageUrlForRules = info.pageUrl; 
-    try {
-        serverForDialog = await determineTargetServer(pageUrlForRules);
-        debug.log("[RTWA Background] Determined serverForDialog:", serverForDialog ? {id: serverForDialog.id, name: serverForDialog.name, clientType: serverForDialog.clientType } : null);
-    } catch (e) { 
+    
+    let selectedServer = null;
+    
+    if (info.menuItemId.startsWith("addTorrentServer_")) {
+      // Server-specific menu item clicked
+      const serverId = info.menuItemId.replace("addTorrentServer_", "");
+      
+      // Get servers from storage and find the selected server
+      const settings = await chrome.storage.local.get(['servers', 'advancedAddDialog']);
+      const servers = settings.servers || [];
+      selectedServer = servers.find(s => s.id === serverId);
+      
+      if (!selectedServer) {
+        const errorMsg = `Server not found for ID: ${serverId}`;
+        debug.error("[RTWA Background] Error in context menu click:", errorMsg);
+        chrome.notifications.create({ 
+          type: 'basic', 
+          iconUrl: 'icons/icon-48x48.png', 
+          title: 'Remote Torrent Adder Error', 
+          message: errorMsg 
+        });
+        chrome.storage.local.set({ lastActionStatus: errorMsg });
+        return;
+      }
+      
+      if (!selectedServer.clientType) {
+        const errorMsg = `Server configuration is incomplete (missing clientType) for server: ${selectedServer.name}`;
+        debug.error("[RTWA Background] Error in context menu click:", errorMsg);
+        chrome.notifications.create({ 
+          type: 'basic', 
+          iconUrl: 'icons/icon-48x48.png', 
+          title: 'Remote Torrent Adder Error', 
+          message: errorMsg 
+        });
+        chrome.storage.local.set({ lastActionStatus: errorMsg });
+        return;
+      }
+      
+      debug.log("[RTWA Background] Selected server:", {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType });
+    } else {
+      // Original generic menu item clicked - use original logic
+      const settings = await chrome.storage.local.get(['advancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
+      const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
+      debug.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
+      
+      try {
+        selectedServer = await determineTargetServer(info.pageUrl);
+        debug.log("[RTWA Background] Determined serverForDialog:", selectedServer ? {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType } : null);
+      } catch (e) { 
         debug.error("[RTWA Background] Error in determineTargetServer:", e);
         const errorMsg = `Error determining server: ${e.message}`;
         debug.log("[RTWA Background] Creating error notification (determineTargetServer in onClicked):", errorMsg);
         chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error', message: errorMsg }, (notificationId) => {
-            if(chrome.runtime.lastError) {
-                debug.error("[RTWA Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
-            } else {
-                debug.log("[RTWA Background] Notification created (determineTargetServer onClicked), ID:", notificationId);
-            }
+          if(chrome.runtime.lastError) {
+            debug.error("[RTWA Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
+          } else {
+            debug.log("[RTWA Background] Notification created (determineTargetServer onClicked), ID:", notificationId);
+          }
         });
         chrome.storage.local.set({ lastActionStatus: errorMsg });
         return; 
-    }
-    if (!serverForDialog || !serverForDialog.clientType) { 
+      }
+      
+      if (!selectedServer || !selectedServer.clientType) { 
         const msg = 'No target server determined or server config is incomplete (missing clientType). Configure servers in options.';
         debug.log("[RTWA Background] Creating error notification (no serverForDialog in onClicked):", msg);
         chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error', message: msg }, (notificationId) => {
-            if(chrome.runtime.lastError) {
-                debug.error("[RTWA Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
-            } else {
-                debug.log("[RTWA Background] Notification created (no serverForDialog onClicked), ID:", notificationId);
-            }
+          if(chrome.runtime.lastError) {
+            debug.error("[RTWA Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
+          } else {
+            debug.log("[RTWA Background] Notification created (no serverForDialog onClicked), ID:", notificationId);
+          }
         });
         chrome.storage.local.set({ lastActionStatus: msg });
         return;
+      }
     }
+    
+    // Common logic for both cases
+    const settings = await chrome.storage.local.get(['advancedAddDialog']);
+    const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
+    debug.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
+    
     if (showAdvancedDialog) {
-      popAdvancedDialog(info.linkUrl, serverForDialog);
+      popAdvancedDialog(info.linkUrl, selectedServer);
     } else {
-      addTorrentToClient(info.linkUrl, serverForDialog, null, null, null, pageUrlForRules); 
+      addTorrentToClient(info.linkUrl, selectedServer, null, null, null, info.pageUrl); 
     }
   }
 });
