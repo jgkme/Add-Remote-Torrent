@@ -1,12 +1,22 @@
-import { debug } from './debug';
+// Simplified debug system for offscreen document (no ES modules)
+const debug = {
+  enabled: true,
+  log: (...args) => debug.enabled ? console.log(...args) : void 0,
+  warn: (...args) => debug.enabled ? console.warn(...args) : void 0,
+  error: (...args) => debug.enabled ? console.error(...args) : void 0,
+  setEnabled: (enabled) => { debug.enabled = enabled; }
+};
 
 try {
   chrome.storage.local.get('bgDebugEnabled', (result) => {
     const { bgDebugEnabled } = result;
-    debug.setEnabled(bgDebugEnabled);
+    // Enable if bgDebugEnabled is true or contains 'log', 'warn', or 'error'
+    const shouldEnable = bgDebugEnabled === true ||
+      (Array.isArray(bgDebugEnabled) && bgDebugEnabled.length > 0);
+    debug.setEnabled(shouldEnable);
   });
 } catch (error) {
-    debug.setEnabled(true);
+  debug.setEnabled(true);
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -29,9 +39,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true; // Indicates async response
   }
-  // Acknowledge other messages if needed, or just return false for sync.
-  // sendResponse({ success: false, error: 'Unknown action or missing soundFile' });
-  return false; 
+  return false;
 });
 
 // Notify the service worker that the offscreen document is ready
