@@ -44,36 +44,38 @@ async function makeRpcRequest(serverConfig, method, params) {
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const {
         torrentFileContentBase64,
-        downloadDir,
+        isPaused,
         labels,
+        tags,
+        sequential,
     } = torrentOptions;
+
+    const rpcOptions = {
+        paused: isPaused,
+        sequentialDownload: sequential,
+        label: labels && labels.length > 0 ? labels[0] : undefined,
+        tags: tags,
+    };
+
+    // Clean up undefined values
+    Object.keys(rpcOptions).forEach(key => rpcOptions[key] === undefined && delete rpcOptions[key]);
 
     let params;
     if (torrentUrl.startsWith("magnet:")) {
-        params = [
-            torrentUrl,
-            {
-                "savePath": downloadDir || undefined,
-                "label": labels && labels.length > 0 ? labels[0] : undefined,
-            }
-        ];
+        params = ["url", torrentUrl, rpcOptions];
     } else {
-        params = [
-            torrentFileContentBase64,
-            {
-                "savePath": downloadDir || undefined,
-                "label": labels && labels.length > 0 ? labels[0] : undefined,
-            }
-        ];
+        params = ["file", torrentFileContentBase64, rpcOptions];
     }
 
     return makeRpcRequest(serverConfig, 'webui.addTorrent', params);
 }
 
 export async function testConnection(serverConfig) {
-    const result = await makeRpcRequest(serverConfig, 'webui.getVersion', []);
+    // webui.getVersion does not exist, use core.getSystemInfo instead.
+    const result = await makeRpcRequest(serverConfig, 'core.getSystemInfo', []);
     if (result.success) {
-        return { success: true, data: { version: result.data } };
+        // The result is a complex object, just confirm success.
+        return { success: true, data: { version: 'N/A' } };
     }
     return result;
 }

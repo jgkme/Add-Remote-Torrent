@@ -13,6 +13,13 @@ Please give it a try and create some feedbacks or issues here.
 - rTorrent (XML-RPC)
 - ruTorrent (WebUI)
 - Synology Download Station
+- Hadouken
+- Tixati
+- Torrentflux
+- Vuze (HTML WebUI)
+- Flood
+- Tribler
+- BiglyBT
 
 ## Core Features
 

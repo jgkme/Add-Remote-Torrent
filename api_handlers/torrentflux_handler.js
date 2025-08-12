@@ -7,10 +7,6 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         torrentFileContentBase64,
     } = torrentOptions;
 
-    if (torrentUrl.startsWith("magnet:")) {
-        return { success: false, error: { userMessage: "Torrentflux does not support magnet links." } };
-    }
-
     const loginUrl = `http${serverConfig.hostsecure ? 's' : ''}://${serverConfig.host}:${serverConfig.port}${serverConfig.torrentfluxrelativepath}/login.php`;
     const addUrl = `http${serverConfig.hostsecure ? 's' : ''}://${serverConfig.host}:${serverConfig.port}${serverConfig.torrentfluxrelativepath}/index.php`;
 
@@ -35,10 +31,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
 
         // Send the torrent
-        const boundary = `----WebKitFormBoundary${Math.random().toString(16).slice(2)}`;
-        const blob = new Blob([Buffer.from(torrentFileContentBase64, 'base64')], { type: 'application/x-bittorrent' });
         const formData = new FormData();
-        formData.append("upload_file", blob, "file.torrent");
+        if (torrentUrl.startsWith("magnet:")) {
+            formData.append("url", torrentUrl);
+        } else {
+            const blob = new Blob([Buffer.from(torrentFileContentBase64, 'base64')], { type: 'application/x-bittorrent' });
+            formData.append("upload_file", blob, "file.torrent");
+        }
 
         const response = await fetch(addUrl, {
             method: 'POST',
@@ -48,6 +47,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
         if (!response.ok) {
             return { success: false, error: { userMessage: `Torrentflux add torrent request failed: ${response.status} ${response.statusText}` } };
+        }
+
+        const responseText = await response.text();
+        if (responseText.includes("Torrent is already in the download list")) {
+            return { success: false, error: { userMessage: "Torrent is already in the download list." } };
         }
 
         return { success: true, data: { message: "Torrent added successfully." } };

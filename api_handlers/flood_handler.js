@@ -2,7 +2,60 @@ import { debug } from '../debug';
 
 // Flood API Handler
 
-async function authenticate(serverConfig) {
+async function makeApiRequest(serverConfig, endpoint, body) {
+    const url = `${serverConfig.url.replace(/\/$/, '')}/api${endpoint}`;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            return { success: false, error: { userMessage: `Flood API request failed: ${response.status} ${response.statusText}` } };
+        }
+        return { success: true, data: await response.json() };
+    } catch (error) {
+        debug.error(`Error communicating with Flood at ${endpoint}:`, error);
+        return { success: false, error: { userMessage: `Could not contact Flood: ${error.message}` } };
+    }
+}
+
+export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
+    const {
+        isPaused,
+        torrentFileContentBase64,
+        downloadDir,
+        tags,
+    } = torrentOptions;
+
+    if (torrentUrl.startsWith("magnet:")) {
+        const body = {
+            urls: [torrentUrl],
+            start: !isPaused,
+            destination: downloadDir,
+            tags: tags || [],
+            isBasePath: false,
+            isCompleted: false,
+            isSequential: false,
+            isInitialSeeding: false,
+        };
+        return makeApiRequest(serverConfig, '/torrents/add-urls', body);
+    } else {
+        const body = {
+            files: [torrentFileContentBase64],
+            start: !isPaused,
+            destination: downloadDir,
+            tags: tags || [],
+            isBasePath: false,
+            isCompleted: false,
+            isSequential: false,
+            isInitialSeeding: false,
+        };
+        return makeApiRequest(serverConfig, '/torrents/add-files', body);
+    }
+}
+
+export async function testConnection(serverConfig) {
     const url = `${serverConfig.url.replace(/\/$/, '')}/auth/authenticate`;
     try {
         const response = await fetch(url, {
@@ -24,67 +77,4 @@ async function authenticate(serverConfig) {
         debug.error('Error authenticating with Flood:', error);
         return { success: false, error: { userMessage: `Could not contact Flood: ${error.message}` } };
     }
-}
-
-export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
-    const {
-        paused,
-        torrentFileContentBase64,
-        downloadDir,
-    } = torrentOptions;
-
-    const authResult = await authenticate(serverConfig);
-    if (!authResult.success) {
-        return authResult;
-    }
-
-    if (torrentUrl.startsWith("magnet:")) {
-        const url = `${serverConfig.url.replace(/\/$/, '')}/api/client/add`;
-        const body = {
-            urls: [torrentUrl],
-            start: !paused,
-            destination: downloadDir || undefined,
-        };
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                body: JSON.stringify(body),
-            });
-            if (!response.ok) {
-                return { success: false, error: { userMessage: `Flood API request failed: ${response.status} ${response.statusText}` } };
-            }
-            return { success: true, data: { message: "Torrent added successfully." } };
-        } catch (error) {
-            debug.error('Error adding magnet link to Flood:', error);
-            return { success: false, error: { userMessage: `Could not contact Flood: ${error.message}` } };
-        }
-    } else {
-        const url = `${serverConfig.url.replace(/\/$/, '')}/api/client/add-files`;
-        const blob = new Blob([Buffer.from(torrentFileContentBase64, 'base64')], { type: 'application/x-bittorrent' });
-        const formData = new FormData();
-        formData.append("torrents", blob, "file.torrent");
-        if (downloadDir) {
-            formData.append("destination", downloadDir);
-        }
-        formData.append("start", !paused);
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-            });
-            if (!response.ok) {
-                return { success: false, error: { userMessage: `Flood API request failed: ${response.status} ${response.statusText}` } };
-            }
-            return { success: true, data: { message: "Torrent added successfully." } };
-        } catch (error) {
-            debug.error('Error adding torrent file to Flood:', error);
-            return { success: false, error: { userMessage: `Could not contact Flood: ${error.message}` } };
-        }
-    }
-}
-
-export async function testConnection(serverConfig) {
-    return authenticate(serverConfig);
 }

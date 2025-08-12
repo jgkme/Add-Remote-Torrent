@@ -15,12 +15,13 @@ import * as kodi_elementum from './kodi_elementum_handler.js';
 import * as bittorrent from './bittorrent_handler.js';
 import * as buffalo_torrent from './buffalo_torrent_handler.js';
 import * as vuze from './vuze_handler.js';
-import * as ttorrent from './ttorrent_handler.js'; // New import
+import * as ttorrent from './ttorrent_handler.js';
 import * as hadouken from './hadouken_handler.js';
 import * as tixati from './tixati_handler.js';
 import * as torrentflux from './torrentflux_handler.js';
-import * as vuze from './vuze_handler.js';
 import * as flood from './flood_handler.js';
+import * as tribler from './tribler_handler.js';
+import * as biglybt from './biglybt_handler.js';
 
 const clientHandlers = {
     qbittorrent,
@@ -35,13 +36,13 @@ const clientHandlers = {
     bittorrent,
     buffalo_torrent,
     vuze,
-    ttorrent, // Added tTorrent handler
+    ttorrent,
     hadouken,
     tixati,
     torrentflux,
-    vuze,
     flood,
-    // Add other client types and their handlers here
+    tribler,
+    biglybt,
 };
 
 export function getClientApi(clientType) {
