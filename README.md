@@ -1,14 +1,11 @@
 # Add Remote Torrent
 
-A browser extension for power users who manage remote file-transfer clients. This tool streamlines the process of adding new transfers (via magnet links or file URLs) to various client WebUIs. It supports managing multiple server profiles, offering a centralized experience for transfer management directly from your browser.
+A Chrome browser extension that allows users to easily add torrents (via magnet links or .torrent file URLs) to various remote torrent client WebUIs. It supports managing multiple server profiles for different client types like qBittorrent, Transmission, Deluge, and more, offering a streamlined experience for torrent management directly from your browser.
 
-The extension is designed with privacy and security in mind. All server configurations are stored locally on your device and are never transmitted to external servers. It also works seamlessly with private trackers by fetching the file content before adding it to your client's WebUI.
-
-This project was developed using advanced AI coding assistants and is loosely based on the now-discontinued `remote-torrent-adder` by bogenpirat, with many new features and a modern architecture.
+I used Cline + Google Gemini Pro to code this from scratch losely based on now discontinued @bogenpirat/remote-torrent-adder with my own added features.
+Please give it a try and create some feedbacks or issues here.
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof?hl=en-US&utm_source=ext_sidebar)**
-
-Please give it a try and create some feedbacks or issues at the [GitHub page](https://github.com/jgkme/Add-Remote-Torrent).
 
 ## Supported Clients
 - qBittorrent
@@ -32,7 +29,7 @@ Please give it a try and create some feedbacks or issues at the [GitHub page](ht
 ## Core Features
 
 *   **Multi-Client Support:** Configure and manage connections to a wide variety of file-transfer clients.
-*   **Flexible Transfer Addition:**
+*   **Flexible Torrent Addition:**
     *   Clicking a magnet or file link automatically adds it to your default server.
     *   Right-click context menu to choose a specific server.
     *   Manual URL input via the extension popup.
@@ -67,13 +64,15 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 ## Changelog
 *   **v0.3.4 (2025-08-13):**
     *   **Added:**
-        *   **New Clients:** Added support for Tribler and BiglyBT.
         *   **WebUI Link:** The "Active Server Details" section in the popup is now a clickable link that opens the server's WebUI.
-    *   **Fixed:**
-        *   **ruTorrent:** Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission.
     *   **Improved:**
-        *   **Client Handlers:** Reviewed and updated the handlers for Hadouken, Tixati, Torrentflux, Vuze, and Flood to align with their official documentation and improve reliability.
+        *   **Dependencies:** Updated all project dependencies to their latest versions.
         *   **Documentation:** Updated the README with a more compliant overview, a link to the Chrome Web Store, and a new Troubleshooting/FAQ section.
+*   **v0.3.3 (2025-08-13):**
+    *   **Added:**
+        *   **New Clients:** Added support for Hadouken, Tixati, Torrentflux, Vuze (HTML WebUI), Flood, Tribler, and BiglyBT.
+    *   **Fixed:**
+        *   **ruTorrent:** Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission based on official documentation and community implementations.
 *   **v0.3.2 (2025-08-12):**
     *   **Added:** Client-Specific Feature Enhancements. This update introduces a wide range of new, client-specific options, giving users more granular control over how torrents are added to their servers.
 *   **v0.3.1 (2025-08-12):**
