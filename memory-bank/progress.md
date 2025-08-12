@@ -160,6 +160,7 @@
 -   **UI/UX Enhancements (Tailwind CSS):**
     -   [X] Implemented "Add torrent by clicking the extension icon" feature with a new dialog.
     -   [X] Added "Open WebUI" button to the server list in the options page.
+    -   [X] Made the "Active Server Details" section in the popup clickable to open the server's WebUI.
     -   [X] Rewrote `options/options.html` with Tailwind CSS and removed `options.css`.
     -   [X] Rewrote `popup/popup.html` with Tailwind CSS and removed `popup.css`.
     -   [X] Rewrote `confirmAdd/confirmAdd.html` with Tailwind CSS and removed `confirmAdd.css`.

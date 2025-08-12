@@ -44,6 +44,14 @@ Please give it a try and create some feedbacks or issues here.
 *   **Build Process:** Uses Webpack for optimized builds.
 
 ## Changelog
+*   **v0.3.3 (2025-08-13):**
+    *   **Added:**
+        *   **New Clients:** Added support for Tribler and BiglyBT.
+        *   **WebUI Link:** The "Active Server Details" section in the popup is now a clickable link that opens the server's WebUI.
+    *   **Fixed:**
+        *   **ruTorrent:** Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission.
+    *   **Improved:**
+        *   **Client Handlers:** Reviewed and updated the handlers for Hadouken, Tixati, Torrentflux, Vuze, and Flood to align with their official documentation and improve reliability.
 *   **v0.3.2 (2025-08-12):**
     *   **Added:** Client-Specific Feature Enhancements. This update introduces a wide range of new, client-specific options, giving users more granular control over how torrents are added to their servers.
         *   **qBittorrent:** Added a "Save Path" option.

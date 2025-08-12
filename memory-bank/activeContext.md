@@ -53,6 +53,7 @@
     -   **BiglyBT:** Added support for BiglyBT.
 -   **UI Fixes:**
     -   Fixed the positioning of the "Clear Last Action Status" button in the popup.
+    -   Made the "Active Server Details" section in the popup clickable to open the server's WebUI.
 -   **Version Update:**
     -   Updated extension version to `0.3.2` in `manifest.json` and `package.json`.
 -   **Deployment:**
