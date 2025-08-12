@@ -21,6 +21,51 @@ function getApiUrl(baseUrl, apiPath) {
   return `${base}/api/v2/${apiPath}`;
 }
 
+async function getQbittorrentVersion(serverConfig) {
+    const { url, username, password } = serverConfig;
+    const versionApiUrl = getApiUrl(url, 'app/version');
+    const loginApiUrl = getApiUrl(url, 'auth/login');
+    const serverUrlObj = new URL(url);
+    const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
+    const referer = new URL(url).href;
+
+    const loginHeaders = {
+        'Referer': referer,
+        'Origin': origin,
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+
+    const loginBodyParams = new URLSearchParams();
+    loginBodyParams.append('username', username);
+    loginBodyParams.append('password', password);
+
+    const loginResp = await fetch(loginApiUrl, {
+        method: 'POST',
+        body: loginBodyParams.toString(),
+        headers: loginHeaders,
+        credentials: 'include'
+    });
+
+    if (!loginResp.ok) {
+        throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
+    }
+
+    const response = await fetch(versionApiUrl, {
+        headers: {
+            'Referer': referer,
+            'Origin': origin
+        },
+        credentials: 'include'
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to get qBittorrent version: ${response.status} ${response.statusText}`);
+    }
+
+    const version = await response.text();
+    return version.trim();
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
   // serverConfig: { url, username, password, clientType, ... }
   // torrentOptions: { downloadDir, paused, tags, category, labels, selectedFileIndices, totalFileCount }
@@ -179,10 +224,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     if (category) addTorrentFormData.append('category', category);
     if (downloadDir) addTorrentFormData.append('savePath', downloadDir); // Add savePath for download directory
     
+    const version = await getQbittorrentVersion(serverConfig);
+    const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
+
     if (useFileSelection) {
-        addTorrentFormData.append('paused', 'true');
+        addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
     } else if (userWantsPaused) {
-        addTorrentFormData.append('paused', 'true');
+        addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
     }
     
     debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);

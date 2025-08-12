@@ -6,13 +6,13 @@
     -   **Service Worker (`background.js` as ES Module):** Handles core logic, messaging, and delegates API calls via client factory.
     -   **Content Script (`content_script.js`):** Injects `LinkMonitor` and handles on-page user interactions.
     -   **Link Monitor (`LinkMonitor.js`):** Uses `MutationObserver` to dynamically detect torrent links.
-    -   **API Handlers (`api_handlers/`):** Modules for specific client API interactions (e.g., `qbittorrent_handler.js`, `transmission_handler.js`, `deluge_handler.js`).
+    -   **API Handlers (`api_handlers/`):** Modules for specific client API interactions (e.g., `qbittorrent_handler.js`, `transmission_handler.js`, `deluge_handler.js`, `rutorrent_handler.js`).
     -   **API Client Factory (`api_handlers/api_client_factory.js`):** Dynamically provides client-specific API handlers.
     -   **Popup (`popup/`)**
-    -   **Options Page (`options/`)** (updated for client type selection)
+    -   **Options Page (`options/`)** (updated for client type selection, includes "Open WebUI" button)
     -   **Advanced Add Dialog (`confirmAdd/`)**
     -   **`chrome.storage.local`:** For storing:
-        -   `servers`: An array of server configuration objects. Each object now includes `clientType` (e.g., "qbittorrent", "transmission"), `url`, `username`, `password`, `tags`, `category`, `categories`, `addPaused`.
+        -   `servers`: An array of server configuration objects. Each object now includes `clientType` (e.g., "qbittorrent", "transmission"), `url`, `username`, `password`, `tags`, `category`, `categories`, `addPaused`, and client-specific fields like `transmissionDownloadDir`.
         -   `activeServerId`: The ID of the currently manually selected active server.
         -   `urlToServerMappings`: An array of objects, each mapping a website URL pattern to a server ID.
         -   `enableUrlBasedServerSelection`: Boolean, global toggle for URL-based server selection.
@@ -30,6 +30,7 @@
 ## 2. Torrent Client WebUI APIs
 -   Interaction with various torrent client APIs (qBittorrent, Transmission, Deluge initially) is abstracted via client-specific handlers in the `api_handlers/` directory.
 -   Each handler manages the specific authentication, request/response formats, and endpoints for its client (e.g., qBittorrent's form-data and cookie auth, Transmission's JSON-RPC with session ID, Deluge's JSON-RPC with session cookie).
+-   The qBittorrent handler includes a version check to handle API differences between versions (e.g., using `stopped` instead of `paused` for newer versions).
 -   Common parameters like torrent URL, paused state, tags/labels, category are mapped to client-specific API fields within each handler.
 
 ## 3. Data Storage (`chrome.storage.local`) Structure (Conceptual - Expanded)
@@ -93,6 +94,7 @@
     -   `qbittorrent_handler.js`
     -   `transmission_handler.js`
     -   `deluge_handler.js`
+    -   `rutorrent_handler.js`
     -   `... (other client handlers)`
 -   `options/`
     -   `options.html`
@@ -103,6 +105,9 @@
 -   `confirmAdd/`
     -   `confirmAdd.html`
     -   `confirmAdd.js`
+-   `add/`
+    -   `add.html`
+    -   `add.js`
 -   `js/`
     -   `theme.js`
 -   `icons/` (if any custom icons are re-added)

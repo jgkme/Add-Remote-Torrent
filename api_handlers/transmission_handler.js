@@ -129,9 +129,15 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 		addArguments.filename = torrentUrl;
 	}
 
-	if (torrentOptions.downloadDir) {
-		addArguments['download-dir'] = torrentOptions.downloadDir;
-	}
+    if (torrentOptions.downloadDir) {
+        addArguments['download-dir'] = torrentOptions.downloadDir;
+    } else if (serverConfig.transmissionDownloadDir) {
+        const downloadDirs = serverConfig.transmissionDownloadDir.split(',').map(d => d.trim()).filter(d => d);
+        if (downloadDirs.length > 0) {
+            // For now, just use the first one. A more advanced implementation could show a dropdown.
+            addArguments['download-dir'] = downloadDirs[0];
+        }
+    }
 	if (torrentOptions.labels && torrentOptions.labels.length > 0) {
 		addArguments.labels = torrentOptions.labels;
 	}

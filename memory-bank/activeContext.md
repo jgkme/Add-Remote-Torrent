@@ -21,6 +21,8 @@
     -   The category/label input in the advanced add dialog is now a dropdown menu, populated from a new "Categories/Labels" field in the server settings. This improves user experience by preventing typos and showing available options.
     -   The file selection logic in the dialog has been enhanced to correctly parse `.torrent` files and display a list of files with their sizes.
 -   **Options Page Enhancements (via Pull Request):**
+    -   Added a "WebUI" button to each server profile in the options page, allowing users to open the server's WebUI in a new tab.
+    -   Added a "Download Locations" input field for Transmission servers, allowing users to specify a list of download locations.
     -   Added a "Categories/Labels" input field to the server configuration form to define the options for the new dropdown in the advanced add dialog.
     -   Replaced the "Show advanced options dialog" checkbox with a dropdown menu, providing more granular control (`Never`, `Always`, `Only when added manually`, `Only on link/form catching`).
     -   Added new fields for ruTorrent-specific settings (`ruTorrentrelativepath`, `rutorrentdontaddnamepath`, `rutorrentalwaysurl`).
@@ -29,6 +31,11 @@
 -   **CSS Injection Fix:**
     -   Removed automatic Tailwind CSS injection from `content_script.js`.
     -   Implemented dynamic CSS injection/removal in `content_script.js` to ensure that the extension's styles are only applied when the on-page modal is active, preventing style conflicts with other websites.
+-   **qBittorrent Paused State Fix:**
+    -   Implemented a version check in `qbittorrent_handler.js` to automatically detect the qBittorrent version.
+    -   The handler now uses the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2, fixing the bug where torrents were not being added in a paused state.
+-   **Add Torrent by Icon Click:**
+    -   Implemented a new feature to add a torrent by clicking the extension icon. This opens a dialog where the user can paste a torrent URL or magnet link.
 
 ## 3. Next Steps (High-Level Plan)
 

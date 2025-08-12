@@ -77,7 +77,7 @@
     -   [X] Integrated these new client types into `api_client_factory.js`.
     -   [X] Added corresponding options to the "Client Type" dropdown in `options.html`.
 -   **Client-Specific UI Refinements (In Progress):**
-    -   [X] Added "RPC Path" field to `options.html` for Transmission, with dynamic visibility handled in `options.js`.
+    -   [X] Added "RPC Path" and "Download Locations" fields to `options.html` for Transmission, with dynamic visibility handled in `options.js`.
     -   [X] Updated `transmission_handler.js` to use the configured RPC Path.
     -   [X] Added "SCGI/HTTPRPC URL" field to `options.html` for rTorrent, with dynamic visibility handled in `options.js`.
     -   [X] Updated `rtorrent_handler.js` to use the configured SCGI/HTTPRPC Path.
@@ -119,6 +119,7 @@
     -   [X] Refactored `qbittorrent_handler.js`:
         -   File selection: adds torrent paused (if selection active), identifies hash, uses `/torrents/filePrio` endpoint for priorities, conditionally resumes. Prioritizes pre-fetched torrent file content.
         -   API v5.1.0+ Compatibility: Added `Referer` (using full `serverConfig.url`) and `Origin` headers to all requests. Changed login request body to `application/x-www-form-urlencoded` and set appropriate `Content-Type` header. Corrected `getApiUrl` to prevent double slashes. Added detailed logging to `testConnection`. Updated auth failure message to suggest checking CSRF protection.
+        -   **Paused State Fix:** Implemented a version check to use the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2, fixing a bug where torrents were not being added in a paused state.
     -   [X] Updated `transmission_handler.js` to implement file selection using the "add paused, get files, set wanted/unwanted files, then optionally resume" workflow. Also updated to prioritize pre-fetched torrent file content.
 -   **Flesh out Placeholder Handlers (Next):**
     -   [X] uTorrent: Refined handler for `path` parameter, `testConnection`, `credentials: 'include'`; attempted file selection via post-add `setprops`. Updated to prioritize pre-fetched torrent file content (using `action=add-file`).
@@ -144,6 +145,8 @@
         -   Uses `.mp3` files (to be provided by user).
     -   [ ] Further enhance specificity of error messages and user feedback based on testing.
 -   **UI/UX Enhancements (Tailwind CSS):**
+    -   [X] Implemented "Add torrent by clicking the extension icon" feature with a new dialog.
+    -   [X] Added "Open WebUI" button to the server list in the options page.
     -   [X] Rewrote `options/options.html` with Tailwind CSS and removed `options.css`.
     -   [X] Rewrote `popup/popup.html` with Tailwind CSS and removed `popup.css`.
     -   [X] Rewrote `confirmAdd/confirmAdd.html` with Tailwind CSS and removed `confirmAdd.css`.

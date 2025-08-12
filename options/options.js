@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rpcPathInput = document.getElementById('rpcPath'); 
     const scgiPathGroup = document.getElementById('scgiPathGroup'); 
     const scgiPathInput = document.getElementById('scgiPath');
+    const transmissionDownloadDirGroup = document.getElementById('transmissionDownloadDirGroup');
+    const transmissionDownloadDirInput = document.getElementById('transmissionDownloadDir');
     const ruTorrentPathGroup = document.getElementById('ruTorrentPathGroup');
     const ruTorrentPathInput = document.getElementById('ruTorrentPath');
     const ruTorrentOptions = document.getElementById('ruTorrentOptions');
@@ -236,6 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Default visibility and labels
         if(rpcPathGrp) rpcPathGrp.style.display = 'none';
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
+        if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'none';
         if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
         if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
         if(userGroup) userGroup.style.display = 'block'; 
@@ -250,6 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         switch (clientType) {
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
+                if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'block';
                 serverUrlInput.placeholder = 'http://localhost:9091';
                 if (urlLabel) urlLabel.textContent = 'Server URL (e.g., http://localhost:9091):';
                 break;
@@ -303,6 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverPasswordInput.value = server.password; 
             rpcPathInput.value = server.rpcPath || ''; 
             scgiPathInput.value = server.scgiPath || '';
+            transmissionDownloadDirInput.value = server.transmissionDownloadDir || '';
             ruTorrentPathInput.value = server.ruTorrentrelativepath || '';
             rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
             rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
@@ -321,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverPasswordInput.value = '';
             rpcPathInput.value = ''; 
             scgiPathInput.value = '';
+            transmissionDownloadDirInput.value = '';
             ruTorrentPathInput.value = '';
             rutorrentdontaddnamepathInput.checked = false;
             rutorrentalwaysurlInput.checked = false;
@@ -406,6 +412,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             deleteButton.dataset.id = server.id;
             deleteButton.textContent = 'Delete';
             actionsDiv.appendChild(deleteButton);
+
+            const openWebUiButton = document.createElement('button');
+            openWebUiButton.className = 'open-webui-button px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600';
+            openWebUiButton.dataset.url = server.url;
+            openWebUiButton.textContent = 'WebUI';
+            actionsDiv.appendChild(openWebUiButton);
+
             li.appendChild(actionsDiv);
             serverListUl.appendChild(li);
         });
@@ -414,6 +427,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         document.querySelectorAll('.delete-button').forEach(button => {
             button.addEventListener('click', handleDeleteServer);
+        });
+        document.querySelectorAll('.open-webui-button').forEach(button => {
+            button.addEventListener('click', handleOpenWebUi);
         });
     }
 
@@ -433,6 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const password = serverPasswordInput.value;
         const rpcPath = rpcPathInput.value.trim();
         const scgiPath = scgiPathInput.value.trim();
+        const transmissionDownloadDir = transmissionDownloadDirInput.value.trim();
         const ruTorrentrelativepath = ruTorrentPathInput.value.trim();
         const rutorrentdontaddnamepath = rutorrentdontaddnamepathInput.checked;
         const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
@@ -464,10 +481,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             askForLabelDirOnPage,
             ruTorrentrelativepath,
             rutorrentdontaddnamepath,
-            rutorrentalwaysurl
+            rutorrentalwaysurl,
+            transmissionDownloadDir
         }; 
         
-        if (clientType === 'transmission') serverData.rpcPath = rpcPath;
+        if (clientType === 'transmission') {
+            serverData.rpcPath = rpcPath;
+            serverData.transmissionDownloadDir = transmissionDownloadDir;
+        }
         else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath;
         if (id) { 
             const index = servers.findIndex(s => s.id === id);
@@ -823,6 +844,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function handleMoveMappingUp(event) { moveMapping(event.target.dataset.id, -1); }
     function handleMoveMappingDown(event) { moveMapping(event.target.dataset.id, 1); }
+
+    function handleOpenWebUi(event) {
+        const url = event.target.dataset.url;
+        if (url) {
+            chrome.tabs.create({ url });
+        }
+    }
 
     // --- Tracker URL Rule Functions ---
     function generateTrackerRuleId() {

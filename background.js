@@ -758,6 +758,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   }
 }
 
+chrome.action.onClicked.addListener((tab) => {
+    chrome.windows.create({
+        url: 'add/add.html',
+        type: 'popup',
+        width: 400,
+        height: 200
+    });
+});
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if ((info.menuItemId === "addTorrentGeneric" || info.menuItemId.startsWith("addTorrentServer_")) && info.linkUrl) {
     const linkUrl = info.linkUrl;

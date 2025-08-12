@@ -1,6 +1,6 @@
 {
   "name": "add-remote-torrent",
-  "version": "0.2.9b",
+  "version": "0.3.1",
   "description": "Chrome extension to add remote torrents.",
   "main": "background.js",
   "scripts": {

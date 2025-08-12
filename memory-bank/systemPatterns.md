@@ -26,6 +26,8 @@
     -   This allows the extension to detect torrent links on dynamic pages that load content asynchronously.
 -   **Options Page (`options/options.html`, `options.js`):**
     -   Manages server profiles (CRUD), including selecting `clientType` and client-specific settings.
+    -   Includes a button to open the server's WebUI in a new tab.
+    -   Allows users to define a list of download locations for Transmission servers.
     -   Manages URL-to-Server mapping rules.
     -   Handles global settings (advanced dialog toggle, URL-based selection toggle).
     -   Manages settings export/import.
@@ -36,6 +38,8 @@
     -   Shows last action status.
 -   **Advanced Add Dialog (`confirmAdd/`):**
     -   Allows overriding default torrent parameters before adding.
+-   **Add Torrent Dialog (`add/`):**
+    -   A simple dialog that allows users to add a torrent by pasting a URL or magnet link.
 -   **`manifest.json`:**
     -   Defines permissions, background service worker (as ES module), options page, popup, and content menu integration.
     -   Updated with new project name and description.
@@ -56,7 +60,11 @@
     -   Abstracted through client-specific handlers in the `api_handlers` directory.
     -   `background.js` uses `api_client_factory.js` to retrieve the correct handler for the determined target server's `clientType`.
     -   Each handler implements a consistent interface (e.g., `addTorrent`, `testConnection`) but handles the unique API details for its client.
+    -   **qBittorrent Version Handling:** The `qbittorrent_handler.js` now includes a version check to automatically detect the qBittorrent version. It then uses the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2 to ensure compatibility.
 -   **Context Menu Integration:** (Largely as before, but now triggers generic `addTorrentToClient` in `background.js`).
+-   **Icon Click:**
+    -   Clicking the extension icon opens a simple dialog (`add/add.html`) where the user can paste a torrent URL or magnet link.
+    -   The dialog sends a message to the background script, which then calls `addTorrentToClient` to add the torrent.
 -   **Active Server Determination Logic (in `background.js`):**
     1.  On context menu click, get `info.pageUrl`.
     2.  Read `enableUrlBasedServerSelection` and `urlToServerMappings` from storage.
