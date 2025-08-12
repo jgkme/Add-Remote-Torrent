@@ -25,7 +25,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         formData.append("dir_edit", downloadDir);
     }
     if (labels && labels.length > 0) {
-        formData.append("label", labels[0]);
+        labels.forEach(label => {
+            formData.append("label", label);
+        });
     }
     if (paused) {
         formData.append("torrents_start_stopped", "1");

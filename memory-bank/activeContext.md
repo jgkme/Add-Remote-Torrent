@@ -36,14 +36,21 @@
     -   The handler now uses the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2, fixing the bug where torrents were not being added in a paused state.
 -   **Add Torrent by Icon Click:**
     -   Implemented a new feature to add a torrent by clicking the extension icon. This opens a dialog where the user can paste a torrent URL or magnet link.
+-   **Client-Specific Feature Enhancements:**
+    -   **qBittorrent:** Added a "Save Path" option.
+    -   **Transmission:** Added options for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
+    -   **Deluge:** Added options for speed limits, connection limits, seeding options, and miscellaneous settings like sequential downloading.
+    -   **rTorrent:** Added options for priority, throttle, and peer settings. Improved label support to use `d.custom.set` instead of `d.custom1.set`.
 
 ## 3. Next Steps (High-Level Plan)
 
-1.  **Testing:**
-    -   Thoroughly test the new features and bug fixes, especially the dynamic link monitoring, the improved click handling, and the new `ruTorrent` handler.
-2.  **Memory Bank Update:**
+1.  **Continue Client Feature Enhancement:**
+    -   Review the remaining client handlers (`ruTorrent`, `uTorrent`, etc.) and their documentation to identify and implement missing features.
+2.  **Testing:**
+    -   Thoroughly test all the new features and bug fixes.
+3.  **Memory Bank Update:**
     -   Ensure all Memory Bank files are updated to reflect the latest changes.
-3.  **Prepare for Release:**
+4.  **Prepare for Release:**
     -   Once testing is complete, prepare for a new release with the recent improvements.
 
 ## 4. Active Decisions & Considerations

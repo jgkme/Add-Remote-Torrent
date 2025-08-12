@@ -37,8 +37,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rpcPathInput = document.getElementById('rpcPath'); 
     const scgiPathGroup = document.getElementById('scgiPathGroup'); 
     const scgiPathInput = document.getElementById('scgiPath');
+    const qbittorrentSavePathGroup = document.getElementById('qbittorrentSavePathGroup');
+    const qbittorrentSavePathInput = document.getElementById('qbittorrentSavePath');
     const transmissionDownloadDirGroup = document.getElementById('transmissionDownloadDirGroup');
     const transmissionDownloadDirInput = document.getElementById('transmissionDownloadDir');
+    const transmissionSpeedLimitGroup = document.getElementById('transmissionSpeedLimitGroup');
+    const transmissionDownloadSpeedLimitInput = document.getElementById('transmissionDownloadSpeedLimit');
+    const transmissionUploadSpeedLimitInput = document.getElementById('transmissionUploadSpeedLimit');
+    const transmissionSeedingLimitGroup = document.getElementById('transmissionSeedingLimitGroup');
+    const transmissionSeedRatioLimitInput = document.getElementById('transmissionSeedRatioLimit');
+    const transmissionSeedIdleLimitInput = document.getElementById('transmissionSeedIdleLimit');
+    const transmissionPeerLimitGroup = document.getElementById('transmissionPeerLimitGroup');
+    const transmissionPeerLimitInput = document.getElementById('transmissionPeerLimit');
+    const transmissionSequentialDownloadGroup = document.getElementById('transmissionSequentialDownloadGroup');
+    const transmissionSequentialDownloadInput = document.getElementById('transmissionSequentialDownload');
+    const transmissionBandwidthPriorityGroup = document.getElementById('transmissionBandwidthPriorityGroup');
+    const transmissionBandwidthPriorityInput = document.getElementById('transmissionBandwidthPriority');
+    const delugeSpeedLimitGroup = document.getElementById('delugeSpeedLimitGroup');
+    const delugeDownloadSpeedLimitInput = document.getElementById('delugeDownloadSpeedLimit');
+    const delugeUploadSpeedLimitInput = document.getElementById('delugeUploadSpeedLimit');
+    const delugeConnectionLimitGroup = document.getElementById('delugeConnectionLimitGroup');
+    const delugeMaxConnectionsInput = document.getElementById('delugeMaxConnections');
+    const delugeMaxUploadSlotsInput = document.getElementById('delugeMaxUploadSlots');
+    const delugeSeedingGroup = document.getElementById('delugeSeedingGroup');
+    const delugeStopRatioInput = document.getElementById('delugeStopRatio');
+    const delugeRemoveAtRatioInput = document.getElementById('delugeRemoveAtRatio');
+    const delugeMoveCompletedGroup = document.getElementById('delugeMoveCompletedGroup');
+    const delugeMoveCompletedPathInput = document.getElementById('delugeMoveCompletedPath');
+    const delugeMiscOptionsGroup = document.getElementById('delugeMiscOptionsGroup');
+    const delugeSequentialDownloadInput = document.getElementById('delugeSequentialDownload');
+    const delugePrioritizeFirstLastInput = document.getElementById('delugePrioritizeFirstLast');
+    const delugePreAllocateInput = document.getElementById('delugePreAllocate');
+    const rtorrentPriorityGroup = document.getElementById('rtorrentPriorityGroup');
+    const rtorrentPriorityInput = document.getElementById('rtorrentPriority');
+    const rtorrentThrottleGroup = document.getElementById('rtorrentThrottleGroup');
+    const rtorrentThrottleInput = document.getElementById('rtorrentThrottle');
+    const rtorrentPeerSettingsGroup = document.getElementById('rtorrentPeerSettingsGroup');
+    const rtorrentPeersMaxInput = document.getElementById('rtorrentPeersMax');
+    const rtorrentPeersMinInput = document.getElementById('rtorrentPeersMin');
+    const rtorrentUploadsMaxInput = document.getElementById('rtorrentUploadsMax');
+    const rtorrentUploadsMinInput = document.getElementById('rtorrentUploadsMin');
     const ruTorrentPathGroup = document.getElementById('ruTorrentPathGroup');
     const ruTorrentPathInput = document.getElementById('ruTorrentPath');
     const ruTorrentOptions = document.getElementById('ruTorrentOptions');
@@ -238,7 +276,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Default visibility and labels
         if(rpcPathGrp) rpcPathGrp.style.display = 'none';
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
+        if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'none';
         if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'none';
+        if(transmissionSpeedLimitGroup) transmissionSpeedLimitGroup.style.display = 'none';
+        if(transmissionSeedingLimitGroup) transmissionSeedingLimitGroup.style.display = 'none';
+        if(transmissionPeerLimitGroup) transmissionPeerLimitGroup.style.display = 'none';
+        if(transmissionSequentialDownloadGroup) transmissionSequentialDownloadGroup.style.display = 'none';
+        if(transmissionBandwidthPriorityGroup) transmissionBandwidthPriorityGroup.style.display = 'none';
+        if(delugeSpeedLimitGroup) delugeSpeedLimitGroup.style.display = 'none';
+        if(delugeConnectionLimitGroup) delugeConnectionLimitGroup.style.display = 'none';
+        if(delugeSeedingGroup) delugeSeedingGroup.style.display = 'none';
+        if(delugeMoveCompletedGroup) delugeMoveCompletedGroup.style.display = 'none';
+        if(delugeMiscOptionsGroup) delugeMiscOptionsGroup.style.display = 'none';
+        if(rtorrentPriorityGroup) rtorrentPriorityGroup.style.display = 'none';
+        if(rtorrentThrottleGroup) rtorrentThrottleGroup.style.display = 'none';
+        if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'none';
         if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
         if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
         if(userGroup) userGroup.style.display = 'block'; 
@@ -251,14 +303,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userInput) userInput.placeholder = ''; // Reset placeholder
 
         switch (clientType) {
+            case 'qbittorrent':
+                if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
+                break;
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
                 if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'block';
+                if(transmissionSpeedLimitGroup) transmissionSpeedLimitGroup.style.display = 'block';
+                if(transmissionSeedingLimitGroup) transmissionSeedingLimitGroup.style.display = 'block';
+                if(transmissionPeerLimitGroup) transmissionPeerLimitGroup.style.display = 'block';
+                if(transmissionSequentialDownloadGroup) transmissionSequentialDownloadGroup.style.display = 'block';
+                if(transmissionBandwidthPriorityGroup) transmissionBandwidthPriorityGroup.style.display = 'block';
                 serverUrlInput.placeholder = 'http://localhost:9091';
                 if (urlLabel) urlLabel.textContent = 'Server URL (e.g., http://localhost:9091):';
                 break;
             case 'rtorrent':
                 if(scgiPathGrp) scgiPathGrp.style.display = 'block';
+                if(rtorrentPriorityGroup) rtorrentPriorityGroup.style.display = 'block';
+                if(rtorrentThrottleGroup) rtorrentThrottleGroup.style.display = 'block';
+                if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'block';
                 if (urlLabel) urlLabel.textContent = 'rTorrent Web UI URL (e.g., ruTorrent, optional if SCGI direct):';
                 serverUrlInput.placeholder = 'http://localhost/rutorrent';
                 break;
@@ -272,6 +335,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (userLabel) userLabel.textContent = 'Username (optional for WebUI):';
                 if (userInput) userInput.placeholder = '(Usually not needed for WebUI)';
                 serverUrlInput.placeholder = 'http://localhost:8112';
+                if(delugeSpeedLimitGroup) delugeSpeedLimitGroup.style.display = 'block';
+                if(delugeConnectionLimitGroup) delugeConnectionLimitGroup.style.display = 'block';
+                if(delugeSeedingGroup) delugeSeedingGroup.style.display = 'block';
+                if(delugeMoveCompletedGroup) delugeMoveCompletedGroup.style.display = 'block';
+                if(delugeMiscOptionsGroup) delugeMiscOptionsGroup.style.display = 'block';
                 break;
             case 'utorrent':
             case 'bittorrent':
@@ -307,7 +375,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverPasswordInput.value = server.password; 
             rpcPathInput.value = server.rpcPath || ''; 
             scgiPathInput.value = server.scgiPath || '';
+            qbittorrentSavePathInput.value = server.qbittorrentSavePath || '';
             transmissionDownloadDirInput.value = server.transmissionDownloadDir || '';
+            transmissionDownloadSpeedLimitInput.value = server.transmissionDownloadSpeedLimit || '';
+            transmissionUploadSpeedLimitInput.value = server.transmissionUploadSpeedLimit || '';
+            transmissionSeedRatioLimitInput.value = server.transmissionSeedRatioLimit || '';
+            transmissionSeedIdleLimitInput.value = server.transmissionSeedIdleLimit || '';
+            transmissionPeerLimitInput.value = server.transmissionPeerLimit || '';
+            transmissionSequentialDownloadInput.checked = server.transmissionSequentialDownload || false;
+            transmissionBandwidthPriorityInput.value = server.transmissionBandwidthPriority || 0;
+            delugeDownloadSpeedLimitInput.value = server.delugeDownloadSpeedLimit || '';
+            delugeUploadSpeedLimitInput.value = server.delugeUploadSpeedLimit || '';
+            delugeMaxConnectionsInput.value = server.delugeMaxConnections || '';
+            delugeMaxUploadSlotsInput.value = server.delugeMaxUploadSlots || '';
+            delugeStopRatioInput.value = server.delugeStopRatio || '';
+            delugeRemoveAtRatioInput.checked = server.delugeRemoveAtRatio || false;
+            delugeMoveCompletedPathInput.value = server.delugeMoveCompletedPath || '';
+            delugeSequentialDownloadInput.checked = server.delugeSequentialDownload || false;
+            delugePrioritizeFirstLastInput.checked = server.delugePrioritizeFirstLast || false;
+            delugePreAllocateInput.checked = server.delugePreAllocate || false;
+            rtorrentPriorityInput.value = server.rtorrentPriority || 2;
+            rtorrentThrottleInput.value = server.rtorrentThrottle || '';
+            rtorrentPeersMaxInput.value = server.rtorrentPeersMax || '';
+            rtorrentPeersMinInput.value = server.rtorrentPeersMin || '';
+            rtorrentUploadsMaxInput.value = server.rtorrentUploadsMax || '';
+            rtorrentUploadsMinInput.value = server.rtorrentUploadsMin || '';
             ruTorrentPathInput.value = server.ruTorrentrelativepath || '';
             rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
             rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
@@ -326,7 +418,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverPasswordInput.value = '';
             rpcPathInput.value = ''; 
             scgiPathInput.value = '';
+            qbittorrentSavePathInput.value = '';
             transmissionDownloadDirInput.value = '';
+            transmissionDownloadSpeedLimitInput.value = '';
+            transmissionUploadSpeedLimitInput.value = '';
+            transmissionSeedRatioLimitInput.value = '';
+            transmissionSeedIdleLimitInput.value = '';
+            transmissionPeerLimitInput.value = '';
+            transmissionSequentialDownloadInput.checked = false;
+            transmissionBandwidthPriorityInput.value = 0;
+            delugeDownloadSpeedLimitInput.value = '';
+            delugeUploadSpeedLimitInput.value = '';
+            delugeMaxConnectionsInput.value = '';
+            delugeMaxUploadSlotsInput.value = '';
+            delugeStopRatioInput.value = '';
+            delugeRemoveAtRatioInput.checked = false;
+            delugeMoveCompletedPathInput.value = '';
+            delugeSequentialDownloadInput.checked = false;
+            delugePrioritizeFirstLastInput.checked = false;
+            delugePreAllocateInput.checked = false;
+            rtorrentPriorityInput.value = 2;
+            rtorrentThrottleInput.value = '';
+            rtorrentPeersMaxInput.value = '';
+            rtorrentPeersMinInput.value = '';
+            rtorrentUploadsMaxInput.value = '';
+            rtorrentUploadsMinInput.value = '';
             ruTorrentPathInput.value = '';
             rutorrentdontaddnamepathInput.checked = false;
             rutorrentalwaysurlInput.checked = false;
@@ -352,6 +468,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         serverPasswordInput.value = '';
         rpcPathInput.value = ''; 
         scgiPathInput.value = ''; 
+        qbittorrentSavePathInput.value = '';
+        transmissionDownloadDirInput.value = '';
+        ruTorrentPathInput.value = '';
+        rutorrentdontaddnamepathInput.checked = false;
+        rutorrentalwaysurlInput.checked = false;
         defaultTagsInput.value = '';
         defaultCategoryInput.value = '';
         categoriesInput.value = '';
@@ -449,7 +570,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const password = serverPasswordInput.value;
         const rpcPath = rpcPathInput.value.trim();
         const scgiPath = scgiPathInput.value.trim();
+        const qbittorrentSavePath = qbittorrentSavePathInput.value.trim();
         const transmissionDownloadDir = transmissionDownloadDirInput.value.trim();
+        const transmissionDownloadSpeedLimit = transmissionDownloadSpeedLimitInput.value.trim();
+        const transmissionUploadSpeedLimit = transmissionUploadSpeedLimitInput.value.trim();
+        const transmissionSeedRatioLimit = transmissionSeedRatioLimitInput.value.trim();
+        const transmissionSeedIdleLimit = transmissionSeedIdleLimitInput.value.trim();
+        const transmissionPeerLimit = transmissionPeerLimitInput.value.trim();
+        const transmissionSequentialDownload = transmissionSequentialDownloadInput.checked;
+        const transmissionBandwidthPriority = transmissionBandwidthPriorityInput.value;
+        const delugeDownloadSpeedLimit = delugeDownloadSpeedLimitInput.value.trim();
+        const delugeUploadSpeedLimit = delugeUploadSpeedLimitInput.value.trim();
+        const delugeMaxConnections = delugeMaxConnectionsInput.value.trim();
+        const delugeMaxUploadSlots = delugeMaxUploadSlotsInput.value.trim();
+        const delugeStopRatio = delugeStopRatioInput.value.trim();
+        const delugeRemoveAtRatio = delugeRemoveAtRatioInput.checked;
+        const delugeMoveCompletedPath = delugeMoveCompletedPathInput.value.trim();
+        const delugeSequentialDownload = delugeSequentialDownloadInput.checked;
+        const delugePrioritizeFirstLast = delugePrioritizeFirstLastInput.checked;
+        const delugePreAllocate = delugePreAllocateInput.checked;
+        const rtorrentPriority = rtorrentPriorityInput.value;
+        const rtorrentThrottle = rtorrentThrottleInput.value.trim();
+        const rtorrentPeersMax = rtorrentPeersMaxInput.value.trim();
+        const rtorrentPeersMin = rtorrentPeersMinInput.value.trim();
+        const rtorrentUploadsMax = rtorrentUploadsMaxInput.value.trim();
+        const rtorrentUploadsMin = rtorrentUploadsMinInput.value.trim();
         const ruTorrentrelativepath = ruTorrentPathInput.value.trim();
         const rutorrentdontaddnamepath = rutorrentdontaddnamepathInput.checked;
         const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
@@ -482,14 +627,65 @@ document.addEventListener('DOMContentLoaded', async () => {
             ruTorrentrelativepath,
             rutorrentdontaddnamepath,
             rutorrentalwaysurl,
-            transmissionDownloadDir
+            transmissionDownloadDir,
+            qbittorrentSavePath,
+            transmissionDownloadSpeedLimit,
+            transmissionUploadSpeedLimit,
+            transmissionSeedRatioLimit,
+            transmissionSeedIdleLimit,
+            transmissionPeerLimit,
+            transmissionSequentialDownload,
+            transmissionBandwidthPriority,
+            delugeDownloadSpeedLimit,
+            delugeUploadSpeedLimit,
+            delugeMaxConnections,
+            delugeMaxUploadSlots,
+            delugeStopRatio,
+            delugeRemoveAtRatio,
+            delugeMoveCompletedPath,
+            delugeSequentialDownload,
+            delugePrioritizeFirstLast,
+            delugePreAllocate,
+            rtorrentPriority,
+            rtorrentThrottle,
+            rtorrentPeersMax,
+            rtorrentPeersMin,
+            rtorrentUploadsMax,
+            rtorrentUploadsMin
         }; 
         
         if (clientType === 'transmission') {
             serverData.rpcPath = rpcPath;
             serverData.transmissionDownloadDir = transmissionDownloadDir;
+            serverData.transmissionDownloadSpeedLimit = transmissionDownloadSpeedLimit;
+            serverData.transmissionUploadSpeedLimit = transmissionUploadSpeedLimit;
+            serverData.transmissionSeedRatioLimit = transmissionSeedRatioLimit;
+            serverData.transmissionSeedIdleLimit = transmissionSeedIdleLimit;
+            serverData.transmissionPeerLimit = transmissionPeerLimit;
+            serverData.transmissionSequentialDownload = transmissionSequentialDownload;
+            serverData.transmissionBandwidthPriority = transmissionBandwidthPriority;
+        } else if (clientType === 'deluge') {
+            serverData.delugeDownloadSpeedLimit = delugeDownloadSpeedLimit;
+            serverData.delugeUploadSpeedLimit = delugeUploadSpeedLimit;
+            serverData.delugeMaxConnections = delugeMaxConnections;
+            serverData.delugeMaxUploadSlots = delugeMaxUploadSlots;
+            serverData.delugeStopRatio = delugeStopRatio;
+            serverData.delugeRemoveAtRatio = delugeRemoveAtRatio;
+            serverData.delugeMoveCompletedPath = delugeMoveCompletedPath;
+            serverData.delugeSequentialDownload = delugeSequentialDownload;
+            serverData.delugePrioritizeFirstLast = delugePrioritizeFirstLast;
+            serverData.delugePreAllocate = delugePreAllocate;
+        } else if (clientType === 'rtorrent') {
+            serverData.scgiPath = scgiPath;
+            serverData.rtorrentPriority = rtorrentPriority;
+            serverData.rtorrentThrottle = rtorrentThrottle;
+            serverData.rtorrentPeersMax = rtorrentPeersMax;
+            serverData.rtorrentPeersMin = rtorrentPeersMin;
+            serverData.rtorrentUploadsMax = rtorrentUploadsMax;
+            serverData.rtorrentUploadsMin = rtorrentUploadsMin;
+        } else if (clientType === 'qbittorrent') {
+            serverData.qbittorrentSavePath = qbittorrentSavePath;
         }
-        else if (clientType === 'rtorrent') serverData.scgiPath = scgiPath;
         if (id) { 
             const index = servers.findIndex(s => s.id === id);
             if (index > -1) servers[index] = { ...servers[index], ...serverData };
@@ -699,7 +895,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
             'registerDelay', 'enableSoundNotifications', 'enableServerSpecificContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
-            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
+            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
             globalSettings.advancedAddDialog = (result.advancedAddDialog || result.showAdvancedAddDialog && 'manual' || 'never'); // Migrate showAdvancedAddDialog -> advancedAddDialog
             advancedAddDialogInput.value = globalSettings.advancedAddDialog;

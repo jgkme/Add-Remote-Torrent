@@ -85,6 +85,7 @@
     -   [X] Renamed "rTorrent" to "rTorrent (XML-RPC)" and "ruTorrent" to "ruTorrent (WebUI)" in `options.html` for clarity.
     -   [X] Refined `toggleClientSpecificFields` in `options.js` to dynamically show/hide Username and Password fields and adjust URL/Username labels and placeholders based on `clientType` (e.g., for Deluge, Kodi Elementum, uTorrent).
     -   [X] Added "Categories/Labels" input to `options.html` to define available categories for the advanced add dialog.
+    -   [X] Added client-specific options for qBittorrent (Save Path), Transmission (Speed Limits, Seeding Limits, Peer Limits, Sequential Download, Bandwidth Priority), Deluge (Speed Limits, Connection Limits, Seeding Options, Miscellaneous Options), and rTorrent (Priority, Throttle, Peer Settings).
     -   [ ] Further refine UI in `options.html` for other client-specific configuration fields as their handlers are developed.
 -   **Tracker URL-Based Label/Directory Assignment (New - In Progress):**
     -   [X] Added UI section and form to `options/options.html` for managing tracker URL rules.
@@ -124,11 +125,11 @@
 -   **Flesh out Placeholder Handlers (Next):**
     -   [X] uTorrent: Refined handler for `path` parameter, `testConnection`, `credentials: 'include'`; attempted file selection via post-add `setprops`. Updated to prioritize pre-fetched torrent file content (using `action=add-file`).
     -   [X] BitTorrent: Refined handler (similar to uTorrent) for `path` parameter, `testConnection`, `credentials: 'include'`; file selection logic will mirror uTorrent's attempt. Updated to prioritize pre-fetched torrent file content.
-    -   [X] rTorrent: Refined placeholder to use `load.normal`/`load.start` with direct URLs or `load.raw_start`/`load.raw` with pre-fetched base64 content. Acknowledges SCGI path. Basic XML-RPC request/response handling in place.
-    -   [X] Transmission: Enhanced to support fetching `.torrent` file URLs (base64 encoded `metainfo`) and implemented file selection logic. (Already handles pre-fetched content well).
+    -   [X] rTorrent: Refined placeholder to use `load.normal`/`load.start` with direct URLs or `load.raw_start`/`load.raw` with pre-fetched base64 content. Acknowledges SCGI path. Basic XML-RPC request/response handling in place. Implemented support for setting priority, throttle, and peer settings. Improved label support.
+    -   [X] Transmission: Enhanced to support fetching `.torrent` file URLs (base64 encoded `metainfo`) and implemented file selection logic. (Already handles pre-fetched content well). Implemented support for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
     -   [X] Synology Download Station: Updated auth path to `entry.cgi`, default `SYNO.API.Auth` version to `6`, default `SYNO.DownloadStation.Task` version to `3`. `makeSynologyApiRequest` now uses specific CGI paths for different APIs (e.g., `DownloadStation/task.cgi`). `testConnection` logs API versions. (File content upload TBD).
     -   [X] QNAP Download Station: Refined auth logic to target `/cgi-bin/authLogin.cgi` and use `user`/`pwd` params, with extensive comments on API uncertainties. (File content upload TBD).
-    -   [X] Deluge: Refined `testConnection` to use `auth.check_session` and implemented file selection logic (add paused, set priorities, conditionally resume). Updated to prioritize pre-fetched torrent file content (using `core.add_torrent_file`).
+    -   [X] Deluge: Refined `testConnection` to use `auth.check_session` and implemented file selection logic (add paused, set priorities, conditionally resume). Updated to prioritize pre-fetched torrent file content (using `core.add_torrent_file`). Implemented support for speed limits, connection limits, seeding options, and miscellaneous options.
     -   [X] Kodi Elementum: Refined `params` string for `Addons.ExecuteAddon`. (Auth was already basic).
     -   [X] Buffalo Torrent Client: Refined handler to mirror uTorrent structure with `dir` param and CSRF token logic.
     -   [X] Vuze: Refined handler to mirror Transmission RPC structure and auth.

@@ -67,10 +67,10 @@ async function getQbittorrentVersion(serverConfig) {
 }
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
-  // serverConfig: { url, username, password, clientType, ... }
+  // serverConfig: { url, username, password, clientType, qbittorrentSavePath, ... }
   // torrentOptions: { downloadDir, paused, tags, category, labels, selectedFileIndices, totalFileCount }
 
-  const { url, username, password } = serverConfig; // serverConfig.url is the full base URL entered by user
+  const { url, username, password, qbittorrentSavePath } = serverConfig; // serverConfig.url is the full base URL entered by user
   const { 
     paused: userWantsPaused, 
     tags, 
@@ -79,8 +79,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     totalFileCount,
     torrentFileContentBase64, 
     originalTorrentUrl,
-    downloadDir // Add downloadDir to destructuring
+    downloadDir: torrentOptionsDownloadDir // Use alias to avoid conflict
   } = torrentOptions;
+
+  // Determine the final save path. Priority:
+  // 1. Path from torrentOptions (e.g., advanced dialog, tracker rule)
+  // 2. Default path from server config
+  const finalDownloadDir = torrentOptionsDownloadDir || qbittorrentSavePath;
 
   const loginApiUrl = getApiUrl(url, 'auth/login');
   const serverUrlObj = new URL(url);
@@ -222,7 +227,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (tags) addTorrentFormData.append('tags', tags);
     if (category) addTorrentFormData.append('category', category);
-    if (downloadDir) addTorrentFormData.append('savePath', downloadDir); // Add savePath for download directory
+    if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir); // Use 'savepath' (lowercase) for qBittorrent API
     
     const version = await getQbittorrentVersion(serverConfig);
     const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
@@ -233,7 +238,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
     }
     
-    debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${downloadDir || 'default'}`);
+    debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${finalDownloadDir || 'default'}`);
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');

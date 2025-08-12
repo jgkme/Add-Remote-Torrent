@@ -180,9 +180,36 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 		await makeXmlRpcRequest(serverConfig, 'd.directory.set', [hash, downloadDir]);
 		debug.log(`rTorrent: Set download directory for ${hash}: ${downloadDir}`);
 	}
-	// Set label (custom1)
+    // Set priority
+    if (serverConfig.rtorrentPriority) {
+        await makeXmlRpcRequest(serverConfig, 'd.priority.set', [hash, Number(serverConfig.rtorrentPriority)]);
+        debug.log(`rTorrent: Set priority for ${hash}: ${serverConfig.rtorrentPriority}`);
+    }
+    // Set throttle
+    if (serverConfig.rtorrentThrottle) {
+        await makeXmlRpcRequest(serverConfig, 'd.throttle_name.set', [hash, serverConfig.rtorrentThrottle]);
+        debug.log(`rTorrent: Set throttle for ${hash}: ${serverConfig.rtorrentThrottle}`);
+    }
+    // Set peer settings
+    if (serverConfig.rtorrentPeersMax) {
+        await makeXmlRpcRequest(serverConfig, 'd.peers_max.set', [hash, Number(serverConfig.rtorrentPeersMax)]);
+        debug.log(`rTorrent: Set max peers for ${hash}: ${serverConfig.rtorrentPeersMax}`);
+    }
+    if (serverConfig.rtorrentPeersMin) {
+        await makeXmlRpcRequest(serverConfig, 'd.peers_min.set', [hash, Number(serverConfig.rtorrentPeersMin)]);
+        debug.log(`rTorrent: Set min peers for ${hash}: ${serverConfig.rtorrentPeersMin}`);
+    }
+    if (serverConfig.rtorrentUploadsMax) {
+        await makeXmlRpcRequest(serverConfig, 'd.uploads_max.set', [hash, Number(serverConfig.rtorrentUploadsMax)]);
+        debug.log(`rTorrent: Set max uploads for ${hash}: ${serverConfig.rtorrentUploadsMax}`);
+    }
+    if (serverConfig.rtorrentUploadsMin) {
+        await makeXmlRpcRequest(serverConfig, 'd.uploads_min.set', [hash, Number(serverConfig.rtorrentUploadsMin)]);
+        debug.log(`rTorrent: Set min uploads for ${hash}: ${serverConfig.rtorrentUploadsMin}`);
+    }
+	// Set label
 	if (labels && labels.length > 0) {
-		await makeXmlRpcRequest(serverConfig, 'd.custom1.set', [hash, labels[0]]);
+		await makeXmlRpcRequest(serverConfig, 'd.custom.set', [hash, "label", labels[0]]);
 		debug.log(`rTorrent: Set label for ${hash}: ${labels[0]}`);
 	}
 	// Set file priorities

@@ -169,6 +169,47 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addOptions.download_location = torrentOptions.downloadDir;
     }
 
+    if (serverConfig.delugeDownloadSpeedLimit) {
+        addOptions.max_download_speed = Number(serverConfig.delugeDownloadSpeedLimit);
+    }
+
+    if (serverConfig.delugeUploadSpeedLimit) {
+        addOptions.max_upload_speed = Number(serverConfig.delugeUploadSpeedLimit);
+    }
+
+    if (serverConfig.delugeMaxConnections) {
+        addOptions.max_connections = Number(serverConfig.delugeMaxConnections);
+    }
+
+    if (serverConfig.delugeMaxUploadSlots) {
+        addOptions.max_upload_slots = Number(serverConfig.delugeMaxUploadSlots);
+    }
+
+    if (serverConfig.delugeStopRatio) {
+        addOptions.stop_at_ratio = true;
+        addOptions.stop_ratio = Number(serverConfig.delugeStopRatio);
+        if (serverConfig.delugeRemoveAtRatio) {
+            addOptions.remove_at_ratio = true;
+        }
+    }
+
+    if (serverConfig.delugeMoveCompletedPath) {
+        addOptions.move_completed = true;
+        addOptions.move_completed_path = serverConfig.delugeMoveCompletedPath;
+    }
+
+    if (serverConfig.delugeSequentialDownload) {
+        addOptions.sequential_download = true;
+    }
+
+    if (serverConfig.delugePrioritizeFirstLast) {
+        addOptions.prioritize_first_last_pieces = true;
+    }
+
+    if (serverConfig.delugePreAllocate) {
+        addOptions.pre_allocate_storage = true;
+    }
+
     const addPausedEffective = useFileSelection ? true : userWantsPaused;
     if (typeof addPausedEffective === 'boolean') {
         addOptions.add_paused = addPausedEffective;

@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2025-08-12
+
+### Fixed
+- **qBittorrent:** Fixed an issue where torrents were not being added in a paused state on qBittorrent v5.1.2 and newer by using the `stopped` parameter instead of `paused`.
+- **Deluge:** Fixed an issue where the extension would show an 'unexpected response format' error even when a torrent was added successfully.
+- **rTorrent:** Improved the reliability of the rTorrent handler by changing how the torrent hash is retrieved.
+- **CSS:** Fixed an issue where the extension's CSS was leaking into other websites by dynamically injecting and removing it.
+- **Link Handling:** Fixed an issue where clicking on non-torrent links would prevent browser navigation.
+
+### Features
+- **ruTorrent Support:** Added a new handler for the ruTorrent web front-end.
+- **Add Torrent by Icon Click:** Implemented a new feature to add a torrent by clicking the extension icon.
+- **Open WebUI Button:** Added a button to the options page to open the server's WebUI in a new tab.
+- **Configurable Download Locations for Transmission:** Added an option to specify a list of download locations for Transmission servers.
+
+## [0.3.0] - 2025-08-08
+
+### Added
+- **ruTorrent Support:** Added a new handler for the ruTorrent web front-end.
+- **Add Torrent by Icon Click:** Implemented a new feature to add a torrent by clicking the extension icon.
+- **Open WebUI Button:** Added a button to the options page to open the server's WebUI in a new tab.
+- **Configurable Download Locations for Transmission:** Added an option to specify a list of download locations for Transmission servers.
+
+### Fixed
+- **qBittorrent:** Fixed an issue where torrents were not being added in a paused state on qBittorrent v5.1.2 and newer.
+- **Deluge:** Fixed an issue where the extension would show an 'unexpected response format' error even when a torrent was added successfully.
+- **rTorrent:** Improved the reliability of the rTorrent handler by changing how the torrent hash is retrieved.
+- **CSS:** Fixed an issue where the extension's CSS was leaking into other websites.
+- **Link Handling:** Fixed an issue where clicking on non-torrent links would prevent browser navigation.
+
+## [0.2.9] - 2025-06-11
+
+### Added
+- **Dynamic Link Monitoring:** Integrated a new `LinkMonitor.js` module that uses a `MutationObserver` to dynamically detect new links added to a page after the initial load.
+- **Server-Specific Context Menus:** Added an option to show all configured servers in the context menu for quick access.
+- **Debug & Log Settings:** Added a new section in the options page to control console logging for different parts of the extension.
+
+### Fixed
+- **Click Handling:** Fixed a critical bug where the extension would block navigation to non-torrent links.
+- **Sound Notifications:** Fixed a bug where sound notifications were not playing reliably.
+- **JSON syntax:** Corrected JSON syntax in `package.json`.
+- **XML escaping:** Fixed XML escaping in the rTorrent handler.
+
 ## [0.2.6] - 2025-06-07
 
 ### Fixed
@@ -35,7 +78,7 @@ All notable changes to this project will be documented in this file.
         -   For magnet links, extract tracker URLs from `&tr=` parameters (URI decoded) and pass to `applyTrackerRulesLogic`.
         -   For `.torrent` files, parse content (using `bencode` library), extract `announce` and `announce-list` URLs (using `TextDecoder`), and pass to `applyTrackerRulesLogic`.
         -   The helper function matches these URLs against configured `trackerUrlRules`.
-        -   If a rule matches, the torrent's category (label) and/or download directory are overridden. The first matching rule applies.
+        -   Override `torrentOptions.category` (label) and/or `torrentOptions.downloadDir` if a rule matches. The first matching rule applies.
     -   The `trackerUrlRules` are included in the settings export/import functionality.
     -   Success notifications now indicate if a tracker rule was applied.
 

@@ -141,6 +141,40 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 	if (torrentOptions.labels && torrentOptions.labels.length > 0) {
 		addArguments.labels = torrentOptions.labels;
 	}
+
+    // Handle speed limits from server config
+    if (serverConfig.transmissionDownloadSpeedLimit > 0) {
+        addArguments.downloadLimited = true;
+        addArguments.downloadLimit = Number(serverConfig.transmissionDownloadSpeedLimit);
+    }
+    if (serverConfig.transmissionUploadSpeedLimit > 0) {
+        addArguments.uploadLimited = true;
+        addArguments.uploadLimit = Number(serverConfig.transmissionUploadSpeedLimit);
+    }
+
+    // Handle seeding limits from server config
+    if (serverConfig.transmissionSeedRatioLimit) {
+        addArguments.seedRatioMode = 1; // 1 means use a specific ratio
+        addArguments.seedRatioLimit = Number(serverConfig.transmissionSeedRatioLimit);
+    }
+    if (serverConfig.transmissionSeedIdleLimit) {
+        addArguments.seedIdleMode = 1; // 1 means use a specific idle time
+        addArguments.seedIdleLimit = Number(serverConfig.transmissionSeedIdleLimit);
+    }
+
+    // Handle peer limit from server config
+    if (serverConfig.transmissionPeerLimit > 0) {
+        addArguments['peer-limit'] = Number(serverConfig.transmissionPeerLimit);
+    }
+
+    if (serverConfig.transmissionSequentialDownload) {
+        addArguments['sequential-download'] = true;
+    }
+
+    if (serverConfig.transmissionBandwidthPriority) {
+        addArguments.bandwidthPriority = Number(serverConfig.transmissionBandwidthPriority);
+    }
+
 	// If file selection is active for a .torrent file, always add paused initially
 	if (!isMagnet && selectedFileIndices && Array.isArray(selectedFileIndices)) {
 		addArguments.paused = true;

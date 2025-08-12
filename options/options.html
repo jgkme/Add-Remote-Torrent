@@ -97,9 +97,142 @@
         <input type="text" id="transmissionDownloadDir" name="transmissionDownloadDir" placeholder="/downloads/movies,/downloads/tv" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
       </div>
 
+      <div id="transmissionSpeedLimitGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="transmissionDownloadSpeedLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Download Speed Limit (KB/s):</label>
+          <input type="number" id="transmissionDownloadSpeedLimit" name="transmissionDownloadSpeedLimit" placeholder="0 for unlimited" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="transmissionUploadSpeedLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload Speed Limit (KB/s):</label>
+          <input type="number" id="transmissionUploadSpeedLimit" name="transmissionUploadSpeedLimit" placeholder="0 for unlimited" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
+      <div id="transmissionSeedingLimitGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="transmissionSeedRatioLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seed Ratio Limit:</label>
+          <input type="number" id="transmissionSeedRatioLimit" name="transmissionSeedRatioLimit" placeholder="e.g., 2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="transmissionSeedIdleLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seed Idle Limit (minutes):</label>
+          <input type="number" id="transmissionSeedIdleLimit" name="transmissionSeedIdleLimit" placeholder="e.g., 30" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
+      <div id="transmissionPeerLimitGroup" class="form-group mt-6" style="display:none;">
+        <label for="transmissionPeerLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Peer Limit:</label>
+        <input type="number" id="transmissionPeerLimit" name="transmissionPeerLimit" placeholder="e.g., 50" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div id="transmissionSequentialDownloadGroup" class="form-group mt-4 flex items-center space-x-2" style="display:none;">
+        <input type="checkbox" id="transmissionSequentialDownload" name="transmissionSequentialDownload" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+        <label for="transmissionSequentialDownload" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable sequential downloading by default</label>
+      </div>
+
+      <div id="transmissionBandwidthPriorityGroup" class="form-group mt-6" style="display:none;">
+        <label for="transmissionBandwidthPriority" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bandwidth Priority:</label>
+        <select id="transmissionBandwidthPriority" name="transmissionBandwidthPriority" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+          <option value="0">Normal</option>
+          <option value="1">High</option>
+          <option value="-1">Low</option>
+        </select>
+      </div>
+
+      <div id="delugeSpeedLimitGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="delugeDownloadSpeedLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Download Speed Limit (KiB/s):</label>
+          <input type="number" id="delugeDownloadSpeedLimit" name="delugeDownloadSpeedLimit" placeholder="-1 for unlimited" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="delugeUploadSpeedLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload Speed Limit (KiB/s):</label>
+          <input type="number" id="delugeUploadSpeedLimit" name="delugeUploadSpeedLimit" placeholder="-1 for unlimited" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
+      <div id="delugeConnectionLimitGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="delugeMaxConnections" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Connections:</label>
+          <input type="number" id="delugeMaxConnections" name="delugeMaxConnections" placeholder="-1 for default" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="delugeMaxUploadSlots" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Upload Slots:</label>
+          <input type="number" id="delugeMaxUploadSlots" name="delugeMaxUploadSlots" placeholder="-1 for default" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
+      <div id="delugeSeedingGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="delugeStopRatio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stop Ratio:</label>
+          <input type="number" id="delugeStopRatio" name="delugeStopRatio" placeholder="e.g., 2.0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group flex items-center space-x-2">
+          <input type="checkbox" id="delugeRemoveAtRatio" name="delugeRemoveAtRatio" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+          <label for="delugeRemoveAtRatio" class="text-sm font-medium text-gray-700 dark:text-gray-300">Remove at ratio</label>
+        </div>
+      </div>
+
+      <div id="delugeMoveCompletedGroup" class="form-group mt-6" style="display:none;">
+        <label for="delugeMoveCompletedPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Move Completed Path:</label>
+        <input type="text" id="delugeMoveCompletedPath" name="delugeMoveCompletedPath" placeholder="/downloads/completed" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div id="delugeMiscOptionsGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group flex items-center space-x-2">
+          <input type="checkbox" id="delugeSequentialDownload" name="delugeSequentialDownload" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+          <label for="delugeSequentialDownload" class="text-sm font-medium text-gray-700 dark:text-gray-300">Sequential download</label>
+        </div>
+        <div class="form-group flex items-center space-x-2">
+          <input type="checkbox" id="delugePrioritizeFirstLast" name="delugePrioritizeFirstLast" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+          <label for="delugePrioritizeFirstLast" class="text-sm font-medium text-gray-700 dark:text-gray-300">Prioritize first/last pieces</label>
+        </div>
+        <div class="form-group flex items-center space-x-2">
+          <input type="checkbox" id="delugePreAllocate" name="delugePreAllocate" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+          <label for="delugePreAllocate" class="text-sm font-medium text-gray-700 dark:text-gray-300">Pre-allocate storage</label>
+        </div>
+      </div>
+
+      <div id="rtorrentPriorityGroup" class="form-group mt-6" style="display:none;">
+        <label for="rtorrentPriority" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority:</label>
+        <select id="rtorrentPriority" name="rtorrentPriority" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+          <option value="0">Off</option>
+          <option value="1">Low</option>
+          <option value="2">Normal</option>
+          <option value="3">High</option>
+        </select>
+      </div>
+
+      <div id="rtorrentThrottleGroup" class="form-group mt-6" style="display:none;">
+        <label for="rtorrentThrottle" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Throttle:</label>
+        <input type="text" id="rtorrentThrottle" name="rtorrentThrottle" placeholder="e.g., upload_limit" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div id="rtorrentPeerSettingsGroup" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6" style="display:none;">
+        <div class="form-group">
+          <label for="rtorrentPeersMax" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Peers:</label>
+          <input type="number" id="rtorrentPeersMax" name="rtorrentPeersMax" placeholder="e.g., 100" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="rtorrentPeersMin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Peers:</label>
+          <input type="number" id="rtorrentPeersMin" name="rtorrentPeersMin" placeholder="e.g., 40" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="rtorrentUploadsMax" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Uploads:</label>
+          <input type="number" id="rtorrentUploadsMax" name="rtorrentUploadsMax" placeholder="e.g., 15" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+        <div class="form-group">
+          <label for="rtorrentUploadsMin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Min Uploads:</label>
+          <input type="number" id="rtorrentUploadsMin" name="rtorrentUploadsMin" placeholder="e.g., 10" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        </div>
+      </div>
+
       <div class="form-group mt-6" id="scgiPathGroup" style="display:none;">
         <label for="scgiPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SCGI/HTTPRPC URL (for rTorrent):</label>
         <input type="text" id="scgiPath" name="scgiPath" placeholder="http://localhost:5000 or scgi://localhost:5000" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+      </div>
+
+      <div class="form-group mt-6" id="qbittorrentSavePathGroup" style="display:none;">
+        <label for="qbittorrentSavePath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Save Path:</label>
+        <input type="text" id="qbittorrentSavePath" name="qbittorrentSavePath" placeholder="/downloads" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
       </div>
 
       <div class="form-group mt-6" id="ruTorrentPathGroup" style="display:none;">

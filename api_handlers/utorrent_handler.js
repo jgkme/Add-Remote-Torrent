@@ -52,7 +52,7 @@ async function getCsrfToken(serverConfig) {
     }
 }
 
-async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method = 'GET') {
+async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method = 'GET', queryParamsForPost = {}) {
     let token;
     try {
         token = await getCsrfToken(serverConfig);
@@ -81,6 +81,10 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
     if (method === 'GET' && params) {
         for (const key in params) {
             queryParams.append(key, params[key]);
+        }
+    } else if (method === 'POST' && queryParamsForPost) {
+        for (const key in queryParamsForPost) {
+            queryParams.append(key, queryParamsForPost[key]);
         }
     }
     queryParams.append('token', token);
@@ -256,24 +260,17 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             }
             formData.append('torrent_file', blob, fileName);
             
-            // Other params like download_dir (path) or label might need to be query params for add-file
-            // For now, focusing on just uploading the file.
-            // The `makeApiRequest` for POST will put action & token in URL, body is FormData.
-            // If `path` or `label` are needed, they must be part of the URL query string for add-file.
-            const queryParamsForAddFile = {};
-            if (torrentOptions.downloadDir) queryParamsForAddFile.path = torrentOptions.downloadDir;
-            // uTorrent's add-file doesn't typically take label as a query param.
-            // It might need to be set post-add if hash is known.
+            // For add-file, other parameters like path (download directory) and label
+            // must be sent as query parameters in the URL, not in the FormData body.
+            const addFileParams = {};
+            if (torrentOptions.downloadDir) {
+                addFileParams.path = torrentOptions.downloadDir;
+            }
+            if (torrentOptions.labels && torrentOptions.labels.length > 0) {
+                addFileParams.label = torrentOptions.labels[0];
+            }
 
-            addResult = await makeApiRequest(serverConfig.url, 'add-file', formData, serverConfig, 'POST');
-            // Note: The `params` argument to makeApiRequest for POST is the body (FormData).
-            // If query parameters are needed for POST's URL, makeApiRequest needs adjustment or
-            // we build the URL more carefully here.
-            // Current makeApiRequest for POST: queryParams are built from `params` if method is GET.
-            // For POST, `params` becomes the body. So, `path` and `label` won't be in URL.
-            // This means add-file will use default path/label.
-            // TODO: Adjust makeApiRequest or URL construction if query params are needed for POST actions like add-file.
-            // For now, this will just upload the file.
+            addResult = await makeApiRequest(serverConfig.url, 'add-file', formData, serverConfig, 'POST', addFileParams);
 
         } catch (e) {
             debug.error("uTorrent: Error preparing FormData for add-file:", e);
@@ -296,16 +293,27 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // uTorrent's add-url response is typically empty on success.
     // We need the hash to set file priorities or stop/start.
 
-    if (useFileSelection || userWantsPaused) { // Need hash if we want to modify post-add
+    if (useFileSelection || userWantsPaused || (torrentOptions.labels && torrentOptions.labels.length > 0)) { // Need hash if we want to modify post-add
         if (!torrentHash) { // If hash wasn't from magnet or .torrent parsing (which we deferred)
             // Attempt to get torrents and find the new one by name/url (less reliable) or assume last added.
             // This is difficult and error-prone with uTorrent's API.
             // A common workaround is to fetch the list, get the 'cid' (cache ID), add, then fetch again
             // and look for torrents not in the old 'cid' list.
             // For now, we'll log a warning if hash is needed but not available.
-            debug.warn(`uTorrent: Torrent added. Hash not available for post-add operations (file selection/pause). Manual adjustment in uTorrent may be needed.`);
+            debug.warn(`uTorrent: Torrent added. Hash not available for post-add operations (file selection/pause/label). Manual adjustment in uTorrent may be needed.`);
             if (useFileSelection) {
                  return { success: true, data: { warning: "Torrent added, but file priorities could not be set as hash was not identified." } };
+            }
+        }
+
+        if (torrentHash && torrentOptions.labels && torrentOptions.labels.length > 0) {
+            const label = torrentOptions.labels[0];
+            const labelParams = { hash: torrentHash, s: 'label', v: label };
+            const labelResult = await makeApiRequest(serverConfig.url, 'setprops', labelParams, serverConfig, 'GET');
+            if (!labelResult.success) {
+                debug.warn(`uTorrent: Failed to set label for torrent ${torrentHash}.`);
+            } else {
+                debug.log(`uTorrent: Set label for torrent ${torrentHash}: ${label}`);
             }
         }
 
