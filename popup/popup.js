@@ -150,6 +150,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial load
     loadPopupData();
 
+    activeServerDetailsDiv.addEventListener('click', () => {
+        const server = servers.find(s => s.id === currentActiveServerId);
+        if (server && server.url) {
+            chrome.tabs.create({ url: server.url });
+        }
+    });
+
     // Event listener for Clear Last Action Status button
     clearLastActionStatusButton.addEventListener('click', () => {
         chrome.storage.local.set({ lastActionStatus: 'N/A' }, () => {
