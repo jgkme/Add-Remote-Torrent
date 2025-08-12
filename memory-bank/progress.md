@@ -123,7 +123,7 @@
         -   **Paused State Fix:** Implemented a version check to use the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2, fixing a bug where torrents were not being added in a paused state.
     -   [X] Updated `transmission_handler.js` to implement file selection using the "add paused, get files, set wanted/unwanted files, then optionally resume" workflow. Also updated to prioritize pre-fetched torrent file content.
 -   **Flesh out Placeholder Handlers (Next):**
-    -   [X] uTorrent: Refined handler for `path` parameter, `testConnection`, `credentials: 'include'`; attempted file selection via post-add `setprops`. Updated to prioritize pre-fetched torrent file content (using `action=add-file`).
+    -   [X] uTorrent: Refined handler for `path` parameter, `testConnection`, `credentials: 'include'`; attempted file selection via post-add `setprops`. Updated to prioritize pre-fetched torrent file content (using `action=add-file`). Improved label and directory support for `add-file` action.
     -   [X] BitTorrent: Refined handler (similar to uTorrent) for `path` parameter, `testConnection`, `credentials: 'include'`; file selection logic will mirror uTorrent's attempt. Updated to prioritize pre-fetched torrent file content.
     -   [X] rTorrent: Refined placeholder to use `load.normal`/`load.start` with direct URLs or `load.raw_start`/`load.raw` with pre-fetched base64 content. Acknowledges SCGI path. Basic XML-RPC request/response handling in place. Implemented support for setting priority, throttle, and peer settings. Improved label support.
     -   [X] Transmission: Enhanced to support fetching `.torrent` file URLs (base64 encoded `metainfo`) and implemented file selection logic. (Already handles pre-fetched content well). Implemented support for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
@@ -132,9 +132,18 @@
     -   [X] Deluge: Refined `testConnection` to use `auth.check_session` and implemented file selection logic (add paused, set priorities, conditionally resume). Updated to prioritize pre-fetched torrent file content (using `core.add_torrent_file`). Implemented support for speed limits, connection limits, seeding options, and miscellaneous options.
     -   [X] Kodi Elementum: Refined `params` string for `Addons.ExecuteAddon`. (Auth was already basic).
     -   [X] Buffalo Torrent Client: Refined handler to mirror uTorrent structure with `dir` param and CSRF token logic.
-    -   [X] Vuze: Refined handler to mirror Transmission RPC structure and auth.
+    -   [X] Vuze: Added support for Vuze HTML WebUI.
     -   [X] tTorrent: Refined placeholder for `POST /api/add` with FormData.
+    -   [X] Hadouken: Added support for Hadouken.
+    -   [X] Tixati: Added support for Tixati.
+    -   [X] Torrentflux: Added support for Torrentflux.
+    -   [X] Flood: Added support for Flood.
     -   [ ] Further API investigation and implementation needed for full functionality of Buffalo, Vuze, tTorrent, and robust XML-RPC for rTorrent.
+-   **Release v0.3.2:**
+    -   [X] Bumped version to 0.3.2 in `manifest.json` and `package.json`.
+    -   [X] Updated `README.md` with a detailed changelog for v0.3.2.
+    -   [X] Committed and pushed changes to GitHub.
+    -   [X] Built the extension and created a new release on GitHub.
 -   **Error Handling & Feedback:**
     -   [X] Standardized error object structure (`{ success: false, error: { userMessage, technicalDetail, errorCode } }`) across all API handlers.
     -   [X] Updated `background.js` (`addTorrentToClient`) to process standardized error objects for user notifications.

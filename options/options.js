@@ -77,6 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rtorrentPeersMinInput = document.getElementById('rtorrentPeersMin');
     const rtorrentUploadsMaxInput = document.getElementById('rtorrentUploadsMax');
     const rtorrentUploadsMinInput = document.getElementById('rtorrentUploadsMin');
+    const torrentfluxRelativePathGroup = document.getElementById('torrentfluxRelativePathGroup');
+    const torrentfluxRelativePathInput = document.getElementById('torrentfluxRelativePath');
     const ruTorrentPathGroup = document.getElementById('ruTorrentPathGroup');
     const ruTorrentPathInput = document.getElementById('ruTorrentPath');
     const ruTorrentOptions = document.getElementById('ruTorrentOptions');
@@ -291,6 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(rtorrentPriorityGroup) rtorrentPriorityGroup.style.display = 'none';
         if(rtorrentThrottleGroup) rtorrentThrottleGroup.style.display = 'none';
         if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'none';
+        if(torrentfluxRelativePathGroup) torrentfluxRelativePathGroup.style.display = 'none';
         if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
         if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
         if(userGroup) userGroup.style.display = 'block'; 
@@ -331,6 +334,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (urlLabel) urlLabel.textContent = 'ruTorrent URL:';
                 serverUrlInput.placeholder = 'http://localhost/rutorrent';
                 break;
+            case 'torrentflux':
+                if(torrentfluxRelativePathGroup) torrentfluxRelativePathGroup.style.display = 'block';
+                break;
             case 'deluge':
                 if (userLabel) userLabel.textContent = 'Username (optional for WebUI):';
                 if (userInput) userInput.placeholder = '(Usually not needed for WebUI)';
@@ -353,6 +359,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'synology_download_station':
             case 'qnap_download_station':
                 serverUrlInput.placeholder = 'http://<NAS_IP_OR_HOSTNAME>:<PORT>';
+                break;
+            case 'hadouken':
+                serverUrlInput.placeholder = 'http://localhost:7070';
+                break;
+            case 'tixati':
+                serverUrlInput.placeholder = 'http://localhost:8080';
+                break;
+            case 'flood':
+                serverUrlInput.placeholder = 'http://localhost:3000';
+                break;
+            case 'vuze':
+                serverUrlInput.placeholder = 'http://localhost:9091';
                 break;
             default:
                 // Defaults are already set above
@@ -400,6 +418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentPeersMinInput.value = server.rtorrentPeersMin || '';
             rtorrentUploadsMaxInput.value = server.rtorrentUploadsMax || '';
             rtorrentUploadsMinInput.value = server.rtorrentUploadsMin || '';
+            torrentfluxRelativePathInput.value = server.torrentfluxRelativePath || '';
             ruTorrentPathInput.value = server.ruTorrentrelativepath || '';
             rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
             rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
@@ -443,6 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentPeersMinInput.value = '';
             rtorrentUploadsMaxInput.value = '';
             rtorrentUploadsMinInput.value = '';
+            torrentfluxRelativePathInput.value = '';
             ruTorrentPathInput.value = '';
             rutorrentdontaddnamepathInput.checked = false;
             rutorrentalwaysurlInput.checked = false;
@@ -595,6 +615,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rtorrentPeersMin = rtorrentPeersMinInput.value.trim();
         const rtorrentUploadsMax = rtorrentUploadsMaxInput.value.trim();
         const rtorrentUploadsMin = rtorrentUploadsMinInput.value.trim();
+        const torrentfluxRelativePath = torrentfluxRelativePathInput.value.trim();
         const ruTorrentrelativepath = ruTorrentPathInput.value.trim();
         const rutorrentdontaddnamepath = rutorrentdontaddnamepathInput.checked;
         const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
@@ -651,7 +672,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentPeersMax,
             rtorrentPeersMin,
             rtorrentUploadsMax,
-            rtorrentUploadsMin
+            rtorrentUploadsMin,
+            torrentfluxRelativePath
         }; 
         
         if (clientType === 'transmission') {
@@ -683,6 +705,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverData.rtorrentPeersMin = rtorrentPeersMin;
             serverData.rtorrentUploadsMax = rtorrentUploadsMax;
             serverData.rtorrentUploadsMin = rtorrentUploadsMin;
+        } else if (clientType === 'torrentflux') {
+            serverData.torrentfluxRelativePath = torrentfluxRelativePath;
         } else if (clientType === 'qbittorrent') {
             serverData.qbittorrentSavePath = qbittorrentSavePath;
         }

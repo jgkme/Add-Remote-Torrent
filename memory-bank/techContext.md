@@ -124,3 +124,20 @@
 -   **Data Migration:** Ensuring smooth transition for existing users if storage structure changes significantly (though current changes aim for additive compatibility by defaulting `clientType`).
 -   **URL Pattern Matching Logic:** (As before, remains relevant).
 -   **Export/Import Logic:** Now needs to handle `clientType` and potentially client-specific fields within the `servers` array.
+
+## 7. Deployment Process
+-   **Versioning:** The version number must be updated in `manifest.json` and `package.json`.
+-   **Changelog:** The `README.md` file should be updated with a detailed list of changes for the new version.
+-   **Git:**
+    -   Changes must be committed to the local repository.
+    -   Authentication with GitHub is handled via SSH key. The following commands must be run to push to the remote repository:
+        ```bash
+        eval "$(ssh-agent -s)"
+        ssh-add /path/to/private/key
+        ```
+    -   Changes are then pushed to the remote repository.
+-   **Build:** The `pnpm build` command is used to create a production-ready build of the extension in the `dist/` directory and a zip file for the release.
+-   **GitHub Release:** The `gh` command-line tool is used to create a new release on GitHub. The release notes are provided from a file to avoid command-line length limitations.
+    ```bash
+    gh release create <tag> <zip-file> --notes-file <notes-file>
+    ```

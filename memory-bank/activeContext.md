@@ -41,13 +41,28 @@
     -   **Transmission:** Added options for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
     -   **Deluge:** Added options for speed limits, connection limits, seeding options, and miscellaneous settings like sequential downloading.
     -   **rTorrent:** Added options for priority, throttle, and peer settings. Improved label support to use `d.custom.set` instead of `d.custom1.set`.
+    -   **ruTorrent:** Improved label support to handle multiple labels.
+    -   **uTorrent / BitTorrent:** Improved `add-file` to support download directory and labels.
+-   **New Client Support:**
+    -   **Hadouken:** Added support for Hadouken.
+    -   **Tixati:** Added support for Tixati.
+    -   **Torrentflux:** Added support for Torrentflux.
+    -   **Vuze:** Added support for Vuze HTML WebUI.
+    -   **Flood:** Added support for Flood.
+-   **UI Fixes:**
+    -   Fixed the positioning of the "Clear Last Action Status" button in the popup.
+-   **Version Update:**
+    -   Updated extension version to `0.3.2` in `manifest.json` and `package.json`.
+-   **Deployment:**
+    -   Documented the deployment process, including the use of `gh` for releases.
+    -   Successfully created and uploaded the v0.3.2 release to GitHub.
 
 ## 3. Next Steps (High-Level Plan)
 
-1.  **Continue Client Feature Enhancement:**
-    -   Review the remaining client handlers (`ruTorrent`, `uTorrent`, etc.) and their documentation to identify and implement missing features.
-2.  **Testing:**
+1.  **Testing:**
     -   Thoroughly test all the new features and bug fixes.
+2.  **Continue Client Feature Enhancement:**
+    -   Review the remaining client handlers and their documentation to identify and implement missing features.
 3.  **Memory Bank Update:**
     -   Ensure all Memory Bank files are updated to reflect the latest changes.
 4.  **Prepare for Release:**
