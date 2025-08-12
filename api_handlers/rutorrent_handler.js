@@ -56,8 +56,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             return { success: false, error: { userMessage: `ruTorrent API request failed: ${response.status} ${response.statusText}` } };
         }
 
+        if (response.url.includes("result[]=Success")) {
+            return { success: true, data: { message: "Torrent added successfully." } };
+        }
         const text = await response.text();
-        if (text.includes("addTorrentSuccess") || response.url.includes("result[]=Success")) {
+        if (text.includes("addTorrentSuccess")) {
             return { success: true, data: { message: "Torrent added successfully." } };
         } else {
             return { success: false, error: { userMessage: `Server didn't accept data: ${text}` } };

@@ -62,6 +62,8 @@
     -   Updated `README.md` to include the newly added clients.
 -   **Git:**
     -   Committed all changes to the local repository.
+-   **Bug Fixes:**
+    -   **ruTorrent:** Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission. This fix was based on a working implementation from a similar project.
 
 ## 3. Next Steps (High-Level Plan)
 
