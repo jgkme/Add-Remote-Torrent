@@ -209,7 +209,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
 	// Set label
 	if (labels && labels.length > 0) {
-		await makeXmlRpcRequest(serverConfig, 'd.custom.set', [hash, "label", labels[0]]);
+		await makeXmlRpcRequest(serverConfig, 'd.custom1.set', [hash, labels[0]]);
 		debug.log(`rTorrent: Set label for ${hash}: ${labels[0]}`);
 	}
 	// Set file priorities
