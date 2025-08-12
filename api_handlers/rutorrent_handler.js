@@ -3,7 +3,7 @@ import { debug } from '../debug';
 // ruTorrent API Handler
 
 function getruTorrentUrl(serverConfig) {
-    let url = serverConfig.url.replace(/\/$/, '');
+    let url = `http${serverConfig.hostsecure ? 's' : ''}://${serverConfig.host}:${serverConfig.port}`;
     if (serverConfig.ruTorrentrelativepath) {
         url += `/${serverConfig.ruTorrentrelativepath.replace(/^\/|\/$/g, '')}`;
     }
@@ -18,35 +18,37 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         labels,
     } = torrentOptions;
 
-    const url = getruTorrentUrl(serverConfig) + "/php/addtorrent.php";
-    const formData = new FormData();
-
+    let url = getruTorrentUrl(serverConfig) + "/php/addtorrent.php?";
     if (downloadDir) {
-        formData.append("dir_edit", downloadDir);
+        url += `dir_edit=${encodeURIComponent(downloadDir)}&`;
     }
     if (labels && labels.length > 0) {
-        labels.forEach(label => {
-            formData.append("label", label);
-        });
+        url += `label=${encodeURIComponent(labels.join(','))}&`;
     }
     if (paused) {
-        formData.append("torrents_start_stopped", "1");
+        url += "torrents_start_stopped=1&";
     }
     if (serverConfig.rutorrentdontaddnamepath) {
-        formData.append("not_add_path", "1");
+        url += "not_add_path=1&";
     }
 
+    let body;
+    const headers = {};
     if (torrentUrl.startsWith("magnet:") || serverConfig.rutorrentalwaysurl) {
-        formData.append("url", torrentUrl);
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        body = `url=${encodeURIComponent(torrentUrl)}`;
     } else {
+        const formData = new FormData();
         const blob = new Blob([Buffer.from(torrentFileContentBase64, 'base64')], { type: 'application/x-bittorrent' });
         formData.append("torrent_file", blob, "file.torrent");
+        body = formData;
     }
 
     try {
         const response = await fetch(url, {
             method: 'POST',
-            body: formData,
+            headers: headers,
+            body: body,
             credentials: 'include'
         });
 
@@ -55,7 +57,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
 
         const text = await response.text();
-        if (text.includes("addTorrentSuccess")) {
+        if (text.includes("addTorrentSuccess") || response.url.includes("result[]=Success")) {
             return { success: true, data: { message: "Torrent added successfully." } };
         } else {
             return { success: false, error: { userMessage: `Server didn't accept data: ${text}` } };

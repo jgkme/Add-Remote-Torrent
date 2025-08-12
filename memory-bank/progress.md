@@ -138,6 +138,8 @@
     -   [X] Tixati: Added support for Tixati.
     -   [X] Torrentflux: Added support for Torrentflux.
     -   [X] Flood: Added support for Flood.
+    -   [X] Tribler: Added support for Tribler.
+    -   [X] BiglyBT: Added support for BiglyBT.
     -   [ ] Further API investigation and implementation needed for full functionality of Buffalo, Vuze, tTorrent, and robust XML-RPC for rTorrent.
 -   **Release v0.3.2:**
     -   [X] Bumped version to 0.3.2 in `manifest.json` and `package.json`.

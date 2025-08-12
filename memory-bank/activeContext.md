@@ -49,6 +49,8 @@
     -   **Torrentflux:** Added support for Torrentflux.
     -   **Vuze:** Added support for Vuze HTML WebUI.
     -   **Flood:** Added support for Flood.
+    -   **Tribler:** Added support for Tribler.
+    -   **BiglyBT:** Added support for BiglyBT.
 -   **UI Fixes:**
     -   Fixed the positioning of the "Clear Last Action Status" button in the popup.
 -   **Version Update:**
@@ -56,6 +58,10 @@
 -   **Deployment:**
     -   Documented the deployment process, including the use of `gh` for releases.
     -   Successfully created and uploaded the v0.3.2 release to GitHub.
+-   **Documentation:**
+    -   Updated `README.md` to include the newly added clients.
+-   **Git:**
+    -   Committed all changes to the local repository.
 
 ## 3. Next Steps (High-Level Plan)
 
