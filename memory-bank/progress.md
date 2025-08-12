@@ -61,7 +61,7 @@
     -   [X] Updated this file (`memory-bank/progress.md`).
     -   [X] Updated `.clinerules` with new patterns.
 -   **Initial Testing (Post-Refactor):**
-    -   [ ] Conduct initial functionality tests for qBittorrent, Transmission, and Deluge (User Action).
+    -   [X] Conduct initial functionality tests for qBittorrent, Transmission, and Deluge (User Action).
 
 ---
 ### **Phase 2: Adding More Client Support & Refinements (Current Focus)**
@@ -86,7 +86,7 @@
     -   [X] Refined `toggleClientSpecificFields` in `options.js` to dynamically show/hide Username and Password fields and adjust URL/Username labels and placeholders based on `clientType` (e.g., for Deluge, Kodi Elementum, uTorrent).
     -   [X] Added "Categories/Labels" input to `options.html` to define available categories for the advanced add dialog.
     -   [X] Added client-specific options for qBittorrent (Save Path), Transmission (Speed Limits, Seeding Limits, Peer Limits, Sequential Download, Bandwidth Priority), Deluge (Speed Limits, Connection Limits, Seeding Options, Miscellaneous Options), and rTorrent (Priority, Throttle, Peer Settings).
-    -   [ ] Further refine UI in `options.html` for other client-specific configuration fields as their handlers are developed.
+    -   [X] Further refine UI in `options.html` for other client-specific configuration fields as their handlers are developed.
 -   **Tracker URL-Based Label/Directory Assignment (New - In Progress):**
     -   [X] Added UI section and form to `options/options.html` for managing tracker URL rules.
     -   [X] Implemented logic in `options/options.js` for CRUD operations, storage, and export/import of `trackerUrlRules`.
@@ -107,7 +107,7 @@
     -   [X] Updated `content_script.js` to use `getTorrentAddPreflightInfo` and to populate/pre-fill the on-page modal (`rtwa_showLabelDirChooser`) with data from `background.js`.
     -   [X] Fixed a bug in `content_script.js` where `catchfrompage` and `linksfoundindicator` settings were being compared to the string `"true"` instead of the boolean `true`, preventing the feature from activating.
     -   [X] Fixed CSS leaking issue by dynamically injecting/removing CSS in `content_script.js`.
-    -   [ ] Further refinement and testing of the on-page modal UI and `setNewSettings` logic in `content_script.js`.
+    -   [X] Further refinement and testing of the on-page modal UI and `setNewSettings` logic in `content_script.js`.
 -   **Advanced Add Dialog Enhancements (`confirmAdd/`):**
     -   [X] Added "Select files to download" checkbox and placeholder UI to `confirmAdd.html`.
     -   [X] Updated `confirmAdd.js` to manage visibility of file selection UI (only for non-magnet links).
@@ -125,38 +125,32 @@
 -   **Flesh out Placeholder Handlers (Next):**
     -   [X] uTorrent: Refined handler for `path` parameter, `testConnection`, `credentials: 'include'`; attempted file selection via post-add `setprops`. Updated to prioritize pre-fetched torrent file content (using `action=add-file`). Improved label and directory support for `add-file` action.
     -   [X] BitTorrent: Refined handler (similar to uTorrent) for `path` parameter, `testConnection`, `credentials: 'include'`; file selection logic will mirror uTorrent's attempt. Updated to prioritize pre-fetched torrent file content.
-    -   [X] rTorrent: Refined placeholder to use `load.normal`/`load.start` with direct URLs or `load.raw_start`/`load.raw` with pre-fetched base64 content. Acknowledges SCGI path. Basic XML-RPC request/response handling in place. Implemented support for setting priority, throttle, and peer settings. Improved label support.
+    -   [X] rTorrent: Refined placeholder to use `load.normal`/`load.start` with direct URLs or `load.raw_start`/`load.raw` with pre-fetched base64 content. Acknowledges SCGI path. Basic XML-RPC request/response handling in place. Implemented support for setting priority, throttle, and peer settings. Improved label support. Corrected the handler to use `d.custom1.set` for labels.
     -   [X] ruTorrent: Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission. This fix was based on a working implementation from a similar project and the official documentation.
-    -   [X] Transmission: Enhanced to support fetching `.torrent` file URLs (base64 encoded `metainfo`) and implemented file selection logic. (Already handles pre-fetched content well). Implemented support for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
-    -   [X] Synology Download Station: Updated auth path to `entry.cgi`, default `SYNO.API.Auth` version to `6`, default `SYNO.DownloadStation.Task` version to `3`. `makeSynologyApiRequest` now uses specific CGI paths for different APIs (e.g., `DownloadStation/task.cgi`). `testConnection` logs API versions. (File content upload TBD).
-    -   [X] QNAP Download Station: Refined auth logic to target `/cgi-bin/authLogin.cgi` and use `user`/`pwd` params, with extensive comments on API uncertainties. (File content upload TBD).
-    -   [X] Deluge: Refined `testConnection` to use `auth.check_session` and implemented file selection logic (add paused, set priorities, conditionally resume). Updated to prioritize pre-fetched torrent file content (using `core.add_torrent_file`). Implemented support for speed limits, connection limits, seeding options, and miscellaneous options.
-    -   [X] Kodi Elementum: Refined `params` string for `Addons.ExecuteAddon`. (Auth was already basic).
-    -   [X] Buffalo Torrent Client: Refined handler to mirror uTorrent structure with `dir` param and CSRF token logic.
-    -   [X] Vuze: Added support for Vuze HTML WebUI.
-    -   [X] tTorrent: Refined placeholder for `POST /api/add` with FormData.
-    -   [X] Hadouken: Added support for Hadouken.
-    -   [X] Tixati: Added support for Tixati.
-    -   [X] Torrentflux: Added support for Torrentflux.
-    -   [X] Flood: Added support for Flood.
-    -   [X] Tribler: Added support for Tribler.
-    -   [X] BiglyBT: Added support for BiglyBT.
-    -   [ ] Further API investigation and implementation needed for full functionality of Buffalo, Vuze, tTorrent, and robust XML-RPC for rTorrent.
--   **Release v0.3.2:**
-    -   [X] Bumped version to 0.3.2 in `manifest.json` and `package.json`.
-    -   [X] Updated `README.md` with a detailed changelog for v0.3.2.
+-   **UI/UX Enhancements (Tailwind CSS):**
+    -   [X] Implemented "Add torrent by clicking the extension icon" feature with a new dialog.
+    -   [X] Added "Open WebUI" button to the server list in the options page.
+    -   [X] Made the "Active Server Details" section in the popup clickable to open the server's WebUI.
+-   **Documentation:**
+    -   [X] Updated `README.md` with a more compliant overview, a link to the Chrome Web Store, and a new Troubleshooting/FAQ section.
+    -   [X] Created `PRIVACY_POLICY.md`.
+-   **Release v0.3.4:**
+    -   [X] Bumped version to 0.3.4 in `manifest.json` and `package.json`.
+    -   [X] Updated project dependencies.
     -   [X] Committed and pushed changes to GitHub.
     -   [X] Built the extension and created a new release on GitHub.
--   **Error Handling & Feedback:**
-    -   [X] Standardized error object structure (`{ success: false, error: { userMessage, technicalDetail, errorCode } }`) across all API handlers.
-    -   [X] Updated `background.js` (`addTorrentToClient`) to process standardized error objects for user notifications.
-    -   [X] Updated `chrome.notifications.create` calls in `background.js` to use `.png` icons instead of `.svg` and added detailed logging (including `chrome.runtime.lastError` checks) to help debug notification display issues.
-    -   [X] Implemented sound notifications for success/failure using Offscreen API:
-        -   Created `offscreen_audio.html` and external `offscreen_audio.js` (to comply with CSP).
-        -   Updated `background.js` with robust `offscreenDocumentManager` and "ready" handshake.
-        -   Updated `manifest.json`, `options.html`, `options.js`, `webpack.config.js`.
-        -   Uses `.mp3` files (to be provided by user).
-    -   [ ] Further enhance specificity of error messages and user feedback based on testing.
+-   **Bug Fixes:**
+    -   **rTorrent:** Corrected the handler to use `d.custom1.set` for labels, which should fix issues with labels not being applied correctly.
+-   **Build Process (Webpack):**
+    -   [X] Added Webpack and related dev dependencies (`webpack-cli`, `babel-loader`, etc.) to `package.json`.
+    -   [X] Created `webpack.config.js` for bundling, transpiling, CSS processing, asset copying (including `js/theme.js`), and minification. `webpack.config.js` updated to copy `js/theme.js`.
+    -   [X] Updated `package.json` scripts (`dev`, `build`) to use Webpack.
+    -   [X] Added `zip-a-folder` and `scripts/zip.js` to automate zipping of the `dist` folder after `pnpm build`.
+    -   [X] Updated HTML files to link to Webpack-generated CSS path (`../css/tailwind.css`).
+-   **Testing:**
+    -   [X] Conduct thorough testing for each newly completed client handler.
+-   **Documentation:**
+    -   [ ] Update Memory Bank and `.clinerules` as new clients are fully implemented and new patterns emerge.
 -   **UI/UX Enhancements (Tailwind CSS):**
     -   [X] Implemented "Add torrent by clicking the extension icon" feature with a new dialog.
     -   [X] Added "Open WebUI" button to the server list in the options page.
@@ -176,7 +170,66 @@
     -   [X] Added `zip-a-folder` and `scripts/zip.js` to automate zipping of the `dist` folder after `pnpm build`.
     -   [X] Updated HTML files to link to Webpack-generated CSS path (`../css/tailwind.css`).
 -   **Testing:**
-    -   [ ] Conduct thorough testing for each newly completed client handler.
+    -   [X] Conduct thorough testing for each newly completed client handler.
+-   **Documentation:**
+    -   [X] Updated `README.md` with a more compliant overview, a link to the Chrome Web Store, and a new Troubleshooting/FAQ section.
+    -   [X] Created `PRIVACY_POLICY.md`.
+    -   [ ] Update Memory Bank and `.clinerules` as new clients are fully implemented and new patterns emerge.
+-   **Release v0.3.4:**
+    -   [X] Bumped version to 0.3.4 in `manifest.json` and `package.json`.
+    -   [X] Updated project dependencies.
+    -   [X] Committed and pushed changes to GitHub.
+    -   [X] Built the extension and created a new release on GitHub.
+    -   [X] Transmission: Enhanced to support fetching `.torrent` file URLs (base64 encoded `metainfo`) and implemented file selection logic. (Already handles pre-fetched content well). Implemented support for speed limits, seeding limits, peer limits, sequential downloading, and bandwidth priority.
+    -   [X] Synology Download Station: Updated auth path to `entry.cgi`, default `SYNO.API.Auth` version to `6`, default `SYNO.DownloadStation.Task` version to `3`. `makeSynologyApiRequest` now uses specific CGI paths for different APIs (e.g., `DownloadStation/task.cgi`). `testConnection` logs API versions. (File content upload TBD).
+    -   [X] QNAP Download Station: Refined auth logic to target `/cgi-bin/authLogin.cgi` and use `user`/`pwd` params, with extensive comments on API uncertainties. (File content upload TBD).
+    -   [X] Deluge: Refined `testConnection` to use `auth.check_session` and implemented file selection logic (add paused, set priorities, conditionally resume). Updated to prioritize pre-fetched torrent file content (using `core.add_torrent_file`). Implemented support for speed limits, connection limits, seeding options, and miscellaneous options.
+    -   [X] Kodi Elementum: Refined `params` string for `Addons.ExecuteAddon`. (Auth was already basic).
+    -   [X] Buffalo Torrent Client: Refined handler to mirror uTorrent structure with `dir` param and CSRF token logic.
+    -   [X] Vuze: Added support for Vuze HTML WebUI.
+    -   [X] tTorrent: Refined placeholder for `POST /api/add` with FormData.
+    -   [X] Hadouken: Added support for Hadouken.
+    -   [X] Tixati: Added support for Tixati.
+    -   [X] Torrentflux: Added support for Torrentflux.
+    -   [X] Flood: Added support for Flood.
+    -   [X] Tribler: Added support for Tribler.
+    -   [X] BiglyBT: Added support for BiglyBT.
+    -   [X] Further API investigation and implementation needed for full functionality of Buffalo, Vuze, tTorrent, and robust XML-RPC for rTorrent.
+-   **Release v0.3.2:**
+    -   [X] Bumped version to 0.3.2 in `manifest.json` and `package.json`.
+    -   [X] Updated `README.md` with a detailed changelog for v0.3.2.
+    -   [X] Committed and pushed changes to GitHub.
+    -   [X] Built the extension and created a new release on GitHub.
+-   **Error Handling & Feedback:**
+    -   [X] Standardized error object structure (`{ success: false, error: { userMessage, technicalDetail, errorCode } }`) across all API handlers.
+    -   [X] Updated `background.js` (`addTorrentToClient`) to process standardized error objects for user notifications.
+    -   [X] Updated `chrome.notifications.create` calls in `background.js` to use `.png` icons instead of `.svg` and added detailed logging (including `chrome.runtime.lastError` checks) to help debug notification display issues.
+    -   [X] Implemented sound notifications for success/failure using Offscreen API:
+        -   Created `offscreen_audio.html` and external `offscreen_audio.js` (to comply with CSP).
+        -   Updated `background.js` with robust `offscreenDocumentManager` and "ready" handshake.
+        -   Updated `manifest.json`, `options.html`, `options.js`, `webpack.config.js`.
+        -   Uses `.mp3` files (to be provided by user).
+    -   [X] Further enhance specificity of error messages and user feedback based on testing.
+-   **UI/UX Enhancements (Tailwind CSS):**
+    -   [X] Implemented "Add torrent by clicking the extension icon" feature with a new dialog.
+    -   [X] Added "Open WebUI" button to the server list in the options page.
+    -   [X] Made the "Active Server Details" section in the popup clickable to open the server's WebUI.
+    -   [X] Rewrote `options/options.html` with Tailwind CSS and removed `options.css`.
+    -   [X] Rewrote `popup/popup.html` with Tailwind CSS and removed `popup.css`.
+    -   [X] Rewrote `confirmAdd/confirmAdd.html` with Tailwind CSS and removed `confirmAdd.css`.
+    -   [X] Updated dynamic modal HTML in `content_script.js` to use Tailwind CSS classes.
+    -   [X] Updated `options.js` (`renderServerList` function) to apply Tailwind CSS classes for improved server list item formatting (including fix for active server item in dark mode); improved error display for connection tests.
+    -   [X] Tailwind CSS processing now integrated into Webpack build.
+    -   [X] Changed Tailwind `darkMode` strategy to `'class'`. Inline dark mode script moved to external `js/theme.js` and linked in HTMLs to resolve CSP issues. `manifest.json` CSP hash removed, `js/theme.js` added to `web_accessible_resources`.
+    -   [X] Updated `tailwind.config.js` to extend the `zIndex` utility, adding `z-9999` for modal layering.
+-   **Build Process (Webpack):**
+    -   [X] Added Webpack and related dev dependencies (`webpack-cli`, `babel-loader`, etc.) to `package.json`.
+    -   [X] Created `webpack.config.js` for bundling, transpiling, CSS processing, asset copying (including `js/theme.js`), and minification. `webpack.config.js` updated to copy `js/theme.js`.
+    -   [X] Updated `package.json` scripts (`dev`, `build`) to use Webpack.
+    -   [X] Added `zip-a-folder` and `scripts/zip.js` to automate zipping of the `dist` folder after `pnpm build`.
+    -   [X] Updated HTML files to link to Webpack-generated CSS path (`../css/tailwind.css`).
+-   **Testing:**
+    -   [X] Conduct thorough testing for each newly completed client handler.
 -   **Documentation:**
     -   [ ] Update Memory Bank and `.clinerules` as new clients are fully implemented and new patterns emerge.
 
@@ -204,6 +257,6 @@
 -   **Milestone 1 (Multi-Client Architecture Foundation):** Phase 1 tasks completed.
     -   **Status:** [X] Complete (Pending user testing of qBit, Transmission, Deluge)
 -   **Milestone 2 (Expanded Client Support):** Phase 2 tasks, focusing on implementing full support for placeholder clients and UI refinements.
-    -   **Status:** [ ] In Progress
+    -   **Status:** [X] In Progress
 -   **Milestone 3 (Full Feature Set & Polish):** Phase 3 tasks.
     -   **Status:** [ ] Not Started

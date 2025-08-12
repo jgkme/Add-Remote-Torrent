@@ -65,6 +65,7 @@
     -   Committed all changes to the local repository.
 -   **Bug Fixes:**
     -   **ruTorrent:** Corrected the handler to properly add torrents, addressing issues with URL construction, magnet link handling, and parameter submission. This fix was based on a working implementation from a similar project and the official documentation.
+    -   **rTorrent:** Corrected the handler to use `d.custom1.set` for labels, which should fix issues with labels not being applied correctly.
 
 ## 3. Next Steps (High-Level Plan)
 

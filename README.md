@@ -92,9 +92,20 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 ## Installation & Usage 
 
 1.  **Recommended:** [Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof?hl=en-US&utm_source=ext_sidebar).
-2.  **Manual/Developer:**
-    *   Clone the repository.
-    *   Run `pnpm install` to install dependencies.
-    *   Run `pnpm build` to build the extension into the `dist/` folder.
-    *   Load the `dist/` folder as an unpacked extension in Chrome's Developer Mode.
+    *   Please note that new versions may take some time to be reviewed and published on the Chrome Web Store.
+2.  **Manual/Developer (for the latest version):**
+    *   Go to the [Releases page](https://github.com/jgkme/Add-Remote-Torrent/releases) on GitHub and download the `add-remote-torrent-vX.X.X.zip` file from the latest release.
+    *   Unzip the file.
+    *   In Chrome, go to `chrome://extensions`, enable "Developer mode", and click "Load unpacked".
+    *   Select the `dist` folder from the unzipped files.
 3.  Configure your servers in the extension's options page.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
+
+## Support the Project
+
+If you find this extension useful, please consider supporting its development.
+
+[<img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" >](https://www.buymeacoffee.com/jgkme)
