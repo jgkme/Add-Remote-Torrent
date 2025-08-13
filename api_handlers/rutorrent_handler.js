@@ -3,7 +3,7 @@ import { debug } from '../debug';
 // ruTorrent API Handler
 
 function getruTorrentUrl(serverConfig) {
-    let url = `http${serverConfig.hostsecure ? 's' : ''}://${serverConfig.host}:${serverConfig.port}`;
+    let url = serverConfig.url.replace(/\/$/, '');
     if (serverConfig.ruTorrentrelativepath) {
         url += `/${serverConfig.ruTorrentrelativepath.replace(/^\/|\/$/g, '')}`;
     }

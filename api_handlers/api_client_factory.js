@@ -7,6 +7,7 @@ import * as qbittorrent from './qbittorrent_handler.js';
 import * as transmission from './transmission_handler.js';
 import * as deluge from './deluge_handler.js';
 import * as utorrent from './utorrent_handler.js';
+import * as utorrent_old from './utorrent_old_handler.js';
 import * as rtorrent from './rtorrent_handler.js';
 import * as rutorrent from './rutorrent_handler.js';
 import * as synology_download_station from './synology_download_station_handler.js';
@@ -28,6 +29,7 @@ const clientHandlers = {
     transmission,
     deluge,
     utorrent,
+    utorrent_old,
     rtorrent,
     rutorrent,
     synology_download_station,

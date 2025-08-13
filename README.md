@@ -62,6 +62,10 @@ A:
 A: Some websites use intermediate links or redirects. The extension tries to follow these, but it may not always succeed. If a link fails, try right-clicking and using the "Add Torrent to Remote WebUI" context menu option. If the problem persists, please open an issue on GitHub with the details.
 
 ## Changelog
+*   **v0.3.5 (2025-08-13):**
+    *   **Fixed:**
+        *   **ruTorrent:** Corrected an issue where the server URL was not being constructed properly, causing connection failures.
+        *   **uTorrent:** Added a new "uTorrent (Old)" client type to support older versions of the uTorrent WebUI (e.g., v2.0.4) that do not support modern API features like setting labels or download directories.
 *   **v0.3.4 (2025-08-13):**
     *   **Added:**
         *   **WebUI Link:** The "Active Server Details" section in the popup is now a clickable link that opens the server's WebUI.
