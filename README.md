@@ -95,6 +95,14 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.5c (2025-08-14):**
+    *   **Feature:** Added a "Report Issue" button in the popup to streamline bug reporting.
+    *   **Docs:** Added a "Reporting Issues" section to the README with instructions for debugging.
+*   **v0.3.5b (2025-08-14):**
+    *   **Fixed:**
+        *   **ruTorrent:** Corrected URL construction logic to prevent 404 errors.
+        *   **uTorrent (Old):** Modified the API handler to support very old, token-less clients.
+    *   **Docs:** Updated troubleshooting guide for ruTorrent and old uTorrent versions.
 *   **v0.3.5 (2025-08-13):**
     *   **Fixed:**
         *   **ruTorrent:** Corrected an issue where the server URL was not being constructed properly, causing connection failures.
