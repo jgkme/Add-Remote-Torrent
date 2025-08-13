@@ -401,6 +401,10 @@
             <div class="form-group">
                 <label for="linkMatchesInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom URL patterns for on-page link catching (tilde `~` separated regex):</label>
                 <input type="text" id="linkMatchesInput" name="linkMatchesInput" placeholder="e.g., example.com/torrent=~anotherpattern" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Use this to catch links that don't end in ".torrent" or start with "magnet:". Separate multiple patterns with a tilde (~).
+                    Example: `filehost\.com/download\?id=\d+~another-site\.org/get/`
+                </p>
             </div>
             <div class="form-group">
                 <label for="registerDelayInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Delay (ms) before registering on-page links (0 for no delay):</label>

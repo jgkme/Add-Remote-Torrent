@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let servers = [];
     let activeServerId = null;
+    let lastConnectionTestFailed = false;
     let globalSettings = {
         advancedAddDialog: 'never',
         enableUrlBasedServerSelection: false,
@@ -190,17 +191,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         formStatusMessageDiv.className = 'mt-4 text-sm p-3 rounded-md border'; 
         if (type === 'success') {
             formStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
-        } else if (type === 'error') {
-            formStatusMessageDiv.classList.add('bg-red-100', 'dark:bg-red-800', 'border-red-500', 'dark:border-red-600', 'text-red-700', 'dark:text-red-200');
-        } else { 
-            formStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
-        }
-        if (message && (type === 'success' || type === 'error')) {
+            // Success messages disappear after 3 seconds
             setTimeout(() => {
                 formStatusMessageDiv.textContent = '';
                 formStatusMessageDiv.className = 'mt-4 text-sm'; 
-            }, 5000);
-        } else if (!message) {
+            }, 3000);
+        } else if (type === 'error') {
+            formStatusMessageDiv.classList.add('bg-red-100', 'dark:bg-red-800', 'border-red-500', 'dark:border-red-600', 'text-red-700', 'dark:text-red-200');
+            // Error messages persist until the next action
+        } else { 
+            formStatusMessageDiv.classList.add('bg-blue-100', 'dark:bg-blue-800', 'border-blue-500', 'dark:border-blue-600', 'text-blue-700', 'dark:text-blue-200');
+        }
+        
+        if (!message) {
              formStatusMessageDiv.className = 'mt-4 text-sm'; 
         }
     }
@@ -379,6 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function showServerForm(isEditing = false, server = null) {
+        lastConnectionTestFailed = false; // Reset on showing form
         serverListSection.style.display = 'none';
         serverFormSection.style.display = 'block';
         serverFormTitle.textContent = isEditing ? 'Edit Server Profile' : 'Add New Server Profile';
@@ -582,6 +586,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideServerForm();
     });
     saveServerButton.addEventListener('click', () => {
+        if (lastConnectionTestFailed) {
+            if (!confirm('The last connection test for this server failed. Are you sure you want to save these settings anyway?')) {
+                return; // Abort save if user cancels
+            }
+        }
+
         const id = serverIdInput.value;
         const name = serverNameInput.value.trim();
         const clientType = clientTypeSelect.value;
@@ -772,10 +782,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.permissions.contains({ origins: [`${new URL(serverConfig.url).origin}/`] }, (granted) => {
             if (granted) {
                 chrome.runtime.sendMessage({ action: 'testConnection', config: serverConfig }, (response) => {
+                    lastConnectionTestFailed = !response?.success; // Track test result
                     if (chrome.runtime.lastError) displayFormStatus(`Error: ${chrome.runtime.lastError.message}`, 'error');
                     else if (response) {
-                        if (response.success) displayFormStatus('Connection successful!', 'success');
-                        else {
+                        if (response.success) {
+                            displayFormStatus('Connection successful!', 'success');
+                        } else {
                             let errorMessage = "Connection failed.";
                             if (response.error && response.error.userMessage) errorMessage = `Connection failed: ${response.error.userMessage}`;
                             else if (response.message) errorMessage = `Connection failed: ${response.message}`;
