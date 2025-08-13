@@ -1,55 +1,12 @@
 import { debug } from '../debug';
+import { Buffer } from 'buffer';
 
 // uTorrent (Old) API Handler
-
-let csrfToken = null;
-let lastTokenFetch = 0;
-
-async function getCsrfToken(serverConfig) {
-    const now = Date.now();
-    if (csrfToken && now - lastTokenFetch < 300000) { // Cache token for 5 minutes
-        return csrfToken;
-    }
-
-    const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/token.html`;
-    try {
-        const response = await fetch(tokenUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`
-            },
-            credentials: 'include'
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText}`);
-        }
-
-        const responseText = await response.text();
-        const tokenMatch = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(responseText);
-        if (tokenMatch && tokenMatch[1]) {
-            csrfToken = tokenMatch[1];
-            lastTokenFetch = now;
-            return csrfToken;
-        } else {
-            throw new Error('CSRF token not found in uTorrent /gui/token.html response.');
-        }
-    } catch (error) {
-        debug.error('Error fetching uTorrent CSRF token:', error);
-        csrfToken = null;
-        throw new Error(`TokenFetchError: ${error.message}`);
-    }
-}
+// This handler is for very old versions of uTorrent (e.g., 2.0.4) that do not use a CSRF token.
 
 async function makeApiRequest(serverUrl, action, params = {}, serverConfig, method = 'GET', body = null) {
     try {
-        const token = await getCsrfToken(serverConfig);
-        if (!token) {
-            return { success: false, error: { userMessage: "Failed to obtain uTorrent CSRF token. Check credentials and server URL.", errorCode: "TOKEN_FETCH_FAILED" } };
-        }
-
         const queryParams = new URLSearchParams(params);
-        queryParams.append('token', token);
         queryParams.append('action', action);
 
         const url = `${serverUrl.replace(/\/$/, '')}/gui/?${queryParams.toString()}`;
@@ -68,17 +25,13 @@ async function makeApiRequest(serverUrl, action, params = {}, serverConfig, meth
         const response = await fetch(url, fetchOptions);
 
         if (!response.ok) {
-            if ((response.status === 401 || response.status === 403) && !params.retriedWithNewToken) {
-                debug.log("uTorrent request failed, possibly stale token. Refetching token and retrying.");
-                csrfToken = null;
-                params.retriedWithNewToken = true;
-                return makeApiRequest(serverUrl, action, params, serverConfig, method, body);
-            }
             const errorText = await response.text();
             return { success: false, error: { userMessage: "uTorrent API request failed.", technicalDetail: `API Error: ${response.status} ${errorText}`, errorCode: (response.status === 401 || response.status === 403) ? "AUTH_ERROR" : "API_REQUEST_FAILED" } };
         }
 
-        if (action === 'getsettings' || action === 'gettorrents') {
+        // For old uTorrent, a successful add-url might return a non-JSON response.
+        // A successful getsettings should return JSON.
+        if (action === 'getsettings') {
             const json = await response.json();
             return { success: true, data: json };
         }
@@ -86,10 +39,7 @@ async function makeApiRequest(serverUrl, action, params = {}, serverConfig, meth
         return { success: true };
 
     } catch (error) {
-        debug.error('Error in uTorrent API request:', error);
-        if (error.message && error.message.startsWith('TokenFetchError:')) {
-            return { success: false, error: { userMessage: "Failed to obtain uTorrent CSRF token. Check credentials and server URL.", technicalDetail: error.message.substring(17), errorCode: "TOKEN_FETCH_FAILED" } };
-        }
+        debug.error('Error in uTorrent (Old) API request:', error);
         return { success: false, error: { userMessage: "A network error occurred or the uTorrent server could not be reached.", technicalDetail: error.message, errorCode: "NETWORK_ERROR" } };
     }
 }

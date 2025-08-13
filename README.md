@@ -48,6 +48,18 @@ Please give it a try and create some feedbacks or issues here.
     *   Manifest V3 compliant, adhering to the latest security standards.
     *   No data collection. All your settings are stored locally. See our [Privacy Policy](PRIVACY_POLICY.md).
 
+### Adding Torrents with a Single Click (On-Page Catching)
+
+The extension can automatically detect torrent links on any webpage and allow you to add them with a single left-click, without needing to use the right-click context menu.
+
+**How to Enable:**
+
+1.  Open the extension's **Options** page.
+2.  Go to the **"Other Global Settings"** section.
+3.  Check the box next to **"Enable on-page link/form catching"**.
+
+Once enabled, the extension will monitor pages for torrent links (like `magnet:` or links ending in `.torrent`). When you click one of these links, it will be automatically sent to your configured torrent client.
+
 ## Troubleshooting & FAQ
 
 **Q: Why does Chrome show a warning about "Enhanced Protection" when I install the extension?**
@@ -56,10 +68,13 @@ A: Chrome's Enhanced Safe Browsing shows this warning for new extensions or exte
 **Q: I'm having trouble connecting to my client, especially with qBittorrent v4.3.0+ or ruTorrent.**
 A:
 *   **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature.
-*   **ruTorrent:** Ensure the "ruTorrent Relative Path" in the server settings is correct. It should point to the directory where ruTorrent is installed on your server (e.g., `/rutorrent`). Also, ensure your connection uses SSL (https) if your server requires it.
+*   **ruTorrent:** Ensure the "Server URL" field contains the full URL to your ruTorrent installation (e.g., `http://your-server.com/rutorrent` or `https://your-seedbox.com/rutorrent`). The "ruTorrent Relative Path" field in the server settings is deprecated and should be left blank.
 
 **Q: A torrent link didn't get added correctly.**
 A: Some websites use intermediate links or redirects. The extension tries to follow these, but it may not always succeed. If a link fails, try right-clicking and using the "Add Torrent to Remote WebUI" context menu option. If the problem persists, please open an issue on GitHub with the details.
+
+**Q: I'm using an old version of uTorrent (like v2.0.4) and getting a "Failed to obtain uTorrent CSRF token" error.**
+A: Very old versions of the uTorrent WebUI have a different API. When you configure your server in the extension's options, make sure you select **"uTorrent (Old)"** as the "Client Type". This uses a legacy API handler that is compatible with older clients. If you have selected the standard "uTorrent" client type, it will fail with a token error.
 
 ## Changelog
 *   **v0.3.5 (2025-08-13):**
