@@ -47,6 +47,8 @@ Please give it a try and create some feedbacks or issues here.
     *   User-friendly interface built with Tailwind CSS, including dark mode.
     *   Manifest V3 compliant, adhering to the latest security standards.
     *   No data collection. All your settings are stored locally. See our [Privacy Policy](PRIVACY_POLICY.md).
+*   **Customization:**
+    *   Optional sound notifications for success/failure. (We've received feedback about providing shorter or custom sounds, which may be considered for a future release!)
 
 ### Adding Torrents with a Single Click (On-Page Catching)
 
@@ -78,6 +80,17 @@ A: Very old versions of the uTorrent WebUI have a different API. When you config
 
 **Q: On macOS, clicking torrent links doesn't do anything.**
 A: Please ensure that the "Enable on-page link/form catching" option is enabled in the extension's settings. You can find this under "Other Global Settings" on the options page. If it is enabled and still not working, please open an issue on GitHub and provide as much detail as possible, including your macOS and Chrome versions.
+
+**Q: I'm having trouble connecting to rTorrent on seedbox.io.**
+A: For older `seedbox.io` accounts, you may need a specific URL format. When configuring the `rTorrent (XML-RPC)` client, try the following:
+*   **rTorrent Web UI URL:** `https://<full_username>.seedbox.io/`
+*   **SCGI/HTTPRPC URL (for rTorrent):** `https://<full_username>.seedbox.io/RPC/<username_numbers_only>/`
+
+**Q: As a developer, I see a lot of console messages from this extension. Can it be disabled?**
+A: Yes. The extension uses a `MutationObserver` to detect dynamically added links, which can be verbose. You can disable this logging without losing functionality.
+*   Go to the extension's **Options** page.
+*   At the bottom, find the **"Debug & Log Settings"** section.
+*   Uncheck the boxes for "content-script" to disable the on-page console messages.
 
 ## Reporting Issues
 
