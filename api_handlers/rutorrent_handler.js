@@ -3,9 +3,16 @@ import { debug } from '../debug';
 // ruTorrent API Handler
 
 function getruTorrentUrl(serverConfig) {
-    // The serverConfig.url should be the full URL to the ruTorrent installation.
-    // The relative path field is confusing and has been removed from the logic.
-    return serverConfig.url.replace(/\/$/, '');
+    let url = serverConfig.url.replace(/\/$/, '');
+    // Only append relative path if the main URL doesn't already end with it,
+    // to support users entering the full path in the URL field.
+    if (serverConfig.ruTorrentrelativepath) {
+        const relative = serverConfig.ruTorrentrelativepath.replace(/^\/|\/$/g, '');
+        if (relative && !url.endsWith(`/${relative}`)) {
+            url += `/${relative}`;
+        }
+    }
+    return url;
 }
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {

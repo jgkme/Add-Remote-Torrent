@@ -70,7 +70,7 @@ A: Chrome's Enhanced Safe Browsing shows this warning for new extensions or exte
 **Q: I'm having trouble connecting to my client, especially with qBittorrent v4.3.0+ or ruTorrent.**
 A:
 *   **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature.
-*   **ruTorrent:** Ensure the "Server URL" field contains the full URL to your ruTorrent installation (e.g., `http://your-server.com/rutorrent` or `https://your-seedbox.com/rutorrent`). The "ruTorrent Relative Path" field in the server settings is deprecated and should be left blank.
+*   **ruTorrent:** For the best results, enter the full URL to your ruTorrent installation in the **"Server URL"** field (e.g., `https://your-server.com/rutorrent`) and leave the **"ruTorrent Relative Path"** field blank. Alternatively, you can enter the base URL (e.g., `https://your-server.com`) and the path (e.g., `/rutorrent`) in their respective fields.
 
 **Q: A torrent link didn't get added correctly.**
 A: Some websites use intermediate links or redirects. The extension tries to follow these, but it may not always succeed. If a link fails, try right-clicking and using the "Add Torrent to Remote WebUI" context menu option. If the problem persists, please open an issue on GitHub with the details.
