@@ -127,6 +127,7 @@
 
 ## 7. Deployment Process
 -   **Versioning:** The version number must be updated in `manifest.json` and `package.json`.
+    -   **Important:** The `manifest.json` version must be a series of 1-4 dot-separated integers (e.g., `0.3.6`, not `0.3.5c`). Non-integer suffixes are not allowed by the Chrome Web Store.
 -   **Changelog:** The `README.md` file should be updated with a detailed list of changes for the new version.
 -   **Git:**
     -   Changes must be committed to the local repository.
