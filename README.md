@@ -62,6 +62,16 @@ The extension can automatically detect torrent links on any webpage and allow yo
 
 Once enabled, the extension will monitor pages for torrent links (like `magnet:` or links ending in `.torrent`). When you click one of these links, it will be automatically sent to your configured torrent client.
 
+#### **Catching links that don't end in `.torrent`**
+Some websites provide download links for `.torrent` files that don't have the `.torrent` file extension in the URL (e.g., `https://example.com/download.php?id=123`). By default, the extension won't catch these.
+
+To catch these links, you need to add a custom URL pattern:
+1.  Go to the extension's **Options** page -> **Other Global Settings**.
+2.  Find the **"Custom URL patterns for on-page link catching"** text box.
+3.  Enter a unique part of the URL for that website's torrent links. You can separate multiple patterns with a tilde (`~`).
+
+**Example:** If a site's download links look like `https://www.example-tracker.com/torrent.php/12345/my-file.torrent`, a good pattern to add would be `example-tracker.com/torrent.php/`.
+
 ## Troubleshooting & FAQ
 
 **Q: Why does Chrome show a warning about "Enhanced Protection" when I install the extension?**

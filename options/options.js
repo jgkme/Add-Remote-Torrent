@@ -269,6 +269,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function toggleClientSpecificFields(clientType) {
+        const clientHintDiv = document.getElementById('clientSpecificHint');
+        clientHintDiv.innerHTML = ''; // Clear previous hint
+
         // Ensure elements exist before trying to set style or textContent
         const rpcPathGrp = document.getElementById('rpcPathGroup');
         const scgiPathGrp = document.getElementById('scgiPathGroup');
@@ -311,6 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         switch (clientType) {
             case 'qbittorrent':
                 if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
+                clientHintDiv.innerHTML = 'For versions 4.3.0+, you may need to disable "CSRF Protection" in the WebUI options.';
                 break;
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
@@ -325,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             case 'rtorrent':
                 if(scgiPathGrp) scgiPathGrp.style.display = 'block';
+                clientHintDiv.innerHTML = 'For seedbox.io, the SCGI/HTTPRPC URL may look like: https://<user>.seedbox.io/RPC/<numbers>/'
                 if(rtorrentPriorityGroup) rtorrentPriorityGroup.style.display = 'block';
                 if(rtorrentThrottleGroup) rtorrentThrottleGroup.style.display = 'block';
                 if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'block';
@@ -336,6 +341,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(ruTorrentOptions) ruTorrentOptions.style.display = 'block';
                 if (urlLabel) urlLabel.textContent = 'ruTorrent URL:';
                 serverUrlInput.placeholder = 'http://localhost/rutorrent';
+                clientHintDiv.innerHTML = 'Enter the full URL to ruTorrent (e.g., https://server.com/rutorrent) in the URL field and leave the relative path blank.';
+                break;
+            case 'utorrent_old':
+                clientHintDiv.innerHTML = 'Use this for very old versions of uTorrent (e.g., v2.0.4) that do not use a CSRF token.';
                 break;
             case 'torrentflux':
                 if(torrentfluxRelativePathGroup) torrentfluxRelativePathGroup.style.display = 'block';
