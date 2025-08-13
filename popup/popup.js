@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const manualUrlInput = document.getElementById('manualUrlInput');
     const manualAddButton = document.getElementById('manualAddButton');
     const openOptionsButton = document.getElementById('openOptionsButton');
+    const reportIssueButton = document.getElementById('reportIssueButton');
 
     // Active server details display elements
     const activeServerDetailsDiv = document.getElementById('activeServerDetails');
@@ -149,6 +150,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial load
     loadPopupData();
+
+    reportIssueButton.addEventListener('click', () => {
+        chrome.storage.local.get(['lastActionStatus', 'servers', 'activeServerId'], (result) => {
+            const lastError = result.lastActionStatus;
+            if (!lastError || !lastError.toLowerCase().startsWith('error:')) {
+                alert("No recent error to report. Please reproduce the error first, then click 'Report Issue'.");
+                return;
+            }
+
+            const server = result.servers.find(s => s.id === result.activeServerId);
+            const clientType = server ? server.clientType : 'N/A';
+            const extensionVersion = chrome.runtime.getManifest().version;
+
+            // Sanitize the error to remove potentially sensitive URLs
+            const sanitizedError = lastError.replace(/https?:\/\/[^\s/$.?#].[^\s]*/gi, '[URL REDACTED]');
+
+            const issueTitle = `Bug Report: Error with ${clientType} client`;
+            const issueBody = `
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. See error
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Error Message (from extension)**
+\`\`\`
+${sanitizedError}
+\`\`\`
+
+**Environment:**
+- Extension Version: ${extensionVersion}
+- Torrent Client: ${clientType}
+- Client Version: [Please fill in]
+
+**Additional context**
+Add any other context about the problem here. Please double-check that you have removed any sensitive information like passwords or IP addresses from this report.
+`;
+
+            const githubUrl = `https://github.com/jgkme/Add-Remote-Torrent/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
+            chrome.tabs.create({ url: githubUrl });
+        });
+    });
 
     activeServerDetailsDiv.addEventListener('click', () => {
         const server = servers.find(s => s.id === currentActiveServerId);

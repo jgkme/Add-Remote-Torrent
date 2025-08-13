@@ -76,6 +76,24 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 **Q: I'm using an old version of uTorrent (like v2.0.4) and getting a "Failed to obtain uTorrent CSRF token" error.**
 A: Very old versions of the uTorrent WebUI have a different API. When you configure your server in the extension's options, make sure you select **"uTorrent (Old)"** as the "Client Type". This uses a legacy API handler that is compatible with older clients. If you have selected the standard "uTorrent" client type, it will fail with a token error.
 
+## Reporting Issues
+
+If you encounter a bug, please [open an issue on our GitHub page](https://github.com/jgkme/Add-Remote-Torrent/issues). To help us resolve the issue quickly, please include the following information:
+
+1.  **The version of the extension** you are using.
+2.  **The name and version of your torrent client** (e.g., qBittorrent v4.4.2).
+3.  **A clear description of the problem.** What did you do? What did you expect to happen? What actually happened?
+4.  **The exact error message** you received. You can find this in the extension's popup under "Last Action".
+5.  **Enable debugging** to get more detailed error logs:
+    *   Go to the extension's **Options** page.
+    *   At the bottom, find the **"Debug & Log Settings"** section.
+    *   Enable all checkboxes for both "content-script" and "background-script".
+    *   Reproduce the error.
+    *   Open the browser's developer console (Right-click anywhere on the options page -> Inspect -> Console tab).
+    *   Copy and paste any relevant error messages from the console into your GitHub issue. **Please review the logs and remove any sensitive information like passwords or IP addresses before posting.**
+
+We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
+
 ## Changelog
 *   **v0.3.5 (2025-08-13):**
     *   **Fixed:**

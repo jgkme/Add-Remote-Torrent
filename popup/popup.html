@@ -39,7 +39,10 @@
 
     <section class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
       <p><strong>Last Action:</strong> <span id="lastActionStatus" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
-      <button id="clearLastActionStatusButton" class="mt-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md" title="Clear last action status">Clear Status</button>
+      <div class="flex space-x-2 mt-2">
+        <button id="clearLastActionStatusButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md" title="Clear last action status">Clear Status</button>
+        <button id="reportIssueButton" class="px-2 py-1 text-xs bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-200 rounded-md" title="Report an issue on GitHub">Report Issue</button>
+      </div>
     </section>
     
     <section id="manualAddSection" class="mb-4">
