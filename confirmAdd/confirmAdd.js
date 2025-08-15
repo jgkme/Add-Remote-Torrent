@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const torrentUrlDisplay = document.getElementById('torrentUrlDisplay');
     const tagsInput = document.getElementById('tagsInput');
     const categoryInput = document.getElementById('categoryInput');
+    const directoryInput = document.getElementById('directoryInput');
     const pausedInput = document.getElementById('pausedInput');
     const confirmButton = document.getElementById('confirmButton');
     const cancelButton = document.getElementById('cancelButton');
@@ -81,17 +82,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     categoryInput.appendChild(option);
                 });
                 
-                // Set default selection if defaultCategory is defined and exists in the dropdown
-                const defaultCat = activeServer.defaultCategory || activeServer.category;
-                if (defaultCat && categoryOptions.includes(defaultCat.trim())) {
-                    categoryInput.value = defaultCat.trim();
-                }
-            } else {
-                // If no categories defined, just keep the placeholder
-                categoryInput.innerHTML = '<option value="">Select a category...</option>';
+            // Set default selection if defaultCategory is defined and exists in the dropdown
+            const defaultCat = activeServer.defaultCategory || activeServer.category;
+            if (defaultCat && categoryOptions.includes(defaultCat.trim())) {
+                categoryInput.value = defaultCat.trim();
             }
-            
-            pausedInput.checked = activeServer.addPaused || false;
+        } else {
+            // If no categories defined, just keep the placeholder
+            categoryInput.innerHTML = '<option value="">Select a category...</option>';
+        }
+
+        // Handle directory dropdown
+        if (activeServer.downloadDirectories) {
+            const directoryOptions = activeServer.downloadDirectories.split(',').map(dir => dir.trim()).filter(dir => dir.length > 0);
+            directoryInput.innerHTML = '<option value="">Default Directory</option>';
+            directoryOptions.forEach(dir => {
+                const option = document.createElement('option');
+                option.value = dir;
+                option.textContent = dir;
+                directoryInput.appendChild(option);
+            });
+        } else {
+            directoryInput.innerHTML = '<option value="">Default Directory</option>';
+        }
+        
+        pausedInput.checked = activeServer.addPaused || false;
         } else {
             document.body.innerHTML = `<p>Error: Could not find server with ID ${activeServerId}. Please close this window.</p>`;
         }
@@ -242,6 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             server: activeServer, 
             tags: tagsInput.value.trim(),
             category: categoryInput.value, // No need to trim since it's a selected value from dropdown
+            downloadDir: directoryInput.value,
             addPaused: pausedInput.checked,
             selectedFileIndices: (!isMagnetLink && selectFilesToggle.checked) ? selectedFileIndices : undefined,
             totalFileCount: (!isMagnetLink && selectFilesToggle.checked && totalFileCount > 0) ? totalFileCount : undefined,

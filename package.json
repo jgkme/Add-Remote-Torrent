@@ -1,6 +1,6 @@
 {
   "name": "add-remote-torrent",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Chrome extension to add remote torrents.",
   "main": "background.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "tailwindcss"
   ],
   "author": "jgkme https://github.com/jgkme/Add-Remote-Torrent/",
-  "license": "UNLICENSED",
+  "license": "GPL-3.0 license",
   "devDependencies": {
     "@babel/core": "^7.28.0",
     "@babel/preset-env": "^7.28.0",

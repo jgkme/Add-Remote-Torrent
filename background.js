@@ -147,8 +147,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     addTorrentToClient(request.url);
     return false; 
   } else if (request.action === 'addTorrentWithCustomParams' && request.params) {
-    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount } = request.params; 
-    addTorrentToClient(url, server, tags, category, addPaused, null, null, selectedFileIndices, totalFileCount); 
+    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir } = request.params;
+    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount);
     return false; 
   } else if (request.action === 'addTorrent' && request.url) {
     const { url, pageUrl } = request;

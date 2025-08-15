@@ -87,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const defaultTagsInput = document.getElementById('defaultTags');
     const defaultCategoryInput = document.getElementById('defaultCategory');
     const categoriesInput = document.getElementById('categories');
+    const downloadDirectoriesInput = document.getElementById('downloadDirectories');
     const addPausedInput = document.getElementById('addPaused');
     const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); 
     const saveServerButton = document.getElementById('saveServerButton');
@@ -438,6 +439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             defaultTagsInput.value = server.tags || '';
             defaultCategoryInput.value = server.category || '';
             categoriesInput.value = server.categories || '';
+            downloadDirectoriesInput.value = server.downloadDirectories || '';
             addPausedInput.checked = server.addPaused || false;
             askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false; 
         } else {
@@ -482,6 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             defaultTagsInput.value = '';
             defaultCategoryInput.value = '';
             categoriesInput.value = '';
+            downloadDirectoriesInput.value = '';
             addPausedInput.checked = false;
             askForLabelDirOnPageInput.checked = false; 
         }
@@ -509,6 +512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         defaultTagsInput.value = '';
         defaultCategoryInput.value = '';
         categoriesInput.value = '';
+        downloadDirectoriesInput.value = '';
         addPausedInput.checked = false;
         askForLabelDirOnPageInput.checked = false; 
         formStatusMessageDiv.textContent = '';
@@ -640,7 +644,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
         const tags = defaultTagsInput.value.trim();
         const category = defaultCategoryInput.value.trim();
-        const categories = document.getElementById('categories').value.trim(); // Add this line
+        const categories = document.getElementById('categories').value.trim();
+        const downloadDirectories = downloadDirectoriesInput.value.trim();
         const addPaused = addPausedInput.checked;
         const askForLabelDirOnPage = askForLabelDirOnPageInput.checked; 
         
@@ -662,6 +667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tags, 
             category, 
             categories,
+            downloadDirectories,
             addPaused, 
             askForLabelDirOnPage,
             ruTorrentrelativepath,

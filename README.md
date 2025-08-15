@@ -121,6 +121,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.8 (2025-08-16):**
+    *   **Feature:** Added the ability to specify a list of download directories per server and select one from a dropdown in the "Add Torrent" dialog.
 *   **v0.3.7 (2025-08-15):**
     *   **Fixed:**
         *   **ruTorrent:** Improved torrent file handling by always attempting to download the `.torrent` file content, even with incorrect `Content-Type` headers. This resolves upload issues with clients like ruTorrent that cannot access torrent URLs directly.
