@@ -168,7 +168,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
           debug.log("[RTWA Background] Creating error notification (no target server):", msg);
           chrome.notifications.create({
-            type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+            type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
             message: msg
           });
           chrome.storage.local.set({ lastActionStatus: msg });
@@ -178,7 +178,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         debug.error("Error in addTorrent action:", error);
         const errorMsg = `Error processing torrent link: ${error.message}`;
         chrome.notifications.create({
-          type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+          type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
           message: errorMsg
         });
         chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -254,7 +254,7 @@ async function createContextMenus() {
             debug.error("Error creating 'Add Torrent to Remote WebUI' submenu:", chrome.runtime.lastError.message);
             debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
             chrome.notifications.create({
-                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Torrent Adder - Menu Error',
+                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
                 message: 'Failed to create context menu. Please report this.'
             }, (notificationId) => {
               if (chrome.runtime.lastError) {
@@ -297,7 +297,7 @@ async function createContextMenus() {
             debug.error("Error creating 'Add Torrent to Remote WebUI' context menu:", chrome.runtime.lastError.message);
             debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
             chrome.notifications.create({
-                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Torrent Adder - Menu Error',
+                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
                 message: 'Failed to create context menu. Please report this.'
             }, (notificationId) => {
               if (chrome.runtime.lastError) {
@@ -541,7 +541,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
       const errorMsg = `Error determining target server: ${error.message}`;
       debug.log("[RTWA Background] Creating error notification (determineTargetServer):", errorMsg);
       chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
         message: errorMsg
       }, (notificationId) => {
         if (chrome.runtime.lastError) {
@@ -559,7 +559,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
     debug.log("[RTWA Background] Creating error notification (no target server):", msg);
     chrome.notifications.create({
-      type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+      type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
       message: msg
     }, (notificationId) => {
       if (chrome.runtime.lastError) {
@@ -614,8 +614,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
           torrentOptions.torrentFileContentBase64 = null; 
         }
       } else {
-        debug.log(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Aborting add.`);
-        return;
+        debug.warn(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Assuming it is a torrent and attempting to use content anyway.`);
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer && arrayBuffer.byteLength > 0) {
+          torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
+          debug.log(`[RTWA Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`);
+        } else {
+          debug.warn(`[RTWA Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`);
+          torrentOptions.torrentFileContentBase64 = null;
+        }
       }
 
     } catch (fetchError) {
@@ -717,7 +724,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
       }
       debug.log("[RTWA Background] Creating success notification:", successMsg);
       chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder', 
+        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent', 
         message: successMsg
       }, (notificationId) => {
         if (chrome.runtime.lastError) {
@@ -744,7 +751,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     const notificationErrorMessage = error.message.substring(0, 150);
     debug.log("[RTWA Background] Creating error notification (addTorrentToClient catch):", notificationErrorMessage);
     chrome.notifications.create({
-      type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error',
+      type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
       message: notificationErrorMessage
     }, (notificationId) => {
       if (chrome.runtime.lastError) {
@@ -795,7 +802,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         chrome.notifications.create({ 
           type: 'basic', 
           iconUrl: 'icons/icon-48x48.png', 
-          title: 'Remote Torrent Adder Error', 
+          title: 'Add Remote Torrent Error', 
           message: errorMsg 
         });
         chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -808,7 +815,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         chrome.notifications.create({ 
           type: 'basic', 
           iconUrl: 'icons/icon-48x48.png', 
-          title: 'Remote Torrent Adder Error', 
+          title: 'Add Remote Torrent Error', 
           message: errorMsg 
         });
         chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -829,7 +836,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         debug.error("[RTWA Background] Error in determineTargetServer:", e);
         const errorMsg = `Error determining server: ${e.message}`;
         debug.log("[RTWA Background] Creating error notification (determineTargetServer in onClicked):", errorMsg);
-        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error', message: errorMsg }, (notificationId) => {
+        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: errorMsg }, (notificationId) => {
           if(chrome.runtime.lastError) {
             debug.error("[RTWA Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
           } else {
@@ -843,7 +850,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       if (!selectedServer || !selectedServer.clientType) { 
         const msg = 'No target server determined or server config is incomplete (missing clientType). Configure servers in options.';
         debug.log("[RTWA Background] Creating error notification (no serverForDialog in onClicked):", msg);
-        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Remote Torrent Adder Error', message: msg }, (notificationId) => {
+        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: msg }, (notificationId) => {
           if(chrome.runtime.lastError) {
             debug.error("[RTWA Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
           } else {

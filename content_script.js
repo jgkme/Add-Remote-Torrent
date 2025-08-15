@@ -1,5 +1,4 @@
-// Content script for Remote Torrent WebUI Adder
-import { LinkMonitor } from './LinkMonitor';
+// Content script for Add Remote Torrent WebUI 
 import { debug } from './debug';
 import { debounce } from './utils';
 
