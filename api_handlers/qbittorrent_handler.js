@@ -242,12 +242,19 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');
+    const addResponseText = await addResponse.text();
+
+    // Handle duplicate torrents specifically. qBittorrent might return a 409 Conflict or just a specific text response.
+    if (addResponseText.includes('already in the download list')) {
+        debug.log('qBittorrent: Torrent is already in the download list.');
+        return { success: true, duplicate: true, data: { message: 'Torrent is already in the download list.' } };
+    }
 
     if (!addResponse.ok) {
-      const errorText = await addResponse.text();
-      return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: `Add torrent API returned: ${addResponse.status} ${addResponse.statusText}. Response: ${errorText}`, errorCode: "ADD_FAILED" }};
+      // The response text has already been consumed, so we use it here.
+      return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: `Add torrent API returned: ${addResponse.status} ${addResponse.statusText}. Response: ${addResponseText}`, errorCode: "ADD_FAILED" }};
     }
-    const addResponseText = await addResponse.text();
+    
     if (addResponseText.trim().toLowerCase() !== 'ok.' && addResponseText.trim() !== '') {
       return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" }};
     }
