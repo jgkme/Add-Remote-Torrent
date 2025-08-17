@@ -121,6 +121,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.9 (2025-08-18):**
+    *   **Fixed:** Resolved an issue where torrent links on a page were not being detected or intercepted due to a `ReferenceError` in the content script. On-page link catching should now work correctly again.
 *   **v0.3.8 (2025-08-16):**
     *   **Feature:** Added the ability to specify a list of download directories per server and select one from a dropdown in the "Add Torrent" dialog.
 *   **v0.3.7 (2025-08-15):**
