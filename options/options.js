@@ -1107,25 +1107,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTrackerUrlRulesList() {
         trackerUrlRulesListUl.innerHTML = '';
         if (trackerUrlRules.length === 0) {
-            trackerUrlRulesListUl.innerHTML = '<li>No tracker URL rules configured.</li>';
+            const li = document.createElement('li');
+            li.textContent = 'No tracker URL rules configured.';
+            trackerUrlRulesListUl.appendChild(li);
             return;
         }
+
         trackerUrlRules.forEach((rule, index) => {
             const li = document.createElement('li');
             li.className = 'p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center';
-            
-            let ruleText = `<span>${index + 1}. Tracker Pattern: <strong class="text-indigo-600 dark:text-indigo-400">${rule.trackerUrlPattern}</strong>`;
-            if (rule.label) ruleText += ` &rarr; Label: <strong class="text-purple-600 dark:text-purple-400">${rule.label}</strong>`;
-            if (rule.directory) ruleText += ` &rarr; Dir: <strong class="text-teal-600 dark:text-teal-400">${rule.directory}</strong>`;
-            ruleText += `</span>`;
 
-            li.innerHTML = `
-                <div>${ruleText}</div>
-                <div class="actions flex space-x-2">
-                    <button class="edit-tracker-rule-button px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md" data-id="${rule.id}">Edit</button>
-                    <button class="delete-tracker-rule-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md" data-id="${rule.id}">Delete</button>
-                </div>
-            `;
+            // Rule Info Div
+            const infoDiv = document.createElement('div');
+            
+            const ruleSpan = document.createElement('span');
+            ruleSpan.textContent = `${index + 1}. Tracker Pattern: `;
+            
+            const patternStrong = document.createElement('strong');
+            patternStrong.className = 'text-indigo-600 dark:text-indigo-400';
+            patternStrong.textContent = rule.trackerUrlPattern;
+            ruleSpan.appendChild(patternStrong);
+
+            if (rule.label) {
+                ruleSpan.append(` → Label: `);
+                const labelStrong = document.createElement('strong');
+                labelStrong.className = 'text-purple-600 dark:text-purple-400';
+                labelStrong.textContent = rule.label;
+                ruleSpan.appendChild(labelStrong);
+            }
+
+            if (rule.directory) {
+                ruleSpan.append(` → Dir: `);
+                const dirStrong = document.createElement('strong');
+                dirStrong.className = 'text-teal-600 dark:text-teal-400';
+                dirStrong.textContent = rule.directory;
+                ruleSpan.appendChild(dirStrong);
+            }
+
+            infoDiv.appendChild(ruleSpan);
+
+            // Actions Div
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'actions flex space-x-2';
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-tracker-rule-button px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md';
+            editButton.dataset.id = rule.id;
+            editButton.textContent = 'Edit';
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-tracker-rule-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md';
+            deleteButton.dataset.id = rule.id;
+            deleteButton.textContent = 'Delete';
+
+            actionsDiv.appendChild(editButton);
+actionsDiv.appendChild(deleteButton);
+
+            li.appendChild(infoDiv);
+            li.appendChild(actionsDiv);
+
             trackerUrlRulesListUl.appendChild(li);
         });
 
