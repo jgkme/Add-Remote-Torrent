@@ -999,15 +999,73 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderUrlMappingsList() {
         urlMappingsListUl.innerHTML = '';
         if (!globalSettings.enableUrlBasedServerSelection || urlToServerMappings.length === 0) {
-            urlMappingsListUl.innerHTML = '<li>No URL mapping rules configured (or feature disabled).</li>';
+            const li = document.createElement('li');
+            li.textContent = 'No URL mapping rules configured (or feature disabled).';
+            urlMappingsListUl.appendChild(li);
             return;
         }
+
         urlToServerMappings.forEach((mapping, index) => {
             const li = document.createElement('li');
+            li.className = 'p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center';
+
             const serverName = servers.find(s => s.id === mapping.serverId)?.name || 'Unknown Server';
-            li.innerHTML = `<span>${index + 1}. Pattern: <span class="pattern">${mapping.websitePattern}</span> &rarr; <span class="target-server-name">${serverName}</span></span> <span class="actions"> <button class="edit-mapping-button" data-id="${mapping.id}">Edit</button> <button class="delete-mapping-button" data-id="${mapping.id}">Delete</button> ${index > 0 ? `<button class="move-mapping-up-button" data-id="${mapping.id}" title="Move Up">&uarr;</button>` : ''} ${index < urlToServerMappings.length - 1 ? `<button class="move-mapping-down-button" data-id="${mapping.id}" title="Move Down">&darr;</button>` : ''} </span>`;
+
+            // Info Span
+            const infoSpan = document.createElement('span');
+            infoSpan.textContent = `${index + 1}. Pattern: `;
+            
+            const patternSpan = document.createElement('span');
+            patternSpan.className = 'pattern font-semibold text-indigo-600 dark:text-indigo-400';
+            patternSpan.textContent = mapping.websitePattern;
+            infoSpan.appendChild(patternSpan);
+
+            infoSpan.append(' → ');
+
+            const serverNameSpan = document.createElement('span');
+            serverNameSpan.className = 'target-server-name font-semibold text-teal-600 dark:text-teal-400';
+            serverNameSpan.textContent = serverName;
+            infoSpan.appendChild(serverNameSpan);
+
+            // Actions Span
+            const actionsSpan = document.createElement('span');
+            actionsSpan.className = 'actions flex space-x-2';
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-mapping-button px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md';
+            editButton.dataset.id = mapping.id;
+            editButton.textContent = 'Edit';
+            actionsSpan.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-mapping-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md';
+            deleteButton.dataset.id = mapping.id;
+            deleteButton.textContent = 'Delete';
+            actionsSpan.appendChild(deleteButton);
+
+            if (index > 0) {
+                const upButton = document.createElement('button');
+                upButton.className = 'move-mapping-up-button px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded-md';
+                upButton.dataset.id = mapping.id;
+                upButton.title = 'Move Up';
+                upButton.innerHTML = '&uarr;';
+                actionsSpan.appendChild(upButton);
+            }
+
+            if (index < urlToServerMappings.length - 1) {
+                const downButton = document.createElement('button');
+                downButton.className = 'move-mapping-down-button px-2 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded-md';
+                downButton.dataset.id = mapping.id;
+                downButton.title = 'Move Down';
+                downButton.innerHTML = '&darr;';
+                actionsSpan.appendChild(downButton);
+            }
+
+            li.appendChild(infoSpan);
+            li.appendChild(actionsSpan);
             urlMappingsListUl.appendChild(li);
         });
+
         document.querySelectorAll('.edit-mapping-button').forEach(b => b.addEventListener('click', handleEditMapping));
         document.querySelectorAll('.delete-mapping-button').forEach(b => b.addEventListener('click', handleDeleteMapping));
         document.querySelectorAll('.move-mapping-up-button').forEach(b => b.addEventListener('click', handleMoveMappingUp));
