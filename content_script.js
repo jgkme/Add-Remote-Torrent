@@ -1,6 +1,7 @@
 // Content script for Add Remote Torrent WebUI 
 import { debug } from './debug';
 import { debounce } from './utils';
+import { LinkMonitor } from './LinkMonitor.js';
 
 let rtwa_modal_open_func, rtwa_modal_close_func;
 
