@@ -108,7 +108,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         pausedInput.checked = activeServer.addPaused || false;
         } else {
-            document.body.innerHTML = `<p>Error: Could not find server with ID ${activeServerId}. Please close this window.</p>`;
+            const errorPara = document.createElement('p');
+      errorPara.textContent = `Error: Could not find server with ID ${activeServerId}. Please close this window.`;
+      document.body.innerHTML = '';
+      document.body.appendChild(errorPara);
         }
     });
 
