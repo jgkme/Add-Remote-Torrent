@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const linkMatchesInput = document.getElementById('linkMatchesInput'); 
     const registerDelayInput = document.getElementById('registerDelayInput'); 
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
+    const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
 
     // URL Mapping elements
@@ -175,6 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         linkmatches: '', 
         registerDelay: 0,
         enableSoundNotifications: false,
+        enableTextNotifications: false,
         enableServerSpecificContextMenu: false,
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
@@ -841,6 +843,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.enableSoundNotifications = enableSoundNotificationsToggle.checked;
         chrome.storage.local.set({ enableSoundNotifications: globalSettings.enableSoundNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    enableTextNotificationsToggle.addEventListener('change', () => {
+        globalSettings.enableTextNotifications = enableTextNotificationsToggle.checked;
+        chrome.storage.local.set({ enableTextNotifications: globalSettings.enableTextNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
     enableServerSpecificContextMenuToggle.addEventListener('change', () => {
         globalSettings.enableServerSpecificContextMenu = enableServerSpecificContextMenuToggle.checked;
         chrome.storage.local.set({ enableServerSpecificContextMenu: globalSettings.enableServerSpecificContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -944,7 +950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
-            'registerDelay', 'enableSoundNotifications', 'enableServerSpecificContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableServerSpecificContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -964,6 +970,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             registerDelayInput.value = globalSettings.registerDelay;
             globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; 
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
+            globalSettings.enableTextNotifications = result.enableTextNotifications || false;
+            enableTextNotificationsToggle.checked = globalSettings.enableTextNotifications;
             globalSettings.enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false; 
             enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
             trackerUrlRules = result.trackerUrlRules || [];

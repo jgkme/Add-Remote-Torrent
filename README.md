@@ -121,6 +121,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.11 (2025-08-19):**
+    *   **Feature:** Added an accessibility option to enable/disable text-based (visual) notifications for success or failure, providing an alternative to sound-based feedback.
 *   **v0.3.10 (2025-08-18):**
     *   **Security:** Fixed multiple cross-site scripting (XSS) vulnerabilities in the options page where user-provided data was not properly sanitized before being rendered. This hardens the extension against malicious data injection in the URL mapping and tracker rules lists.
 *   **v0.3.9 (2025-08-18):**

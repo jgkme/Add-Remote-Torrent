@@ -710,6 +710,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   }
 
   try {
+    const { enableTextNotifications } = await chrome.storage.local.get('enableTextNotifications');
     const result = await apiClient.addTorrent(torrentOptions.originalTorrentUrl, serverToUse, torrentOptions);
     if (result.success) {
       let successMsg = `Successfully added to "${serverName}" (${clientType}): ${torrentUrl.substring(0, 50)}...`;
@@ -722,17 +723,19 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
       if (wasRuleApplied) {
         successMsg += ` (Tracker rule applied)`;
       }
-      debug.log("[RTWA Background] Creating success notification:", successMsg);
-      chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent', 
-        message: successMsg
-      }, (notificationId) => {
-        if (chrome.runtime.lastError) {
-          debug.error("[RTWA Background] Error creating success notification:", chrome.runtime.lastError.message);
-        } else {
-          debug.log("[RTWA Background] Notification created (success), ID:", notificationId);
-        }
-      });
+      if (enableTextNotifications) {
+        debug.log("[RTWA Background] Creating success notification:", successMsg);
+        chrome.notifications.create({
+          type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent', 
+          message: successMsg
+        }, (notificationId) => {
+          if (chrome.runtime.lastError) {
+            debug.error("[RTWA Background] Error creating success notification:", chrome.runtime.lastError.message);
+          } else {
+            debug.log("[RTWA Background] Notification created (success), ID:", notificationId);
+          }
+        });
+      }
       playSound('audio/success.mp3'); 
       chrome.storage.local.set({ lastActionStatus: successMsg });
     } else {
@@ -747,19 +750,22 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
       throw new Error(userFriendlyError); 
     }
   } catch (error) { 
+    const { enableTextNotifications } = await chrome.storage.local.get('enableTextNotifications');
     debug.error(`Error in addTorrentToClient for "${serverName}" (${clientType}):`, error.message);
     const notificationErrorMessage = error.message.substring(0, 150);
-    debug.log("[RTWA Background] Creating error notification (addTorrentToClient catch):", notificationErrorMessage);
-    chrome.notifications.create({
-      type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
-      message: notificationErrorMessage
-    }, (notificationId) => {
-      if (chrome.runtime.lastError) {
-        debug.error("[RTWA Background] Error creating addTorrentToClient catch notification:", chrome.runtime.lastError.message);
-      } else {
-          debug.log("[RTWA Background] Notification created (addTorrentToClient catch), ID:", notificationId);
-        }
-      });
+    if (enableTextNotifications) {
+      debug.log("[RTWA Background] Creating error notification (addTorrentToClient catch):", notificationErrorMessage);
+      chrome.notifications.create({
+        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
+        message: notificationErrorMessage
+      }, (notificationId) => {
+        if (chrome.runtime.lastError) {
+          debug.error("[RTWA Background] Error creating addTorrentToClient catch notification:", chrome.runtime.lastError.message);
+        } else {
+            debug.log("[RTWA Background] Notification created (addTorrentToClient catch), ID:", notificationId);
+          }
+        });
+    }
       playSound('audio/failure.mp3'); 
       chrome.storage.local.set({ lastActionStatus: notificationErrorMessage });
   }

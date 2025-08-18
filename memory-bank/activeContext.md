@@ -30,6 +30,11 @@
         -   Updated the changelog to reflect the consolidated `v0.3.6` release.
     -   **Memory Bank:** Updated `techContext.md` to include the new, stricter versioning rules for deployment.
 
+-   **Accessibility Enhancement:**
+    -   Added a new global setting to enable/disable text-based (visual) notifications for success or failure of torrent additions. This provides an alternative to sound-based notifications for users with hearing impairments or those who prefer visual feedback.
+    -   Implemented the logic in `background.js` to check this setting before creating a `chrome.notifications` instance.
+    -   Updated `options.html` and `options.js` to include the new toggle switch.
+
 ## 3. Next Steps (High-Level Plan)
 
 1.  **Monitor Feedback:** Keep an eye on user feedback for the new features and fixes in `v0.3.6`.
