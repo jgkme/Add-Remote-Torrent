@@ -226,7 +226,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
 
     if (tags) addTorrentFormData.append('tags', tags);
-    if (category) addTorrentFormData.append('category', category);
+    if (category) {
+        addTorrentFormData.append('category', category);
+        addTorrentFormData.append('autoTMM', 'true');
+    }
     if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir); // Use 'savepath' (lowercase) for qBittorrent API
     
     const version = await getQbittorrentVersion(serverConfig);
