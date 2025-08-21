@@ -28,3 +28,6 @@ github.pub
 
 # Environment files
 .envrc
+
+# Secrets
+*.pem

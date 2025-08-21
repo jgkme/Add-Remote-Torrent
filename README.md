@@ -183,6 +183,44 @@ We are working on a feature to make this process easier by allowing you to repor
     *   Select the `dist` folder from the unzipped files.
 3.  Configure your servers in the extension's options page.
 
+## Verifying Releases
+
+Ensuring the extension you install is secure and untampered with is crucial. We provide methods to verify both the manual GitHub releases and the official version from the Chrome Web Store.
+
+### Verifying GitHub Releases (for Manual Installation)
+
+For users who download the extension directly from the [Releases page](https://github.com/jgkme/Add-Remote-Torrent/releases), we provide a SHA-256 checksum file with each release.
+
+1.  Download both the `add-remote-torrent-vX.X.X.zip` file and the corresponding `add-remote-torrent-vX.X.X.zip.sha256` file.
+2.  Open a terminal or command prompt in your downloads folder.
+3.  Use the appropriate command for your operating system to generate a hash of the `.zip` file:
+
+    **On macOS or Linux:**
+    ```sh
+    shasum -a 256 add-remote-torrent-vX.X.X.zip
+    ```
+
+    **On Windows (Command Prompt or PowerShell):**
+    ```powershell
+    certutil -hashfile add-remote-torrent-vX.X.X.zip SHA256
+    ```
+4.  Compare the generated hash with the contents of the `.sha256` file. They must match exactly.
+
+### Verifying the Chrome Web Store Version
+
+When you install from the Chrome Web Store, the extension is signed by Google. You can verify this signature to be certain you have the official version.
+
+1.  **Find the Extension ID:**
+    *   Go to `chrome://extensions` in your browser.
+    *   Find "Add Remote Torrent" and click on "Details".
+    *   The Extension ID (a long string of letters) will be visible in the address bar or on the page. The official ID is `holiffefjdehbfhliggafhhlecphpdof`.
+
+2.  **Download the Official `.crx` file:**
+    *   You can use an online tool like [CRX Viewer](https://robwu.nl/crxviewer/) by entering the extension ID to view the contents and download the official `.crx` file signed by the Chrome Web Store.
+
+3.  **Inspect the Package:**
+    *   Once downloaded, you can inspect the `.crx` file's manifest and signatures using various third-party tools to confirm its authenticity. This confirms that the package was signed and verified by Google and has not been altered.
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for more details.
