@@ -25,3 +25,6 @@ github.pub
 
 # IDE specific files
 .vscode/
+
+# Environment files
+.envrc
