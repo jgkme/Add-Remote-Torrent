@@ -127,5 +127,44 @@ graph TD
     ServiceWorker -- "Uses" --> ChromeAPIs
 ```
 
-## 4. Future Considerations
+## 4. Build and Deployment Architecture
+
+The project uses a scripted process to ensure consistent and secure releases.
+
+```mermaid
+graph TD
+    subgraph "Local Development"
+        A[Source Code] --> B{pnpm build};
+    end
+
+    subgraph "Build Process"
+        B --> C[Webpack Compilation];
+        C --> D[dist/ folder];
+        D --> E[scripts/zip.js];
+    end
+
+    subgraph "Packaging & Signing"
+        E --> F[add-remote-torrent.zip];
+        E --> G[add-remote-torrent.zip.sha256];
+        E --> H[add-remote-torrent.crx];
+    end
+    
+    subgraph "Deployment"
+       F & G & H --> I{gh release upload};
+       I --> J[GitHub Release];
+    end
+
+    subgraph "Store Submission"
+        H --> K[Chrome Web Store];
+    end
+```
+
+1.  **Build:** The `pnpm build` command initiates the process, first running `webpack` to compile and bundle the extension's assets into the `dist/` directory.
+2.  **Packaging & Signing:** The build command then executes `scripts/zip.js`, which performs three tasks:
+    *   Creates a standard `.zip` file from the `dist/` directory for manual installs.
+    *   Generates a `.sha256` checksum of the zip file for verification.
+    *   Uses the `crx` package and the `private.pem` key to create a signed `.crx` file.
+3.  **Deployment:** The generated artifacts (`.zip`, `.sha256`, `.crx`) are uploaded to a new or existing GitHub release using the `gh release` command. The signed `.crx` file is also uploaded to the Chrome Web Store.
+
+## 5. Future Considerations
 (As previously noted).

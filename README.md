@@ -121,6 +121,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.13 (2025-08-24):**
+    *   **Fix:** Corrected the uTorrent handler to fetch the CSRF token from `/gui/` instead of `/gui/token.html`, resolving connection errors for modern WebUI versions.
+
 *   **v0.3.11 (2025-08-19):**
     *   **Feature:** Added an accessibility option to enable/disable text-based (visual) notifications for success or failure, providing an alternative to sound-based feedback.
 *   **v0.3.10 (2025-08-18):**

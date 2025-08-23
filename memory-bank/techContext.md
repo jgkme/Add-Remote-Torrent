@@ -137,8 +137,11 @@
         ssh-add /path/to/private/key
         ```
     -   Changes are then pushed to the remote repository.
--   **Build:** The `pnpm build` command is used to create a production-ready build of the extension in the `dist/` directory and a zip file for the release.
--   **GitHub Release:** The `gh` command-line tool is used to create a new release on GitHub. The release notes are provided from a file to avoid command-line length limitations.
+-   **Build:** The `pnpm build` command runs `webpack` and then executes the `scripts/zip.js` script. This script now handles the full packaging process:
+    -   It creates a standard `.zip` file for manual installation from GitHub.
+    -   It generates a `.sha256` checksum of the zip file for verification.
+    -   It uses the `crx` npm package and the `private.pem` key (which must exist in the project root) to create a signed `.crx` file for uploading to the Chrome Web Store.
+-   **GitHub Release:** The `gh` command-line tool is used to create a new release on GitHub. The release notes are provided from a file to avoid command-line length limitations. The command must include the `.zip`, `.crx`, and `.sha256` files as release assets.
     ```bash
-    gh release create <tag> <zip-file> --notes-file <notes-file>
+    gh release create <tag> <zip-file> <crx-file> <sha256-file> --notes-file <notes-file>
     ```

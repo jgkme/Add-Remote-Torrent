@@ -21,6 +21,9 @@
 ### **Phase 2: Adding More Client Support & Refinements (Current Focus)**
 *Objective: Expand client compatibility by fleshing out placeholder handlers and refine the user experience for multi-client management.*
 
+-   **Release v0.3.12 (2025-08-22):**
+    -   [X] **Build & Deployment Hardening:** Implemented the "Verified CRX Uploads" feature. This involved generating a private signing key, updating the build script to produce a signed `.crx` file and a `.sha256` checksum, and updating the release process to include all artifacts. Corrected the existing `v0.3.12` GitHub release with the new, consistent assets.
+
 -   **Release v0.3.6 (2025-08-14):**
     -   [X] **Versioning Fix:** Corrected versioning scheme in `manifest.json` and `package.json` to be compliant with Chrome Web Store policies (e.g., `0.3.6`), resolving a critical loading error.
     -   [X] **ruTorrent Handler Fix:** Corrected the URL construction logic to prevent "404 Not Found" errors, relying solely on the full Server URL.

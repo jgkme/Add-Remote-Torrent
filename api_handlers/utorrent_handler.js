@@ -14,7 +14,7 @@ async function getCsrfToken(serverConfig) {
         return uTorrentToken;
     }
 
-    const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/token.html`;
+    const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/`;
     try {
         // For fetching token, ensure cookies are sent if already set by a previous interaction,
         // and allow browser to store new cookies from this response.
@@ -37,7 +37,7 @@ async function getCsrfToken(serverConfig) {
             return uTorrentToken; // Success case
         } else {
             // This error will be caught by the catch block below
-            throw new Error('CSRF token not found in uTorrent /gui/token.html response.');
+            throw new Error('CSRF token not found in uTorrent /gui/ response.');
         }
     } catch (error) {
         debug.error('Error fetching uTorrent CSRF token:', error);

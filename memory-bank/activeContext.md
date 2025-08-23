@@ -35,6 +35,14 @@
     -   Implemented the logic in `background.js` to check this setting before creating a `chrome.notifications` instance.
     -   Updated `options.html` and `options.js` to include the new toggle switch.
 
+-   **Build & Deployment Hardening:**
+    -   Implemented the "Verified CRX Uploads" feature for the Chrome Web Store.
+    -   Generated a `private.pem` key for signing and added it to `.gitignore`.
+    -   Installed the `crx` npm package to handle packaging.
+    -   Updated the `scripts/zip.js` build script to produce three artifacts: a standard `.zip`, a `.sha256` checksum, and a signed `.crx` file.
+    -   Updated the `v0.3.12` GitHub release to include all three consistent artifacts.
+    -   Updated all relevant Memory Bank and `.clinerules` documentation to reflect the new, more secure deployment process.
+
 ## 3. Next Steps (High-Level Plan)
 
 1.  **Monitor Feedback:** Keep an eye on user feedback for the new features and fixes in `v0.3.6`.
