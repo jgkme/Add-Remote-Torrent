@@ -14,54 +14,47 @@ async function getCsrfToken(serverConfig) {
         return uTorrentToken;
     }
 
-    const baseUrl = serverConfig.url.replace(/\/$/, '');
-    const potentialTokenPaths = [
-        `${baseUrl}/gui/token.html`,
-        `${baseUrl}/token.html`
-    ];
+    // Use the user-defined relative path, defaulting to /gui/
+    const relpath = (serverConfig.utorrentrelativepath === undefined || serverConfig.utorrentrelativepath === "") 
+        ? "/gui/" 
+        : serverConfig.utorrentrelativepath;
 
-    let lastError = null;
+    // Ensure relpath starts and ends with a slash
+    const formattedRelPath = `/${relpath.replace(/^\/|\/$/g, '')}/`;
 
-    for (const tokenUrl of potentialTokenPaths) {
-        try {
-            debug.log(`uTorrent: Attempting to fetch CSRF token from ${tokenUrl}`);
-            const response = await fetch(tokenUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
-                },
-                credentials: 'include',
-            });
+    const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}${formattedRelPath}token.html`;
+    
+    debug.log(`uTorrent: Attempting to fetch CSRF token from ${tokenUrl}`);
 
-            if (response.ok) {
-                const html = await response.text();
-                const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
-                if (match && match[1]) {
-                    uTorrentToken = match[1];
-                    lastTokenFetchTime = now;
-                    debug.log(`uTorrent: Successfully fetched token from ${tokenUrl}`);
-                    return uTorrentToken;
-                }
-                lastError = new Error(`CSRF token not found in response from ${tokenUrl}`);
-                continue; 
-            }
+    try {
+        const response = await fetch(tokenUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
+            },
+            credentials: 'include',
+        });
 
-            if (response.status === 404) {
-                lastError = new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText} at ${tokenUrl}`);
-                debug.warn(`uTorrent: Token not found at ${tokenUrl}, trying next path.`);
-                continue; 
-            }
-            
-            throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText} at ${tokenUrl}`);
-
-        } catch (error) {
-            lastError = error;
-            debug.error(`uTorrent: Error fetching token from ${tokenUrl}:`, error);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText}`);
         }
-    }
 
-    uTorrentToken = null;
-    throw new Error(`TokenFetchError: Could not fetch CSRF token from any known path. Last error: ${lastError.message}`);
+        const html = await response.text();
+        const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
+        
+        if (match && match[1]) {
+            uTorrentToken = match[1];
+            lastTokenFetchTime = now;
+            debug.log(`uTorrent: Successfully fetched token from ${tokenUrl}`);
+            return uTorrentToken;
+        } else {
+            throw new Error(`CSRF token not found in response from ${tokenUrl}`);
+        }
+    } catch (error) {
+        debug.error('Error fetching uTorrent CSRF token:', error);
+        uTorrentToken = null;
+        throw new Error(`TokenFetchError: ${error.message}`);
+    }
 }
 
 async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method = 'GET', queryParamsForPost = {}) {

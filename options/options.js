@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'none';
         if(torrentfluxRelativePathGroup) torrentfluxRelativePathGroup.style.display = 'none';
         if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
+        if(document.getElementById('utorrentRelativePathGroup')) document.getElementById('utorrentRelativePathGroup').style.display = 'none';
         if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
         if(userGroup) userGroup.style.display = 'block'; 
         if(passGroup) passGroup.style.display = 'block'; 
@@ -364,7 +365,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             case 'utorrent':
             case 'bittorrent':
-                serverUrlInput.placeholder = 'http://localhost:8080/gui/';
+                if(document.getElementById('utorrentRelativePathGroup')) document.getElementById('utorrentRelativePathGroup').style.display = 'block';
+                serverUrlInput.placeholder = 'http://localhost:8080';
                 break;
             case 'kodi_elementum':
                 if (userGroup) userGroup.style.display = 'none';
@@ -436,6 +438,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentUploadsMinInput.value = server.rtorrentUploadsMin || '';
             torrentfluxRelativePathInput.value = server.torrentfluxRelativePath || '';
             ruTorrentPathInput.value = server.ruTorrentrelativepath || '';
+            if(document.getElementById('utorrentRelativePath')) document.getElementById('utorrentRelativePath').value = server.utorrentrelativepath || '';
             rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
             rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
             defaultTagsInput.value = server.tags || '';
@@ -481,6 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentUploadsMinInput.value = '';
             torrentfluxRelativePathInput.value = '';
             ruTorrentPathInput.value = '';
+            if(document.getElementById('utorrentRelativePath')) document.getElementById('utorrentRelativePath').value = '';
             rutorrentdontaddnamepathInput.checked = false;
             rutorrentalwaysurlInput.checked = false;
             defaultTagsInput.value = '';
@@ -642,6 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rtorrentUploadsMin = rtorrentUploadsMinInput.value.trim();
         const torrentfluxRelativePath = torrentfluxRelativePathInput.value.trim();
         const ruTorrentrelativepath = ruTorrentPathInput.value.trim();
+        const utorrentrelativepath = document.getElementById('utorrentRelativePath') ? document.getElementById('utorrentRelativePath').value.trim() : '';
         const rutorrentdontaddnamepath = rutorrentdontaddnamepathInput.checked;
         const rutorrentalwaysurl = rutorrentalwaysurlInput.checked;
         const tags = defaultTagsInput.value.trim();
@@ -673,6 +678,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             addPaused, 
             askForLabelDirOnPage,
             ruTorrentrelativepath,
+            utorrentrelativepath,
             rutorrentdontaddnamepath,
             rutorrentalwaysurl,
             transmissionDownloadDir,
@@ -785,6 +791,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rpcPath: clientTypeSelect.value === 'transmission' ? rpcPathInput.value.trim() : undefined,
             scgiPath: clientTypeSelect.value === 'rtorrent' ? scgiPathInput.value.trim() : undefined,
             ruTorrentrelativepath: clientTypeSelect.value === 'rutorrent' ? ruTorrentPathInput.value.trim() : undefined,
+            utorrentrelativepath: clientTypeSelect.value === 'utorrent' ? document.getElementById('utorrentRelativePath').value.trim() : undefined,
         };
         if (!serverConfig.url && clientTypeSelect.value !== 'rtorrent') { 
             displayFormStatus('Server URL is required to test connection.', 'error'); return;
