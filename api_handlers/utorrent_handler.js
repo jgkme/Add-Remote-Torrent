@@ -358,27 +358,25 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-    // Test by fetching the torrent list.
+    // Test by fetching settings, which is generally more reliable than gettorrents.
     try {
-        // First, ensure token can be fetched, which also tests basic auth.
-        await getCsrfToken(serverConfig); 
-        // Then, try to get the list of torrents.
-        // The 'list=1' parameter is often needed.
-        const result = await makeApiRequest(serverConfig.url, 'gettorrents', { list: '1' }, serverConfig, 'GET');
+        // getCsrfToken is called within makeApiRequest, so it's tested implicitly.
+        const result = await makeApiRequest(serverConfig.url, 'getsettings', {}, serverConfig, 'GET');
         
-        if (result.success && result.data && typeof result.data.torrents !== 'undefined') {
-            return { success: true, data: { build: result.data.build, torrents_count: result.data.torrents.length } }; 
+        if (result.success && result.data && result.data.settings) {
+            return { success: true, data: { build: result.data.build, message: "Successfully fetched settings." } }; 
         }
-        // If makeApiRequest returned success:false, result.error is already the structured error object
+
+        // If makeApiRequest failed, its error object is already structured.
         return { 
             success: false, 
             error: result.error || {
-                userMessage: "Failed to get torrents list or parse response from uTorrent.",
-                technicalDetail: "gettorrents action did not return expected data.",
+                userMessage: "Failed to get settings or parse response from uTorrent.",
+                technicalDetail: "getsettings action did not return expected data.",
                 errorCode: "TEST_CONN_INVALID_RESPONSE"
             }
         };
-    } catch (error) { // This catch is primarily for errors thrown by getCsrfToken directly if not handled by makeApiRequest
+    } catch (error) {
         return { 
             success: false, 
             error: {

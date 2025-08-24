@@ -1166,11 +1166,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     function handleMoveMappingDown(event) { moveMapping(event.target.dataset.id, 1); }
 
     function handleOpenWebUi(event) {
-        const url = event.target.dataset.url;
-        if (url) {
-            chrome.tabs.create({ url });
+        const serverId = event.target.closest('li').querySelector('.edit-button').dataset.id;
+        const server = servers.find(s => s.id === serverId);
+        if (server && server.url) {
+            let webUiUrl = server.url.replace(/\/$/, '');
+            if (server.clientType === 'utorrent' && server.utorrentrelativepath) {
+                const relpath = server.utorrentrelativepath.replace(/^\/|\/$/g, '');
+                webUiUrl += `/${relpath}/`;
+            }
+            chrome.tabs.create({ url: webUiUrl });
         }
     }
+
+    serverUrlInput.addEventListener('change', (event) => {
+        const clientType = clientTypeSelect.value;
+        if (clientType === 'utorrent' || clientType === 'bittorrent') {
+            try {
+                const url = new URL(event.target.value);
+                const path = url.pathname;
+                if (path && path !== '/' && path.length > 1) {
+                    const relPathInput = document.getElementById('utorrentRelativePath');
+                    if (relPathInput && !relPathInput.value) {
+                        relPathInput.value = path;
+                        serverUrlInput.value = url.origin;
+                        displayFormStatus('Auto-detected relative path. Please verify.', 'info');
+                    }
+                }
+            } catch (e) {
+                // Ignore invalid URL formats during typing
+            }
+        }
+    });
 
     // --- Tracker URL Rule Functions ---
     function generateTrackerRuleId() {

@@ -122,14 +122,8 @@ We are working on a feature to make this process easier by allowing you to repor
 
 ## Changelog
 *   **v0.3.16 (2025-08-24):**
-    *   **Fix:** Corrected the uTorrent handler to ensure all API requests (not just token fetching) use the user-defined relative path. This resolves API call failures that occurred after a successful token fetch on servers with custom paths.
-*   **v0.3.15 (2025-08-24):**
-    *   **Fix:** Implemented a robust fix for uTorrent connectivity by allowing users to specify a custom "Relative Path" in the server settings. This resolves CSRF token errors for non-standard WebUI paths (e.g., `/` or `/webui/`).
-*   **v0.3.14 (2025-08-24):**
-    *   **Fix:** Implemented a more robust CSRF token fetching mechanism for the uTorrent handler. It now tries multiple common paths (`/gui/token.html` and `/token.html`) to improve compatibility with different WebUI setups and versions.
-*   **v0.3.13 (2025-08-24):**
-    *   **Fix:** Corrected the uTorrent handler to fetch the CSRF token from `/gui/` instead of `/gui/token.html`, resolving connection errors for modern WebUI versions.
-
+    *   **Fix:** Implemented a comprehensive fix for uTorrent connectivity. The handler now correctly uses a user-configurable "Relative Path" for all API requests (including token fetching and connection testing), resolving errors for non-standard WebUI paths. The connection test now uses a more reliable `getsettings` check.
+    *   **UX:** The options page now auto-detects and separates the relative path if it's included in the main server URL for uTorrent clients, and the "Open WebUI" button correctly constructs the URL using this path.
 *   **v0.3.11 (2025-08-19):**
     *   **Feature:** Added an accessibility option to enable/disable text-based (visual) notifications for success or failure, providing an alternative to sound-based feedback.
 *   **v0.3.10 (2025-08-18):**
