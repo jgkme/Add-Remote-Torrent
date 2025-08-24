@@ -121,6 +121,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.16 (2025-08-24):**
+    *   **Fix:** Corrected the uTorrent handler to ensure all API requests (not just token fetching) use the user-defined relative path. This resolves API call failures that occurred after a successful token fetch on servers with custom paths.
 *   **v0.3.15 (2025-08-24):**
     *   **Fix:** Implemented a robust fix for uTorrent connectivity by allowing users to specify a custom "Relative Path" in the server settings. This resolves CSRF token errors for non-standard WebUI paths (e.g., `/` or `/webui/`).
 *   **v0.3.14 (2025-08-24):**

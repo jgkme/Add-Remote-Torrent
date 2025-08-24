@@ -95,7 +95,13 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
     queryParams.append('token', token);
     queryParams.append('action', action);
     
-    const requestUrl = `${baseUrl.replace(/\/$/, '')}/gui/?${queryParams.toString()}`;
+    // Use the user-defined relative path for the API endpoint, defaulting to /gui/
+    const relpath = (serverConfig.utorrentrelativepath === undefined || serverConfig.utorrentrelativepath === "") 
+        ? "/gui/" 
+        : serverConfig.utorrentrelativepath;
+    const formattedRelPath = `/${relpath.replace(/^\/|\/$/g, '')}/`;
+
+    const requestUrl = `${baseUrl.replace(/\/$/, '')}${formattedRelPath}?${queryParams.toString()}`;
     
     const fetchOptions = {
         method: method,
