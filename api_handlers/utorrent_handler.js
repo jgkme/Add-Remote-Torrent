@@ -14,42 +14,54 @@ async function getCsrfToken(serverConfig) {
         return uTorrentToken;
     }
 
-    const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/`;
-    try {
-        // For fetching token, ensure cookies are sent if already set by a previous interaction,
-        // and allow browser to store new cookies from this response.
-        const response = await fetch(tokenUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
-            },
-            credentials: 'include', // Ensure cookies are sent and received
-        });
-        if (!response.ok) {
-            // This error will be caught by the catch block below
-            throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText}`);
+    const baseUrl = serverConfig.url.replace(/\/$/, '');
+    const potentialTokenPaths = [
+        `${baseUrl}/gui/token.html`,
+        `${baseUrl}/token.html`
+    ];
+
+    let lastError = null;
+
+    for (const tokenUrl of potentialTokenPaths) {
+        try {
+            debug.log(`uTorrent: Attempting to fetch CSRF token from ${tokenUrl}`);
+            const response = await fetch(tokenUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
+                },
+                credentials: 'include',
+            });
+
+            if (response.ok) {
+                const html = await response.text();
+                const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
+                if (match && match[1]) {
+                    uTorrentToken = match[1];
+                    lastTokenFetchTime = now;
+                    debug.log(`uTorrent: Successfully fetched token from ${tokenUrl}`);
+                    return uTorrentToken;
+                }
+                lastError = new Error(`CSRF token not found in response from ${tokenUrl}`);
+                continue; 
+            }
+
+            if (response.status === 404) {
+                lastError = new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText} at ${tokenUrl}`);
+                debug.warn(`uTorrent: Token not found at ${tokenUrl}, trying next path.`);
+                continue; 
+            }
+            
+            throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText} at ${tokenUrl}`);
+
+        } catch (error) {
+            lastError = error;
+            debug.error(`uTorrent: Error fetching token from ${tokenUrl}:`, error);
         }
-        const html = await response.text();
-        const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
-        if (match && match[1]) {
-            uTorrentToken = match[1];
-            lastTokenFetchTime = now;
-            return uTorrentToken; // Success case
-        } else {
-            // This error will be caught by the catch block below
-            throw new Error('CSRF token not found in uTorrent /gui/ response.');
-        }
-    } catch (error) {
-        debug.error('Error fetching uTorrent CSRF token:', error);
-        uTorrentToken = null; 
-        // Propagate a structured error. getCsrfToken is called by makeApiRequest,
-        // which will then return its own structured error.
-        // So, throwing here is fine, or we can return a structured error directly.
-        // For consistency, let's make getCsrfToken return null on failure and makeApiRequest handle it.
-        // However, the current structure expects getCsrfToken to throw or return token.
-        // Let's make it throw a structured-like error message that makeApiRequest can catch.
-        throw new Error(`TokenFetchError: ${error.message}`); // Custom error type/message
     }
+
+    uTorrentToken = null;
+    throw new Error(`TokenFetchError: Could not fetch CSRF token from any known path. Last error: ${lastError.message}`);
 }
 
 async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method = 'GET', queryParamsForPost = {}) {

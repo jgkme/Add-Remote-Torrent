@@ -121,6 +121,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.14 (2025-08-24):**
+    *   **Fix:** Implemented a more robust CSRF token fetching mechanism for the uTorrent handler. It now tries multiple common paths (`/gui/token.html` and `/token.html`) to improve compatibility with different WebUI setups and versions.
 *   **v0.3.13 (2025-08-24):**
     *   **Fix:** Corrected the uTorrent handler to fetch the CSRF token from `/gui/` instead of `/gui/token.html`, resolving connection errors for modern WebUI versions.
 
