@@ -121,9 +121,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
-*   **v0.3.16 (2025-08-24):**
+*   **v0.3.17 (2025-08-29):**
     *   **Fix:** Implemented a comprehensive fix for uTorrent connectivity. The handler now correctly uses a user-configurable "Relative Path" for all API requests (including token fetching and connection testing), resolving errors for non-standard WebUI paths. The connection test now uses a more reliable `getsettings` check.
-    *   **UX:** The options page now auto-detects and separates the relative path if it's included in the main server URL for uTorrent clients, and the "Open WebUI" button correctly constructs the URL using this path.
+    *   **UX:** The options page now auto-detects and separates the relative path if it's included in the main server URL for uTorrent clients, and the "Open WebUI" button in both the options page and the popup correctly constructs the URL using this path.
 *   **v0.3.11 (2025-08-19):**
     *   **Feature:** Added an accessibility option to enable/disable text-based (visual) notifications for success or failure, providing an alternative to sound-based feedback.
 *   **v0.3.10 (2025-08-18):**

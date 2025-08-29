@@ -202,7 +202,15 @@ Add any other context about the problem here. Please double-check that you have 
     activeServerDetailsDiv.addEventListener('click', () => {
         const server = servers.find(s => s.id === currentActiveServerId);
         if (server && server.url) {
-            chrome.tabs.create({ url: server.url });
+            let webUiUrl = server.url.replace(/\/$/, '');
+            // Correctly construct the URL for uTorrent with a relative path
+            if (server.clientType === 'utorrent' && server.utorrentrelativepath) {
+                const relpath = server.utorrentrelativepath.replace(/^\/|\/$/g, '');
+                if (relpath) {
+                    webUiUrl += `/${relpath}/`;
+                }
+            }
+            chrome.tabs.create({ url: webUiUrl });
         }
     });
 
