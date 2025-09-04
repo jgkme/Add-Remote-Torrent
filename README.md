@@ -121,6 +121,10 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.19 (2025-09-05):**
+    *   **Feature:** Overhauled the "Custom Link Catching Patterns" setting. It now features a user-friendly UI for adding, editing, and deleting individual regex patterns, replacing the old, single-string input.
+    *   **Feature:** Added two default patterns to catch common `.torrent` file links and `torrents.php` download links, improving out-of-the-box functionality.
+    *   **Migration:** Implemented a seamless, one-time migration for existing users. The old `linkmatches` tilde-separated string is automatically converted into the new array-based format, preserving all user-defined patterns.
 *   **v0.3.18 (2025-09-05):**
     *   **Feature:** Added a new option to show download directories in the context menu. This allows for adding torrents to specific directories in one click.
     *   **Fix:** Corrected a bug where the context menu would fail to update if a server had no download directories defined.

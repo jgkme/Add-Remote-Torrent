@@ -52,7 +52,9 @@
     -   `urlToServerMappings`: Array of objects, e.g., `{ id: "map_uuid", websitePattern: "example.com", serverId: "server_uuid" }`.
     -   `enableUrlBasedServerSelection`: Boolean.
     -   `advancedAddDialog`: String (`never`, `always`, `manual`, `catch`).
+    -   `linkCatchingPatterns`: Array of objects, e.g., `{ id: "uuid", pattern: "regex-string", isDefault: boolean }`.
     -   `lastActionStatus`: String.
+    -   **Migration:** The system automatically migrates the legacy `linkmatches` (tilde-separated string) into the new `linkCatchingPatterns` array format upon first run after the update.
 -   **Dynamic Link Detection:**
     -   A `MutationObserver` in `LinkMonitor.js` is used to detect changes to the DOM, allowing the extension to find torrent links on dynamic pages.
     -   The `content_script.js` uses this monitor to attach click handlers to new links as they appear.

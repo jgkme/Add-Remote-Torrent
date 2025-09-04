@@ -75,11 +75,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'getStorageData') {
     chrome.storage.local.get([
-        'servers', 
-        'activeServerId', 
-        'linkmatches', 
-        'catchfrompage', 
-        'registerDelay', 
+        'servers',
+        'activeServerId',
+        'linkCatchingPatterns',
+        'catchfrompage',
+        'registerDelay',
         'linksfoundindicator',
         'contentDebugEnabled',
         'bgDebugEnabled',

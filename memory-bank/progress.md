@@ -2,8 +2,8 @@
 
 ## 1. Current Project Status
 
--   **Overall:** Phase 2 (Adding More Client Support & Refinements) is in progress.
--   **Current Activity:** Adding support for new torrent clients (BiglyBT, Flood, Porla) and updating all project documentation.
+-   **Overall:** Phase 3 (UI/UX Enhancements & System Modernization) is complete.
+-   **Current Activity:** Preparing for the v0.3.19 release.
 
 ## 2. Phased Implementation Plan
 
@@ -18,27 +18,27 @@
 -   **Status:** [X] Completed.
 
 ---
-### **Phase 2: Adding More Client Support & Refinements (Current Focus)**
-*Objective: Expand client compatibility by fleshing out placeholder handlers and refining the user experience.*
+### **Phase 2: Expanded Client Support & UX Refinements (Completed)**
+*Objective: Expand client compatibility and refine the user experience with major new features.*
 
 -   **Release v0.3.18 (2025-09-05):**
+    -   [X] **Feature:** Added support for four new clients: BiglyBT, Flood, Porla, and an updated Elementum handler.
     -   [X] **Feature:** Added a new global setting to show download directories as a nested submenu in the context menu.
-    -   [X] **Fix:** Corrected a bug where the context menu would fail to build if a server had no download directories defined.
-    -   [X] **Fix:** Added error handling to the content script to prevent "context invalidated" errors on dynamic pages.
+    -   [X] **Fix:** Corrected multiple bugs related to context menu creation and dynamic page handling.
 
 -   **Release v0.3.17 (2025-08-29):**
-    -   [X] **Fix:** Implemented a comprehensive fix for uTorrent connectivity. The handler now correctly uses a user-configurable "Relative Path" for all API requests, and the connection test uses a more reliable `getsettings` action.
-    -   [X] **UX:** The options page now auto-detects the relative path from the server URL for uTorrent clients and correctly builds the "Open WebUI" link in all parts of the extension.
-
--   **(Previous releases are documented in the README.md changelog)**
+    -   [X] **Fix:** Implemented a comprehensive fix for uTorrent connectivity.
+    -   [X] **UX:** Improved the options page to auto-detect relative paths for uTorrent.
 
 ---
-### **Phase 3: New Client Integration (Next Steps)**
-*Objective: Add support for BiglyBT, Flood, and Porla.*
--   [ ] Research APIs for BiglyBT, Flood, and Porla.
--   [ ] Implement API handlers for each new client.
--   [ ] Update the UI (options page) to include the new clients.
--   [ ] Thoroughly test functionality for the new clients.
+### **Phase 3: UI/UX Enhancements & System Modernization (Completed)**
+*Objective: Modernize core features with better UI and robust, future-proof logic.*
+
+-   **Release v0.3.19 (Current Release):**
+    -   [X] **Feature:** Overhauled the "Custom Link Catching Patterns" setting with a new dynamic UI for adding, editing, and deleting individual patterns.
+    -   [X] **Feature:** Added two default regex patterns for common torrent link formats.
+    -   [X] **Migration:** Implemented an automatic, one-time migration to convert users' old, tilde-separated patterns into the new array-based format, ensuring no data loss.
+    -   [X] **Refactor:** Updated the background and content scripts to use the new `linkCatchingPatterns` data structure, removing the legacy `linkmatches` code.
 
 ---
 ### **Phase 4: Advanced Features & Polish (Future)**
@@ -58,7 +58,7 @@
     -   **Status:** [X] Complete
 -   **Milestone 2 (Expanded Client Support & UX Refinements):** Phase 2 tasks completed.
     -   **Status:** [X] Complete
--   **Milestone 3 (New Client Integration):** Phase 3 tasks.
-    -   **Status:** [ ] Not Started
+-   **Milestone 3 (UI/UX Modernization):** Phase 3 tasks completed.
+    -   **Status:** [X] Complete
 -   **Milestone 4 (Full Feature Set & Polish):** Phase 4 tasks.
     -   **Status:** [ ] Not Started

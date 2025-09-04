@@ -90,12 +90,19 @@ const getOptions = async () => new Promise((resolve, reject) => {
             debug.setEnabled(response?.contentDebugEnabled);
 
             // Create all url matcher RegExps statically and add them to options before resolving
-            // (instead of recreating them on every link when analyzing!)
+            const patterns = (response.linkCatchingPatterns || []).map(p => p.pattern);
             const urlPatterns = [
-                ...(response.linkmatches && response.linkmatches.split?.('~') || []),
-                '^magnet:'
+                ...patterns,
+                '^magnet:' // Always include magnet links
             ];
-            response.urlMatchers = urlPatterns.map(p => new RegExp(p, 'gi'));
+            response.urlMatchers = urlPatterns.map(p => {
+                try {
+                    return new RegExp(p, 'i'); // Case-insensitive matching
+                } catch (e) {
+                    debug.error(`[ART ContentScript] Invalid regex pattern skipped: "${p}"`, e);
+                    return null; // Skip invalid patterns
+                }
+            }).filter(Boolean); // Filter out nulls from invalid patterns
             resolve(response);
         }
     });

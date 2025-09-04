@@ -103,10 +103,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Global settings elements
     const advancedAddDialogInput = document.getElementById('advancedAddDialogInput');
     const enableUrlBasedServerSelectionToggle = document.getElementById('enableUrlBasedServerSelectionToggle');
-    const catchFromPageToggle = document.getElementById('catchFromPageToggle'); 
-    const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle'); 
-    const linkMatchesInput = document.getElementById('linkMatchesInput'); 
-    const registerDelayInput = document.getElementById('registerDelayInput'); 
+    const catchFromPageToggle = document.getElementById('catchFromPageToggle');
+    const linksFoundIndicatorToggle = document.getElementById('linksFoundIndicatorToggle');
+    const registerDelayInput = document.getElementById('registerDelayInput');
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
     const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
@@ -141,6 +140,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelTrackerRuleEditButton = document.getElementById('cancelTrackerRuleEditButton');
     const trackerRuleFormStatusMessageDiv = document.getElementById('trackerRuleFormStatusMessage');
 
+    // Link Catching Patterns elements
+    const linkCatchingPatternsSection = document.getElementById('linkCatchingPatternsSection');
+    const linkCatchingPatternsListContainer = document.getElementById('linkCatchingPatternsListContainer');
+    const linkCatchingPatternsListUl = document.getElementById('linkCatchingPatternsList');
+    const showAddLinkPatternFormButton = document.getElementById('showAddLinkPatternFormButton');
+    const linkPatternFormSection = document.getElementById('linkPatternFormSection');
+    const linkPatternFormTitle = document.getElementById('linkPatternFormTitle');
+    const linkPatternIdInput = document.getElementById('linkPatternId');
+    const linkPatternInput = document.getElementById('linkPatternInput');
+    const saveLinkPatternButton = document.getElementById('saveLinkPatternButton');
+    const cancelLinkPatternEditButton = document.getElementById('cancelLinkPatternEditButton');
+    const linkPatternFormStatusMessageDiv = document.getElementById('linkPatternFormStatusMessage');
+
     // Backup/Restore elements
     const exportSettingsButton = document.getElementById('exportSettingsButton');
     const importSettingsFile = document.getElementById('importSettingsFile');
@@ -172,9 +184,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let globalSettings = {
         advancedAddDialog: 'never',
         enableUrlBasedServerSelection: false,
-        catchfrompage: false, 
-        linksfoundindicator: false, 
-        linkmatches: '', 
+        catchfrompage: false,
+        linksfoundindicator: false,
         registerDelay: 0,
         enableSoundNotifications: false,
         enableTextNotifications: false,
@@ -184,7 +195,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
     let urlToServerMappings = [];
-    let trackerUrlRules = []; 
+    let trackerUrlRules = [];
+    let linkCatchingPatterns = [];
 
     // --- Utility Functions ---
     function generateId(prefix = 'server') { 
@@ -843,10 +855,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.linksfoundindicator = linksFoundIndicatorToggle.checked;
         chrome.storage.local.set({ linksfoundindicator: globalSettings.linksfoundindicator }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-    linkMatchesInput.addEventListener('change', () => { 
-        globalSettings.linkmatches = linkMatchesInput.value;
-        chrome.storage.local.set({ linkmatches: globalSettings.linkmatches }, () => { displayFormStatus('Global settings updated.', 'success'); });
-    });
     registerDelayInput.addEventListener('change', () => { 
         globalSettings.registerDelay = parseInt(registerDelayInput.value, 10) || 0;
         chrome.storage.local.set({ registerDelay: globalSettings.registerDelay }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -967,7 +975,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
-            'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
+            'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
             'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
@@ -980,11 +988,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             toggleMappingListVisibility(); 
             globalSettings.catchfrompage = result.catchfrompage || false; 
             catchFromPageToggle.checked = globalSettings.catchfrompage;
-            globalSettings.linksfoundindicator = result.linksfoundindicator || false; 
+            globalSettings.linksfoundindicator = result.linksfoundindicator || false;
             linksFoundIndicatorToggle.checked = globalSettings.linksfoundindicator;
-            globalSettings.linkmatches = result.linkmatches || '';
-            linkMatchesInput.value = globalSettings.linkmatches;
-            globalSettings.registerDelay = result.registerDelay || 0; 
+            
+            // Load link catching patterns, with migration from old format
+            const defaultPatterns = [
+                { id: 'default-1', pattern: '([\\\\\\]\\\\[]|\\b|\\.)\\.torrent\\b([^\\-]|$$)', isDefault: true },
+                { id: 'default-2', pattern: 'torrents\\.php\\?action=download', isDefault: true }
+            ];
+
+            if (result.linkCatchingPatterns && Array.isArray(result.linkCatchingPatterns)) {
+                // New format already exists, use it
+                linkCatchingPatterns = result.linkCatchingPatterns;
+            } else if (result.linkmatches && typeof result.linkmatches === 'string' && result.linkmatches.trim() !== '') {
+                // Old format exists, migrate it
+                const oldPatterns = result.linkmatches.split('~').map(p => p.trim()).filter(p => p);
+                const migratedPatterns = oldPatterns.map(p => ({
+                    id: generateLinkPatternId(),
+                    pattern: p,
+                    isDefault: false
+                }));
+                // Combine defaults with migrated user patterns
+                linkCatchingPatterns = [...defaultPatterns, ...migratedPatterns];
+                
+                // Save the migrated data and remove the old key
+                chrome.storage.local.set({ linkCatchingPatterns: linkCatchingPatterns });
+                chrome.storage.local.remove('linkmatches');
+                displayFormStatus('Custom link patterns migrated to new format.', 'success');
+
+            } else {
+                // No patterns exist, start with defaults
+                linkCatchingPatterns = defaultPatterns;
+            }
+
+            globalSettings.registerDelay = result.registerDelay || 0;
             registerDelayInput.value = globalSettings.registerDelay;
             globalSettings.enableSoundNotifications = result.enableSoundNotifications || false; 
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
@@ -1002,8 +1039,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderDebugSettings()
             renderServerList();
             renderUrlMappingsList();
-            populateMapToServerSelect(); 
-            renderTrackerUrlRulesList(); 
+            populateMapToServerSelect();
+            renderTrackerUrlRulesList();
+            renderLinkCatchingPatternsList();
         });
     }
     
@@ -1368,6 +1406,168 @@ actionsDiv.appendChild(deleteButton);
             });
         }
     }
+
+    // --- Link Catching Pattern Functions ---
+    function generateLinkPatternId() {
+        return `linkPattern-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    }
+
+    function displayLinkPatternFormStatus(message, type) {
+        linkPatternFormStatusMessageDiv.textContent = message;
+        linkPatternFormStatusMessageDiv.className = 'mt-3 text-sm p-3 rounded-md border';
+        if (type === 'success') {
+            linkPatternFormStatusMessageDiv.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500', 'dark:border-green-600', 'text-green-700', 'dark:text-green-200');
+        } else if (type === 'error') {
+            linkPatternFormStatusMessageDiv.classList.add('bg-red-100', 'dark:bg-red-800', 'border-red-500', 'dark:border-red-600', 'text-red-700', 'dark:text-red-200');
+        }
+        if (message && (type === 'success' || type === 'error')) {
+            setTimeout(() => {
+                linkPatternFormStatusMessageDiv.textContent = '';
+                linkPatternFormStatusMessageDiv.className = 'mt-3 text-sm';
+            }, 5000);
+        } else if (!message) {
+            linkPatternFormStatusMessageDiv.className = 'mt-3 text-sm';
+        }
+    }
+
+    function renderLinkCatchingPatternsList() {
+        linkCatchingPatternsListUl.innerHTML = '';
+        if (linkCatchingPatterns.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'No custom link catching patterns configured.';
+            linkCatchingPatternsListUl.appendChild(li);
+            return;
+        }
+
+        linkCatchingPatterns.forEach((pattern, index) => {
+            const li = document.createElement('li');
+            li.className = 'p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'flex-grow';
+            const patternStrong = document.createElement('strong');
+            patternStrong.className = 'text-indigo-600 dark:text-indigo-400 font-mono';
+            patternStrong.textContent = pattern.pattern;
+            infoDiv.appendChild(patternStrong);
+
+            if (pattern.isDefault) {
+                const defaultBadge = document.createElement('span');
+                defaultBadge.className = 'ml-2 px-2 py-0.5 text-xs font-semibold text-gray-600 bg-gray-200 dark:text-gray-300 dark:bg-gray-600 rounded-full';
+                defaultBadge.textContent = 'Default';
+                infoDiv.appendChild(defaultBadge);
+            }
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'actions flex space-x-2 flex-shrink-0';
+
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-link-pattern-button px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md';
+            editButton.dataset.id = pattern.id;
+            editButton.textContent = 'Edit';
+            actionsDiv.appendChild(editButton);
+
+            if (!pattern.isDefault) {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-link-pattern-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md';
+                deleteButton.dataset.id = pattern.id;
+                deleteButton.textContent = 'Delete';
+                actionsDiv.appendChild(deleteButton);
+            }
+
+            li.appendChild(infoDiv);
+            li.appendChild(actionsDiv);
+            linkCatchingPatternsListUl.appendChild(li);
+        });
+
+        document.querySelectorAll('.edit-link-pattern-button').forEach(b => b.addEventListener('click', handleEditLinkPattern));
+        document.querySelectorAll('.delete-link-pattern-button').forEach(b => b.addEventListener('click', handleDeleteLinkPattern));
+    }
+
+    function showLinkPatternForm(isEditing = false, pattern = null) {
+        linkPatternFormSection.style.display = 'block';
+        linkPatternFormTitle.textContent = isEditing ? 'Edit Pattern' : 'Add New Pattern';
+        if (isEditing && pattern) {
+            linkPatternIdInput.value = pattern.id;
+            linkPatternInput.value = pattern.pattern;
+            linkPatternInput.disabled = !!pattern.isDefault; // Disable editing for default patterns
+        } else {
+            linkPatternIdInput.value = '';
+            linkPatternInput.value = '';
+            linkPatternInput.disabled = false;
+        }
+        displayLinkPatternFormStatus('', '');
+    }
+
+    function hideLinkPatternForm() {
+        linkPatternFormSection.style.display = 'none';
+        linkPatternIdInput.value = '';
+        linkPatternInput.value = '';
+        displayLinkPatternFormStatus('', '');
+    }
+
+    function handleEditLinkPattern(event) {
+        const idToEdit = event.target.dataset.id;
+        const patternToEdit = linkCatchingPatterns.find(p => p.id === idToEdit);
+        if (patternToEdit) showLinkPatternForm(true, patternToEdit);
+    }
+
+    function handleDeleteLinkPattern(event) {
+        const idToDelete = event.target.dataset.id;
+        const patternToDelete = linkCatchingPatterns.find(p => p.id === idToDelete);
+        if (patternToDelete && !patternToDelete.isDefault) {
+            if (confirm(`Delete pattern: "${patternToDelete.pattern}"?`)) {
+                linkCatchingPatterns = linkCatchingPatterns.filter(p => p.id !== idToDelete);
+                chrome.storage.local.set({ linkCatchingPatterns }, () => {
+                    displayLinkPatternFormStatus('Pattern deleted.', 'success');
+                    loadSettings();
+                });
+            }
+        }
+    }
+
+    showAddLinkPatternFormButton.addEventListener('click', () => showLinkPatternForm(false));
+    cancelLinkPatternEditButton.addEventListener('click', hideLinkPatternForm);
+
+    saveLinkPatternButton.addEventListener('click', () => {
+        const id = linkPatternIdInput.value;
+        const patternStr = linkPatternInput.value.trim();
+
+        if (!patternStr) {
+            displayLinkPatternFormStatus('Pattern cannot be empty.', 'error');
+            return;
+        }
+        try {
+            new RegExp(patternStr);
+        } catch (e) {
+            displayLinkPatternFormStatus(`Invalid Regex: ${e.message}`, 'error');
+            return;
+        }
+
+        const patternData = {
+            id: id || generateLinkPatternId(),
+            pattern: patternStr,
+            isDefault: false // User-added patterns are never default
+        };
+        
+        const existingPattern = linkCatchingPatterns.find(p => p.id === id);
+        if (existingPattern && existingPattern.isDefault) {
+            // If user is "saving" a default pattern, we just update its value
+            existingPattern.pattern = patternStr;
+        } else if (id) { // Editing an existing user pattern
+            const index = linkCatchingPatterns.findIndex(p => p.id === id);
+            if (index > -1) {
+                linkCatchingPatterns[index] = patternData;
+            }
+        } else { // Adding a new pattern
+            linkCatchingPatterns.push(patternData);
+        }
+
+        chrome.storage.local.set({ linkCatchingPatterns }, () => {
+            displayLinkPatternFormStatus(id ? 'Pattern updated!' : 'Pattern added!', 'success');
+            loadSettings();
+            setTimeout(hideLinkPatternForm, 1000);
+        });
+    });
 
     function renderDebugSettings() {
         contentDebugEnabled_log.checked = globalSettings.contentDebugEnabled.includes('log');
