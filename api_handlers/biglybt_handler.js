@@ -1,73 +1,83 @@
 import { debug } from '../debug';
 
-// BiglyBT HTML WebUI API Handler
+// BiglyBT API Handler (using Transmission RPC)
+
+let sessionId = null;
+
+async function makeRpcRequest(serverConfig, method, args = {}) {
+    const url = `${serverConfig.url.replace(/\/$/, '')}/transmission/rpc`;
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`
+    };
+
+    if (sessionId) {
+        headers['X-Transmission-Session-Id'] = sessionId;
+    }
+
+    const body = {
+        method: method,
+        arguments: args
+    };
+
+    try {
+        let response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(body)
+        });
+
+        if (response.status === 409) {
+            sessionId = response.headers.get('X-Transmission-Session-Id');
+            headers['X-Transmission-Session-Id'] = sessionId;
+            response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+        }
+
+        if (!response.ok) {
+            return { success: false, error: { userMessage: `BiglyBT API request failed: ${response.status} ${response.statusText}` } };
+        }
+
+        const json = await response.json();
+        if (json.result !== 'success') {
+            return { success: false, error: { userMessage: `BiglyBT RPC Error: ${json.result}` } };
+        }
+
+        return { success: true, data: json.arguments };
+
+    } catch (error) {
+        debug.error('Error communicating with BiglyBT:', error);
+        return { success: false, error: { userMessage: `Could not contact BiglyBT: ${error.message}` } };
+    }
+}
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const {
         torrentFileContentBase64,
+        paused,
+        labels
     } = torrentOptions;
 
-    if (torrentUrl.startsWith("magnet:")) {
-        const url = `http://${serverConfig.host}:${serverConfig.port}/index.tmpl?d=u&upurl=${encodeURIComponent(torrentUrl)}`;
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                credentials: 'include',
-            });
-            if (!response.ok) {
-                return { success: false, error: { userMessage: `BiglyBT API request failed: ${response.status} ${response.statusText}` } };
-            }
-            const text = await response.text();
-            if (text.includes("loaded successfully.")) {
-                return { success: true, data: { message: "Torrent added successfully." } };
-            } else {
-                return { success: false, error: { userMessage: `Server didn't accept data: ${text}` } };
-            }
-        } catch (error) {
-            debug.error('Error adding magnet link to BiglyBT:', error);
-            return { success: false, error: { userMessage: `Could not contact BiglyBT: ${error.message}` } };
-        }
-    } else {
-        const url = `http://${serverConfig.host}:${serverConfig.port}/index.tmpl?d=u&local=1`;
-        const blob = new Blob([Buffer.from(torrentFileContentBase64, 'base64')], { type: 'application/x-bittorrent' });
-        const formData = new FormData();
-        formData.append("upfile_1", blob, "file.torrent");
+    const args = {
+        paused: paused
+    };
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-                credentials: 'include',
-            });
-
-            if (!response.ok) {
-                return { success: false, error: { userMessage: `BiglyBT API request failed: ${response.status} ${response.statusText}` } };
-            }
-
-            const text = await response.text();
-            if (text.includes("loaded successfully.")) {
-                return { success: true, data: { message: "Torrent added successfully." } };
-            } else {
-                return { success: false, error: { userMessage: `Server didn't accept data: ${text}` } };
-            }
-        } catch (error) {
-            debug.error('Error adding torrent file to BiglyBT:', error);
-            return { success: false, error: { userMessage: `Could not contact BiglyBT: ${error.message}` } };
-        }
+    if (labels && labels.length > 0) {
+        args.labels = labels;
     }
+
+    if (torrentUrl.startsWith("magnet:")) {
+        args.filename = torrentUrl;
+    } else {
+        args.metainfo = torrentFileContentBase64;
+    }
+
+    return makeRpcRequest(serverConfig, 'torrent-add', args);
 }
 
 export async function testConnection(serverConfig) {
-    const url = `http://${serverConfig.host}:${serverConfig.port}/index.tmpl`;
-    try {
-        const response = await fetch(url, { credentials: 'include' });
-        if (response.ok) {
-            return { success: true, data: { message: "Successfully connected to BiglyBT." } };
-        } else {
-            return { success: false, error: { userMessage: `Failed to connect to BiglyBT: ${response.status} ${response.statusText}` } };
-        }
-    } catch (error) {
-        debug.error('Error testing connection to BiglyBT:', error);
-        return { success: false, error: { userMessage: `Could not contact BiglyBT: ${error.message}` } };
-    }
+    return makeRpcRequest(serverConfig, 'session-get');
 }

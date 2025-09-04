@@ -391,6 +391,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'vuze':
                 serverUrlInput.placeholder = 'http://localhost:9091';
                 break;
+            case 'porla':
+                serverUrlInput.placeholder = 'http://localhost:1337';
+                break;
             default:
                 // Defaults are already set above
                 break;

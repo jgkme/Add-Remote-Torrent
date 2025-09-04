@@ -2,14 +2,39 @@ import { debug } from '../debug';
 
 // Porla API Handler
 
-async function makeApiRequest(serverConfig, method, params = {}) {
-    const url = `${serverConfig.url.replace(/\/$/, '')}/api/jsonrpc`;
-    let headers = {
-        'Content-Type': 'application/json'
+async function authenticateForToken(serverConfig) {
+    const url = `${serverConfig.url.replace(/\/$/, '')}/api/v1/auth/login`;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json; charset=UTF-8',
+            },
+            body: JSON.stringify({
+                username: serverConfig.username,
+                password: serverConfig.password,
+            }),
+        });
+        const json = await response.json();
+        if (json.error) {
+            throw new Error(json.error);
+        }
+        return json.token;
+    } catch (error) {
+        debug.error('Error authenticating with Porla:', error);
+        throw error;
+    }
+}
+
+async function makeApiRequest(serverConfig, method, params = {}, token) {
+    const url = `${serverConfig.url.replace(/\/$/, '')}/api/v1/jsonrpc`;
+    const headers = {
+        'Content-Type': 'application/json',
     };
 
-    // JWT token would be handled here if needed, but initial connection test might not require it.
-    // This will need to be expanded based on auth requirements.
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const body = {
         jsonrpc: '2.0',
@@ -42,24 +67,34 @@ async function makeApiRequest(serverConfig, method, params = {}) {
 }
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
-    // Placeholder - needs implementation based on Porla's specific 'add' method
-    const params = {
-        uri: torrentUrl,
-        // Other options like save path, paused state, etc., will go here.
-    };
-    if (torrentOptions.downloadDir) {
-        params.save_path = torrentOptions.downloadDir;
-    }
-    if (torrentOptions.paused) {
-        params.paused = true;
-    }
-    // ... and so on for other options.
+    try {
+        const token = await authenticateForToken(serverConfig);
+        const params = {};
 
-    return makeApiRequest(serverConfig, 'torrents.add', params);
+        if (torrentUrl.startsWith("magnet:")) {
+            params.magnet_uri = torrentUrl;
+        } else {
+            params.ti = torrentOptions.torrentFileContentBase64;
+        }
+
+        if (torrentOptions.downloadDir) {
+            params.save_path = torrentOptions.downloadDir;
+        }
+        if (torrentOptions.paused) {
+            params.paused = true;
+        }
+
+        return makeApiRequest(serverConfig, 'torrents.add', params, token);
+    } catch (error) {
+        return { success: false, error: { userMessage: `Failed to add torrent to Porla: ${error.message}` } };
+    }
 }
 
 export async function testConnection(serverConfig) {
-    // A simple, non-authenticated method is best for testing connection.
-    // 'porla.ping' seems like a good candidate.
-    return makeApiRequest(serverConfig, 'porla.ping');
+    try {
+        const token = await authenticateForToken(serverConfig);
+        return makeApiRequest(serverConfig, 'porla.ping', {}, token);
+    } catch (error) {
+        return { success: false, error: { userMessage: `Failed to connect to Porla: ${error.message}` } };
+    }
 }
