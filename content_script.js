@@ -77,6 +77,10 @@ const art_initModalLogic = () => {
 }
 
 const getOptions = async () => new Promise((resolve, reject) => {
+    if (!chrome.runtime?.id) {
+        // Extension context is invalidated
+        return reject(new Error("Extension context invalidated."));
+    }
     chrome.runtime.sendMessage({ action: 'getStorageData' }, response => {
         if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));

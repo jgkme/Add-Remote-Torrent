@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
     const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
+    const showDownloadDirInContextMenuToggle = document.getElementById('showDownloadDirInContextMenuToggle');
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -178,6 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         enableSoundNotifications: false,
         enableTextNotifications: false,
         enableServerSpecificContextMenu: false,
+        showDownloadDirInContextMenu: false,
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
@@ -859,6 +861,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.set({ enableServerSpecificContextMenu: globalSettings.enableServerSpecificContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
 
+    showDownloadDirInContextMenuToggle.addEventListener('change', () => {
+        globalSettings.showDownloadDirInContextMenu = showDownloadDirInContextMenuToggle.checked;
+        chrome.storage.local.set({ showDownloadDirInContextMenu: globalSettings.showDownloadDirInContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
         const settingsToExport = {
@@ -900,6 +907,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         registerDelay: importedSettings.registerDelay || 0,
                         enableSoundNotifications: importedSettings.enableSoundNotifications || false,
                         enableServerSpecificContextMenu: importedSettings.enableServerSpecificContextMenu || false,
+                        showDownloadDirInContextMenu: importedSettings.showDownloadDirInContextMenu || false,
                         trackerUrlRules: importedSettings.trackerUrlRules || [],
                         contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
                         bgDebugEnabled: Array.isArray(importedSettings.bgDebugEnabled) && importedSettings.bgDebugEnabled || ['log', 'warn', 'error'],
@@ -957,7 +965,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkmatches', 
-            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableServerSpecificContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -981,6 +989,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             enableTextNotificationsToggle.checked = globalSettings.enableTextNotifications;
             globalSettings.enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false; 
             enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
+            globalSettings.showDownloadDirInContextMenu = result.showDownloadDirInContextMenu || false;
+            showDownloadDirInContextMenuToggle.checked = globalSettings.showDownloadDirInContextMenu;
             trackerUrlRules = result.trackerUrlRules || [];
             if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
             if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;

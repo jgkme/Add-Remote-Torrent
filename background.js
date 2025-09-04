@@ -208,7 +208,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // Listen for storage changes to update context menu when servers are modified
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local' && (changes.servers || changes.enableServerSpecificContextMenu)) {
+  if (namespace === 'local' && (changes.servers || changes.enableServerSpecificContextMenu || changes.showDownloadDirInContextMenu)) {
     debug.log("[ART Background] Servers or context menu setting changed, updating context menu.");
     createContextMenus();
   }
@@ -221,95 +221,91 @@ async function createContextMenus() {
       debug.error("Error removing context menus:", chrome.runtime.lastError.message);
     }
     
-    // Get servers and settings from storage
-    chrome.storage.local.get(['servers', 'enableServerSpecificContextMenu'], (result) => {
+    chrome.storage.local.get(['servers', 'activeServerId', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu'], (result) => {
       const servers = result.servers || [];
+      const activeServerId = result.activeServerId;
       const enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false;
+      const showDownloadDirInContextMenu = result.showDownloadDirInContextMenu || false;
       
       if (servers.length === 0) {
-        // No servers configured, create a disabled menu item
         chrome.contextMenus.create({
           id: "addTorrentSubmenu",
           title: "Add Torrent to Remote WebUI (No servers configured)",
           contexts: ["link"],
           enabled: false
-        }, () => {
-          if (chrome.runtime.lastError) {
-            debug.error("Error creating disabled context menu:", chrome.runtime.lastError.message);
-          } else {
-            debug.log('[ART Background] Disabled context menu created (no servers configured).');
-          }
         });
         return;
       }
-      
+
+      const parentId = chrome.contextMenus.create({
+        id: "addTorrentParent",
+        title: "Add Torrent to Remote WebUI",
+        contexts: ["link"]
+      });
+
       if (enableServerSpecificContextMenu) {
-        // Create server-specific context menu
-        chrome.contextMenus.create({
-          id: "addTorrentSubmenu",
-          title: "Add Torrent to Remote WebUI",
-          contexts: ["link"] 
-        }, () => {
-          if (chrome.runtime.lastError) {
-            debug.error("Error creating 'Add Torrent to Remote WebUI' submenu:", chrome.runtime.lastError.message);
-            debug.log("[ART Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
-            chrome.notifications.create({
-                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
-                message: 'Failed to create context menu. Please report this.'
-            }, (notificationId) => {
-              if (chrome.runtime.lastError) {
-                debug.error("[ART Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
-              } else {
-                debug.log("[ART Background] Notification created (context menu error), ID:", notificationId);
-              }
-            });
-          } else {
-            debug.log('[ART Background] Parent submenu ("addTorrentSubmenu") registered.');
-            
-            // Create menu items for each server
-            servers.forEach((server, index) => {
-              const menuId = `addTorrentServer_${server.id}`;
-              const menuTitle = `${server.name} `;
-              
-              chrome.contextMenus.create({
-                id: menuId,
-                parentId: "addTorrentSubmenu",
-                title: menuTitle,
-                contexts: ["link"] 
-              }, () => {
-                if (chrome.runtime.lastError) {
-                  debug.error(`Error creating menu item for server ${server.name}:`, chrome.runtime.lastError.message);
-                } else {
-                  debug.log(`[ART Background] Menu item created for server "${server.name}" (${menuId}).`);
-                }
+        // Show all servers, each with its own directory submenu
+        servers.forEach(server => {
+          const serverMenuId = `server_${server.id}`;
+          chrome.contextMenus.create({
+            id: serverMenuId,
+            parentId: parentId,
+            title: server.name,
+            contexts: ["link"]
+          });
+
+          if (showDownloadDirInContextMenu) {
+            const directories = server.downloadDirectories ? server.downloadDirectories.split(',').map(d => d.trim()).filter(d => d) : [];
+            if (directories.length > 0) {
+              directories.forEach(dir => {
+                chrome.contextMenus.create({
+                  id: `${server.id}|${dir}`,
+                  parentId: serverMenuId,
+                  title: dir,
+                  contexts: ["link"]
+                });
               });
-            });
+            }
           }
         });
       } else {
-        // Create original single menu item
-        chrome.contextMenus.create({
-          id: "addTorrentGeneric",
-          title: "Add Torrent to Remote WebUI",
-          contexts: ["link"] 
-        }, () => {
-          if (chrome.runtime.lastError) {
-            debug.error("Error creating 'Add Torrent to Remote WebUI' context menu:", chrome.runtime.lastError.message);
-            debug.log("[ART Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
-            chrome.notifications.create({
-                type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
-                message: 'Failed to create context menu. Please report this.'
-            }, (notificationId) => {
-              if (chrome.runtime.lastError) {
-                debug.error("[ART Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
-              } else {
-                debug.log("[ART Background] Notification created (context menu error), ID:", notificationId);
-              }
-            });
+        // Show only the active server with its directory submenu
+        const activeServer = servers.find(s => s.id === activeServerId);
+        if (activeServer) {
+          if (showDownloadDirInContextMenu) {
+            const directories = activeServer.downloadDirectories ? activeServer.downloadDirectories.split(',').map(d => d.trim()).filter(d => d) : [];
+            if (directories.length > 0) {
+              const serverMenuId = `server_${activeServer.id}`;
+              chrome.contextMenus.create({
+                id: serverMenuId,
+                parentId: parentId,
+                title: `Add to ${activeServer.name}`,
+                contexts: ["link"]
+              });
+              directories.forEach(dir => {
+                chrome.contextMenus.create({
+                  id: `${activeServer.id}|${dir}`,
+                  parentId: serverMenuId,
+                  title: dir,
+                  contexts: ["link"]
+                });
+              });
+            } else {
+              // If no directories, make the parent menu item clickable
+              chrome.contextMenus.create({
+                id: `server_${activeServer.id}`,
+                parentId: parentId,
+                title: `Add to ${activeServer.name}`
+              });
+            }
           } else {
-            debug.log('[ART Background] Generic torrent context menu ("addTorrentGeneric") registered.'); 
+            chrome.contextMenus.create({
+              id: `server_${activeServer.id}`,
+              parentId: parentId,
+              title: `Add to ${activeServer.name}`
+            });
           }
-        });
+        }
       }
     });
   });
@@ -781,102 +777,48 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if ((info.menuItemId === "addTorrentGeneric" || info.menuItemId.startsWith("addTorrentServer_")) && info.linkUrl) {
-    const linkUrl = info.linkUrl;
-    let isMagnet = linkUrl.startsWith("magnet:");
-    let isTorrentFile = /\.torrent($|\?|#)/i.test(linkUrl); 
-    if (!isMagnet && !isTorrentFile) {
-      debug.log(`[ART Background] Link URL "${linkUrl}" does not strictly end with .torrent. Proceeding to addTorrentToClient for content type check.`);
+  const menuItemId = String(info.menuItemId);
+  const linkUrl = info.linkUrl;
+
+  if (!linkUrl) return;
+
+  let serverId;
+  let downloadDir = null;
+
+  if (menuItemId.includes('|')) {
+    [serverId, downloadDir] = menuItemId.split('|');
+  } else if (menuItemId.startsWith('server_')) {
+    serverId = menuItemId.replace('server_', '');
+  } else if (menuItemId === 'addTorrentParent') {
+    const activeServer = await getActiveServerSettings();
+    if (activeServer) {
+      serverId = activeServer.id;
     }
-    debug.log(`[ART Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
-    debug.log(`[ART Background] Link type detection: isMagnet=${isMagnet}, isTorrentFile=${isTorrentFile}`);
-    
-    let selectedServer = null;
-    
-    if (info.menuItemId.startsWith("addTorrentServer_")) {
-      // Server-specific menu item clicked
-      const serverId = info.menuItemId.replace("addTorrentServer_", "");
-      
-      // Get servers from storage and find the selected server
-      const settings = await chrome.storage.local.get(['servers', 'advancedAddDialog']);
-      const servers = settings.servers || [];
-      selectedServer = servers.find(s => s.id === serverId);
-      
-      if (!selectedServer) {
-        const errorMsg = `Server not found for ID: ${serverId}`;
-        debug.error("[ART Background] Error in context menu click:", errorMsg);
-        chrome.notifications.create({ 
-          type: 'basic', 
-          iconUrl: 'icons/icon-48x48.png', 
-          title: 'Add Remote Torrent Error', 
-          message: errorMsg 
-        });
-        chrome.storage.local.set({ lastActionStatus: errorMsg });
-        return;
-      }
-      
-      if (!selectedServer.clientType) {
-        const errorMsg = `Server configuration is incomplete (missing clientType) for server: ${selectedServer.name}`;
-        debug.error("[ART Background] Error in context menu click:", errorMsg);
-        chrome.notifications.create({ 
-          type: 'basic', 
-          iconUrl: 'icons/icon-48x48.png', 
-          title: 'Add Remote Torrent Error', 
-          message: errorMsg 
-        });
-        chrome.storage.local.set({ lastActionStatus: errorMsg });
-        return;
-      }
-      
-      debug.log("[ART Background] Selected server:", {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType });
-    } else {
-      // Original generic menu item clicked - use original logic
-      const settings = await chrome.storage.local.get(['advancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
-      const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
-      debug.log("[ART Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
-      
-      try {
-        selectedServer = await determineTargetServer(info.pageUrl);
-        debug.log("[ART Background] Determined serverForDialog:", selectedServer ? {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType } : null);
-      } catch (e) { 
-        debug.error("[ART Background] Error in determineTargetServer:", e);
-        const errorMsg = `Error determining server: ${e.message}`;
-        debug.log("[ART Background] Creating error notification (determineTargetServer in onClicked):", errorMsg);
-        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: errorMsg }, (notificationId) => {
-          if(chrome.runtime.lastError) {
-            debug.error("[ART Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
-          } else {
-            debug.log("[ART Background] Notification created (determineTargetServer onClicked), ID:", notificationId);
-          }
-        });
-        chrome.storage.local.set({ lastActionStatus: errorMsg });
-        return; 
-      }
-      
-      if (!selectedServer || !selectedServer.clientType) { 
-        const msg = 'No target server determined or server config is incomplete (missing clientType). Configure servers in options.';
-        debug.log("[ART Background] Creating error notification (no serverForDialog in onClicked):", msg);
-        chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: msg }, (notificationId) => {
-          if(chrome.runtime.lastError) {
-            debug.error("[ART Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
-          } else {
-            debug.log("[ART Background] Notification created (no serverForDialog onClicked), ID:", notificationId);
-          }
-        });
-        chrome.storage.local.set({ lastActionStatus: msg });
-        return;
-      }
-    }
-    
-    // Common logic for both cases
-    const settings = await chrome.storage.local.get(['advancedAddDialog']);
-    const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
-    debug.log("[ART Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
-    
-    if (showAdvancedDialog) {
-      popAdvancedDialog(info.linkUrl, selectedServer);
-    } else {
-      addTorrentToClient(info.linkUrl, selectedServer, null, null, null, info.pageUrl); 
-    }
+  } else {
+    return; // Not a menu item we handle
+  }
+
+  if (!serverId) {
+    debug.error("Could not determine a server ID from the context menu click.");
+    return;
+  }
+
+  const { servers } = await chrome.storage.local.get('servers');
+  const selectedServer = (servers || []).find(s => s.id === serverId);
+
+  if (!selectedServer) {
+    debug.error(`Server not found for ID: ${serverId}`);
+    return;
+  }
+
+  debug.log(`[ART Background] Context menu clicked. Server: ${selectedServer.name}, Directory: ${downloadDir || 'Default'}`);
+
+  const { advancedAddDialog } = await chrome.storage.local.get('advancedAddDialog');
+  const showAdvancedDialog = ['always', 'manual'].includes(advancedAddDialog);
+
+  if (showAdvancedDialog) {
+    popAdvancedDialog(linkUrl, selectedServer);
+  } else {
+    addTorrentToClient(linkUrl, selectedServer, null, null, null, info.pageUrl, downloadDir);
   }
 });

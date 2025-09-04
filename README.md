@@ -121,6 +121,10 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.18 (2025-09-05):**
+    *   **Feature:** Added a new option to show download directories in the context menu. This allows for adding torrents to specific directories in one click.
+    *   **Fix:** Corrected a bug where the context menu would fail to update if a server had no download directories defined.
+    *   **Fix:** Added error handling to the content script to prevent "context invalidated" errors on dynamic pages.
 *   **v0.3.17 (2025-08-29):**
     *   **Fix:** Implemented a comprehensive fix for uTorrent connectivity. The handler now correctly uses a user-configurable "Relative Path" for all API requests (including token fetching and connection testing), resolving errors for non-standard WebUI paths. The connection test now uses a more reliable `getsettings` check.
     *   **UX:** The options page now auto-detects and separates the relative path if it's included in the main server URL for uTorrent clients, and the "Open WebUI" button in both the options page and the popup correctly constructs the URL using this path.
