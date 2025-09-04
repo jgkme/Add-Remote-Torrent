@@ -23,6 +23,7 @@ import * as torrentflux from './torrentflux_handler.js';
 import * as flood from './flood_handler.js';
 import * as tribler from './tribler_handler.js';
 import * as biglybt from './biglybt_handler.js';
+import * as porla from './porla_handler.js';
 
 const clientHandlers = {
     qbittorrent,
@@ -45,6 +46,7 @@ const clientHandlers = {
     flood,
     tribler,
     biglybt,
+    porla
 };
 
 export function getClientApi(clientType) {

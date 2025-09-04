@@ -12,10 +12,11 @@
     -   **Options Page (`options/`)** (updated for client type selection, includes "Open WebUI" button)
     -   **Advanced Add Dialog (`confirmAdd/`)**
     -   **`chrome.storage.local`:** For storing:
-        -   `servers`: An array of server configuration objects. Each object now includes `clientType` (e.g., "qbittorrent", "transmission"), `url`, `username`, `password`, `tags`, `category`, `categories`, `addPaused`, and client-specific fields like `transmissionDownloadDir`.
+        -   `servers`: An array of server configuration objects. Each object now includes `clientType` (e.g., "qbittorrent", "transmission"), `url`, `username`, `password`, `tags`, `category`, `categories`, `addPaused`, and client-specific fields like `transmissionDownloadDir` and `utorrentrelativepath`.
         -   `activeServerId`: The ID of the currently manually selected active server.
         -   `urlToServerMappings`: An array of objects, each mapping a website URL pattern to a server ID.
         -   `enableUrlBasedServerSelection`: Boolean, global toggle for URL-based server selection.
+        -   `showDownloadDirInContextMenu`: Boolean, global toggle for showing download directories in the context menu.
         -   `advancedAddDialog`: String (`never`, `always`, `manual`, `catch`).
         -   `lastActionStatus`.
     -   `chrome.contextMenus` API

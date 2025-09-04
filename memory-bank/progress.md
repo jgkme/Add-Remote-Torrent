@@ -3,71 +3,52 @@
 ## 1. Current Project Status
 
 -   **Overall:** Phase 2 (Adding More Client Support & Refinements) is in progress.
--   **Current Activity:** Addressing user feedback, fixing critical bugs, and improving the overall user experience and support infrastructure.
+-   **Current Activity:** Adding support for new torrent clients (BiglyBT, Flood, Porla) and updating all project documentation.
 
 ## 2. Phased Implementation Plan
 
 ---
 ### **Phase 0: Original qBittorrent WebUI Adder (Completed)**
-*Objective: Develop a fully-featured Chrome extension for adding torrents to qBittorrent servers, including multi-server support, advanced add dialog, and URL-based server selection.*
+*Objective: Develop a fully-featured Chrome extension for adding torrents to qBittorrent servers.*
 -   **Status:** [X] Completed.
 
 ---
 ### **Phase 1: Multi-Client Architecture Transformation (Completed)**
-*Objective: Transform the existing extension into a multi-client torrent adder by refactoring the core architecture to support various torrent client APIs in a modular and extensible way. Update all project documentation.*
+*Objective: Transform the existing extension into a multi-client torrent adder by refactoring the core architecture.*
 -   **Status:** [X] Completed.
 
 ---
 ### **Phase 2: Adding More Client Support & Refinements (Current Focus)**
-*Objective: Expand client compatibility by fleshing out placeholder handlers and refine the user experience for multi-client management.*
+*Objective: Expand client compatibility by fleshing out placeholder handlers and refining the user experience.*
 
--   **Release v0.3.12 (2025-08-22):**
-    -   [X] **Build & Deployment Hardening:** Implemented the "Verified CRX Uploads" feature. This involved generating a private signing key, updating the build script to produce a signed `.crx` file and a `.sha256` checksum, and updating the release process to include all artifacts. Corrected the existing `v0.3.12` GitHub release with the new, consistent assets.
+-   **Release v0.3.18 (2025-09-05):**
+    -   [X] **Feature:** Added a new global setting to show download directories as a nested submenu in the context menu.
+    -   [X] **Fix:** Corrected a bug where the context menu would fail to build if a server had no download directories defined.
+    -   [X] **Fix:** Added error handling to the content script to prevent "context invalidated" errors on dynamic pages.
 
--   **Release v0.3.6 (2025-08-14):**
-    -   [X] **Versioning Fix:** Corrected versioning scheme in `manifest.json` and `package.json` to be compliant with Chrome Web Store policies (e.g., `0.3.6`), resolving a critical loading error.
-    -   [X] **ruTorrent Handler Fix:** Corrected the URL construction logic to prevent "404 Not Found" errors, relying solely on the full Server URL.
-    -   [X] **uTorrent (Old) Handler Fix:** Reworked the handler to remove the CSRF token requirement, ensuring compatibility with very old, token-less clients (e.g., v2.0.4).
-    -   [X] **"Report Issue" Feature:**
-        -   Added a "Report Issue" button to the popup UI.
-        -   Implemented logic in `popup.js` to open a pre-filled GitHub issue template with sanitized error information.
-    -   [X] **Options Page UX Improvements:**
-        -   Added inline help text for the "Custom URL patterns" field.
-        -   Made error messages on the server form persistent (they no longer disappear automatically).
-        -   Added a confirmation dialog to warn users before saving a server configuration that has failed a connection test.
-    -   [X] **Documentation Updates:**
-        -   Consolidated recent changes into a single `v0.3.6` entry in the `README.md` changelog.
-        -   Added a "Reporting Issues" section to `README.md`.
-        -   Added a troubleshooting note for macOS users to `README.md`.
-        -   Updated `memory-bank/techContext.md` with the correct versioning requirements.
-        -   Updated `memory-bank/activeContext.md` and this file.
-    -   [X] **Release Management:** Deleted invalid tags (`v0.3.5b`, `v0.3.5c`) from the remote repository and created a new, valid `v0.3.6` release on GitHub.
+-   **Release v0.3.17 (2025-08-29):**
+    -   [X] **Fix:** Implemented a comprehensive fix for uTorrent connectivity. The handler now correctly uses a user-configurable "Relative Path" for all API requests, and the connection test uses a more reliable `getsettings` action.
+    -   [X] **UX:** The options page now auto-detects the relative path from the server URL for uTorrent clients and correctly builds the "Open WebUI" link in all parts of the extension.
 
--   **(Previous Phase 2 Work is documented below for historical context)**
-    -   [X] Dynamic Link Monitoring & Click Handling
-    -   [X] Placeholder Handler Creation & UI Integration
-    -   [X] Client-Specific UI Refinements
-    -   [X] Tracker URL-Based Label/Directory Assignment
-    -   [X] On-Page Link Catching & Modal Feature
-    -   [X] Advanced Add Dialog Enhancements
-    -   [X] Fleshed out multiple placeholder handlers (uTorrent, rTorrent, etc.)
-    -   [X] Numerous UI/UX Enhancements with Tailwind CSS
-    -   [X] Established Webpack build process
-    -   [X] Previous releases (v0.2.9 - v0.3.5)
+-   **(Previous releases are documented in the README.md changelog)**
 
 ---
-### **Phase 3: Advanced Features & Polish (Future)**
+### **Phase 3: New Client Integration (Next Steps)**
+*Objective: Add support for BiglyBT, Flood, and Porla.*
+-   [ ] Research APIs for BiglyBT, Flood, and Porla.
+-   [ ] Implement API handlers for each new client.
+-   [ ] Update the UI (options page) to include the new clients.
+-   [ ] Thoroughly test functionality for the new clients.
+
+---
+### **Phase 4: Advanced Features & Polish (Future)**
 *Objective: Introduce advanced client-specific options and further polish the overall extension.*
-(Tasks remain as previously defined)
 -   [ ] Consider client-specific advanced options in the "Advanced Add Dialog".
 -   [ ] Further UI/UX improvements based on multi-client usage patterns and feedback.
--   [ ] Comprehensive testing across all supported clients and browsers.
--   [ ] Final review of all documentation.
 
 ## 3. Known Issues & Blockers
--   **macOS Link Catching:** A user reported on-page link catching does not work on macOS. This may be a configuration issue or a platform-specific bug requiring further investigation.
--   **Placeholder Handler Functionality:** Many handlers (e.g., Buffalo, Vuze, tTorrent) are still very basic and require significant work or API discovery to become fully functional.
--   **rTorrent Handler XML Complexity:** While basic functionality exists, robust XML-RPC handling for all rTorrent features remains a complex task.
+-   **Placeholder Handler Functionality:** Many existing handlers (e.g., Buffalo, tTorrent) are still very basic and require significant work to become fully functional.
+-   **rTorrent Handler XML Complexity:** The rTorrent handler could be made more robust.
 
 ## 4. Milestones (New Phased Approach)
 
@@ -75,7 +56,9 @@
     -   **Status:** [X] Complete
 -   **Milestone 1 (Multi-Client Architecture Foundation):** Phase 1 tasks completed.
     -   **Status:** [X] Complete
--   **Milestone 2 (Expanded Client Support):** Phase 2 tasks, focusing on implementing full support for placeholder clients and UI refinements.
-    -   **Status:** [X] In Progress
--   **Milestone 3 (Full Feature Set & Polish):** Phase 3 tasks.
+-   **Milestone 2 (Expanded Client Support & UX Refinements):** Phase 2 tasks completed.
+    -   **Status:** [X] Complete
+-   **Milestone 3 (New Client Integration):** Phase 3 tasks.
+    -   **Status:** [ ] Not Started
+-   **Milestone 4 (Full Feature Set & Polish):** Phase 4 tasks.
     -   **Status:** [ ] Not Started

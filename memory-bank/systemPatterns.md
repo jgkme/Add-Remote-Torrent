@@ -61,7 +61,10 @@
     -   `background.js` uses `api_client_factory.js` to retrieve the correct handler for the determined target server's `clientType`.
     -   Each handler implements a consistent interface (e.g., `addTorrent`, `testConnection`) but handles the unique API details for its client.
     -   **qBittorrent Version Handling:** The `qbittorrent_handler.js` now includes a version check to automatically detect the qBittorrent version. It then uses the `stopped` parameter instead of `paused` for qBittorrent versions >= 5.1.2 to ensure compatibility.
--   **Context Menu Integration:** (Largely as before, but now triggers generic `addTorrentToClient` in `background.js`).
+-   **Context Menu Integration:**
+    -   The context menu is now built dynamically based on two global settings: `enableServerSpecificContextMenu` and `showDownloadDirInContextMenu`.
+    -   It supports nested submenus to allow `Server -> Directory` selection in one click.
+    -   Menu item IDs are specially formatted (e.g., `serverId|/path/to/dir`) to encode the necessary information for the `onClicked` listener.
 -   **Icon Click:**
     -   Clicking the extension icon opens a simple dialog (`add/add.html`) where the user can paste a torrent URL or magnet link.
     -   The dialog sends a message to the background script, which then calls `addTorrentToClient` to add the torrent.
