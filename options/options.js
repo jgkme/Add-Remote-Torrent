@@ -993,8 +993,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Load link catching patterns, with migration from old format
             const defaultPatterns = [
-                { id: 'default-1', pattern: '([\\\\\\]\\\\[]|\\b|\\.)\\.torrent\\b([^\\-]|$$)', isDefault: true },
-                { id: 'default-2', pattern: 'torrents\\.php\\?action=download', isDefault: true }
+                { id: 'default-1', pattern: '([\\\\\\]\\\\[]|\\b|\\.)\\.torrent\\b([^\\-]|$$)' },
+                { id: 'default-2', pattern: 'torrents\\.php\\?action=download' }
             ];
 
             if (result.linkCatchingPatterns && Array.isArray(result.linkCatchingPatterns)) {
@@ -1005,8 +1005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const oldPatterns = result.linkmatches.split('~').map(p => p.trim()).filter(p => p);
                 const migratedPatterns = oldPatterns.map(p => ({
                     id: generateLinkPatternId(),
-                    pattern: p,
-                    isDefault: false
+                    pattern: p
                 }));
                 // Combine defaults with migrated user patterns
                 linkCatchingPatterns = [...defaultPatterns, ...migratedPatterns];
@@ -1450,13 +1449,6 @@ actionsDiv.appendChild(deleteButton);
             patternStrong.textContent = pattern.pattern;
             infoDiv.appendChild(patternStrong);
 
-            if (pattern.isDefault) {
-                const defaultBadge = document.createElement('span');
-                defaultBadge.className = 'ml-2 px-2 py-0.5 text-xs font-semibold text-gray-600 bg-gray-200 dark:text-gray-300 dark:bg-gray-600 rounded-full';
-                defaultBadge.textContent = 'Default';
-                infoDiv.appendChild(defaultBadge);
-            }
-
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'actions flex space-x-2 flex-shrink-0';
 
@@ -1466,13 +1458,11 @@ actionsDiv.appendChild(deleteButton);
             editButton.textContent = 'Edit';
             actionsDiv.appendChild(editButton);
 
-            if (!pattern.isDefault) {
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'delete-link-pattern-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md';
-                deleteButton.dataset.id = pattern.id;
-                deleteButton.textContent = 'Delete';
-                actionsDiv.appendChild(deleteButton);
-            }
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-link-pattern-button px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md';
+            deleteButton.dataset.id = pattern.id;
+            deleteButton.textContent = 'Delete';
+            actionsDiv.appendChild(deleteButton);
 
             li.appendChild(infoDiv);
             li.appendChild(actionsDiv);
@@ -1489,7 +1479,7 @@ actionsDiv.appendChild(deleteButton);
         if (isEditing && pattern) {
             linkPatternIdInput.value = pattern.id;
             linkPatternInput.value = pattern.pattern;
-            linkPatternInput.disabled = !!pattern.isDefault; // Disable editing for default patterns
+            linkPatternInput.disabled = false;
         } else {
             linkPatternIdInput.value = '';
             linkPatternInput.value = '';
@@ -1514,7 +1504,7 @@ actionsDiv.appendChild(deleteButton);
     function handleDeleteLinkPattern(event) {
         const idToDelete = event.target.dataset.id;
         const patternToDelete = linkCatchingPatterns.find(p => p.id === idToDelete);
-        if (patternToDelete && !patternToDelete.isDefault) {
+        if (patternToDelete) {
             if (confirm(`Delete pattern: "${patternToDelete.pattern}"?`)) {
                 linkCatchingPatterns = linkCatchingPatterns.filter(p => p.id !== idToDelete);
                 chrome.storage.local.set({ linkCatchingPatterns }, () => {
@@ -1545,15 +1535,10 @@ actionsDiv.appendChild(deleteButton);
 
         const patternData = {
             id: id || generateLinkPatternId(),
-            pattern: patternStr,
-            isDefault: false // User-added patterns are never default
+            pattern: patternStr
         };
         
-        const existingPattern = linkCatchingPatterns.find(p => p.id === id);
-        if (existingPattern && existingPattern.isDefault) {
-            // If user is "saving" a default pattern, we just update its value
-            existingPattern.pattern = patternStr;
-        } else if (id) { // Editing an existing user pattern
+        if (id) { // Editing an existing user pattern
             const index = linkCatchingPatterns.findIndex(p => p.id === id);
             if (index > -1) {
                 linkCatchingPatterns[index] = patternData;
