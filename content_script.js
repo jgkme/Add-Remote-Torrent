@@ -1,21 +1,21 @@
-// Content script for Add Remote Torrent WebUI 
+// Content script for Add Remote Torrent
 import { debug } from './debug';
 import { debounce } from './utils';
 import { LinkMonitor } from './LinkMonitor.js';
 
-let rtwa_modal_open_func, rtwa_modal_close_func;
+let art_modal_open_func, art_modal_close_func;
 
 // Modal initialization function
-const rtwa_initModalLogic = () => {
+const art_initModalLogic = () => {
     let modalWrapper = null;
     let modalWindow = null;
     let styleLink = null;
-    debug.log('[RTWA ContentScript] rtwa_initModalLogic: Initializing modal functions.');
+    debug.log('[ART ContentScript] art_initModalLogic: Initializing modal functions.');
 
     const injectCss = () => {
-        if (document.getElementById('rtwa-tailwind-styles')) return;
+        if (document.getElementById('art-tailwind-styles')) return;
         styleLink = document.createElement('link');
-        styleLink.id = 'rtwa-tailwind-styles';
+        styleLink.id = 'art-tailwind-styles';
         styleLink.rel = 'stylesheet';
         styleLink.type = 'text/css';
         styleLink.href = chrome.runtime.getURL('css/tailwind.css');
@@ -23,30 +23,30 @@ const rtwa_initModalLogic = () => {
     };
 
     const removeCss = () => {
-        const existingLink = document.getElementById('rtwa-tailwind-styles');
+        const existingLink = document.getElementById('art-tailwind-styles');
         if (existingLink) {
             existingLink.remove();
         }
     };
 
     const openModal = () => {
-        debug.log('[RTWA ContentScript] openModal: Attempting to open modal.');
+        debug.log('[ART ContentScript] openModal: Attempting to open modal.');
         injectCss();
-        // The modal HTML is injected by rtwa_showLabelDirChooser
-        modalWrapper = document.getElementById('rtwa_modal_wrapper');
-        modalWindow = document.getElementById('rtwa_modal_window');
+        // The modal HTML is injected by art_showLabelDirChooser
+        modalWrapper = document.getElementById('art_modal_wrapper');
+        modalWindow = document.getElementById('art_modal_window');
 
         if (modalWrapper && modalWindow) {
-            debug.log('[RTWA ContentScript] openModal: Modal elements found. Setting display to flex.');
+            debug.log('[ART ContentScript] openModal: Modal elements found. Setting display to flex.');
             modalWrapper.style.display = 'flex';
-            debug.log('[RTWA ContentScript] openModal: Modal display set. Current display:', modalWrapper.style.display);
+            debug.log('[ART ContentScript] openModal: Modal display set. Current display:', modalWrapper.style.display);
         } else {
-            debug.error('RTWA Modal: Wrapper or window not found after HTML injection.');
+            debug.error('ART Modal: Wrapper or window not found after HTML injection.');
         }
     };
 
     const closeModal = () => {
-        modalWrapper = document.getElementById('rtwa_modal_wrapper');
+        modalWrapper = document.getElementById('art_modal_wrapper');
         if (modalWrapper) {
             modalWrapper.remove();
         }
@@ -57,7 +57,7 @@ const rtwa_initModalLogic = () => {
 
     // Event handler for clicking outside the modal
     const clickOutsideHandler = (event) => {
-        modalWrapper = document.getElementById('rtwa_modal_wrapper');
+        modalWrapper = document.getElementById('art_modal_wrapper');
         if (modalWrapper && event.target === modalWrapper) {
             closeModal();
         }
@@ -111,14 +111,14 @@ const isTorrentUrl = (url, options = {}) => {
 }
 
 const checkLinkElement = (el, options, logAction) => {
-    if (el._rtwa_handler_added) {
+    if (el._art_handler_added) {
         // Element already has a click handler, but we want to re-check its url (may have changed)
-        el._rtwa_is_torrent = false; // Reset to re-check
+        el._art_is_torrent = false; // Reset to re-check
     }
     const url = el.href || (el.form?.action?.match && el.form.action);
     if (isTorrentUrl(url, options)) {
-        debug.log(`[RTWA ContentScript] Found torrent link${logAction ? ` (${logAction})` : ''}:`, url);
-        el._rtwa_is_torrent = true;
+        debug.log(`[ART ContentScript] Found torrent link${logAction ? ` (${logAction})` : ''}:`, url);
+        el._art_is_torrent = true;
         addClickHandler(el, options);
         return true;
     }
@@ -134,10 +134,10 @@ const registerLinks = options => {
             torrentLinksFound++;
         }
     });
-    debug.log('[RTWA ContentScript] Found links:', torrentLinksFound); // Added log
+    debug.log('[ART ContentScript] Found links:', torrentLinksFound); // Added log
 
     if (torrentLinksFound > 0) {
-        [rtwa_modal_open_func, rtwa_modal_close_func] = rtwa_initModalLogic();
+        [art_modal_open_func, art_modal_close_func] = art_initModalLogic();
 
         if (options.linksfoundindicator === true) {
             chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksFound });
@@ -148,17 +148,17 @@ const registerLinks = options => {
 const addClickHandler = (el = {}, options) => {
     // Beware of adding a click handler for the same element again!
     // (elements may be re-used by browser framework optimizations in SPAs)
-    if (el.addEventListener && !el._rtwa_handler_added) {
-        // Set _rtwa_handler_added indicate that this el is hooked up
-        el._rtwa_handler_added = true;
+    if (el.addEventListener && !el._art_handler_added) {
+        // Set _art_handler_added indicate that this el is hooked up
+        el._art_handler_added = true;
 
         el.addEventListener('click', (e) => {
             const url = el.href || el.form?.action;
-            if (el._rtwa_is_torrent && url && !(e.ctrlKey || e.shiftKey || e.altKey)) {
+            if (el._art_is_torrent && url && !(e.ctrlKey || e.shiftKey || e.altKey)) {
                 // The element contains a verified torrent-link, has a url, and no modifier keys are pressed
 
                 e.preventDefault();
-                debug.log('[RTWA ContentScript] Torrent link clicked:', url); // Log torrent link click
+                debug.log('[ART ContentScript] Torrent link clicked:', url); // Log torrent link click
 
                 // Assuming 'servers' is a JSON string in the response from getStorageData
                 const servers = options?.servers ? JSON.parse(options.servers) : [];
@@ -187,8 +187,8 @@ const addClickHandler = (el = {}, options) => {
                     pageUrl: pageUrl
                 });
             } else {
-                if (!el._rtwa_is_torrent) {
-                    debug.log('[RTWA ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
+                if (!el._art_is_torrent) {
+                    debug.log('[ART ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
                 }
             }
         });
@@ -197,10 +197,10 @@ const addClickHandler = (el = {}, options) => {
 
 const updateBadge = () => {
     const torrentLinksOnPage = Array.from(document.querySelectorAll('a, input, button'))
-        .filter(el => el._rtwa_is_torrent)
+        .filter(el => el._art_is_torrent)
         .length;
 
-    debug.log('[RTWA ContentScript] updateBadge(): updateBadge message with count:', torrentLinksOnPage);
+    debug.log('[ART ContentScript] updateBadge(): updateBadge message with count:', torrentLinksOnPage);
     chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksOnPage });
 };
 const updateBadgeDebounced = debounce(updateBadge, 50);
@@ -239,7 +239,7 @@ const initLinkMonitor = async (options) => {
 
 window.addEventListener('pageshow', () => {
     // Run on 'pageshow' event (should also trigger on browser back/forward when the page is cached)
-    debug.log('[RTWA ContentScript] pageshow event detected, (re)initializing link monitor');
+    debug.log('[ART ContentScript] pageshow event detected, (re)initializing link monitor');
     getOptions().then(initLinkMonitor);
 });
 

@@ -1,5 +1,5 @@
-// console.log("[RTWA Background] Service worker script loaded and running! (Minimal test)");
-// const RTA_BACKGROUND_LOADED = true; // Add a non-console statement
+// console.log("[ART Background] Service worker script loaded and running! (Minimal test)");
+// const ART_BACKGROUND_LOADED = true; // Add a non-console statement
 
 import { debug } from './debug';
 import { getClientApi } from './api_handlers/api_client_factory.js';
@@ -19,7 +19,7 @@ const offscreenDocumentManager = {
     ensureReady: async function() {
         if (this.isReady) return;
         if (this.readyPromise) { 
-            debug.log('[RTWA Background] Offscreen Manager: Waiting on existing readyPromise.');
+            debug.log('[ART Background] Offscreen Manager: Waiting on existing readyPromise.');
             await this.readyPromise;
         }
     },
@@ -44,7 +44,7 @@ offscreenDocumentManager._setupReadyPromise(); // Initial setup
 
 let dialogWindow = null;
 const popAdvancedDialog = async (url, targetServer) => {
-    debug.log("[RTWA Background] Creating advanced dialog. Link URL:", url, "Server ID:", targetServer.id, "Server Name:", targetServer.name);
+    debug.log("[ART Background] Creating advanced dialog. Link URL:", url, "Server ID:", targetServer.id, "Server Name:", targetServer.name);
 
     if (dialogWindow?.id) {
         // Make sure existing popups are closed before opening a new one
@@ -64,10 +64,10 @@ const popAdvancedDialog = async (url, targetServer) => {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  debug.log("[RTWA Background] Received message:", request); 
+  debug.log("[ART Background] Received message:", request); 
 
   if (request.action === 'offscreenReady') {
-    debug.log('[RTWA Background] Received offscreenReady message from offscreen document.');
+    debug.log('[ART Background] Received offscreenReady message from offscreen document.');
     offscreenDocumentManager.markAsReady();
     sendResponse({ status: 'Offscreen document ready acknowledged by service worker.' });
     return false; 
@@ -166,7 +166,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ status: "Torrent add request sent to background." });
         } else {
           const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
-          debug.log("[RTWA Background] Creating error notification (no target server):", msg);
+          debug.log("[ART Background] Creating error notification (no target server):", msg);
           chrome.notifications.create({
             type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
             message: msg
@@ -202,14 +202,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   debug.setEnabled(bgDebugEnabled);
 
-  debug.log("[RTWA Background] onInstalled event triggered.");
+  debug.log("[ART Background] onInstalled event triggered.");
   createContextMenus();
 });
 
 // Listen for storage changes to update context menu when servers are modified
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local' && (changes.servers || changes.enableServerSpecificContextMenu)) {
-    debug.log("[RTWA Background] Servers or context menu setting changed, updating context menu.");
+    debug.log("[ART Background] Servers or context menu setting changed, updating context menu.");
     createContextMenus();
   }
 });
@@ -237,7 +237,7 @@ async function createContextMenus() {
           if (chrome.runtime.lastError) {
             debug.error("Error creating disabled context menu:", chrome.runtime.lastError.message);
           } else {
-            debug.log('[RTWA Background] Disabled context menu created (no servers configured).');
+            debug.log('[ART Background] Disabled context menu created (no servers configured).');
           }
         });
         return;
@@ -252,24 +252,24 @@ async function createContextMenus() {
         }, () => {
           if (chrome.runtime.lastError) {
             debug.error("Error creating 'Add Torrent to Remote WebUI' submenu:", chrome.runtime.lastError.message);
-            debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
+            debug.log("[ART Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
             chrome.notifications.create({
                 type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
                 message: 'Failed to create context menu. Please report this.'
             }, (notificationId) => {
               if (chrome.runtime.lastError) {
-                debug.error("[RTWA Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
+                debug.error("[ART Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
               } else {
-                debug.log("[RTWA Background] Notification created (context menu error), ID:", notificationId);
+                debug.log("[ART Background] Notification created (context menu error), ID:", notificationId);
               }
             });
           } else {
-            debug.log('[RTWA Background] Parent submenu ("addTorrentSubmenu") registered.');
+            debug.log('[ART Background] Parent submenu ("addTorrentSubmenu") registered.');
             
             // Create menu items for each server
             servers.forEach((server, index) => {
               const menuId = `addTorrentServer_${server.id}`;
-              const menuTitle = `Add to ${server.name} (${server.clientType || 'unknown'})`;
+              const menuTitle = `${server.name} `;
               
               chrome.contextMenus.create({
                 id: menuId,
@@ -280,7 +280,7 @@ async function createContextMenus() {
                 if (chrome.runtime.lastError) {
                   debug.error(`Error creating menu item for server ${server.name}:`, chrome.runtime.lastError.message);
                 } else {
-                  debug.log(`[RTWA Background] Menu item created for server "${server.name}" (${menuId}).`);
+                  debug.log(`[ART Background] Menu item created for server "${server.name}" (${menuId}).`);
                 }
               });
             });
@@ -295,19 +295,19 @@ async function createContextMenus() {
         }, () => {
           if (chrome.runtime.lastError) {
             debug.error("Error creating 'Add Torrent to Remote WebUI' context menu:", chrome.runtime.lastError.message);
-            debug.log("[RTWA Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
+            debug.log("[ART Background] Creating error notification (context menu creation):", 'Failed to create context menu.');
             chrome.notifications.create({
                 type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent - Menu Error',
                 message: 'Failed to create context menu. Please report this.'
             }, (notificationId) => {
               if (chrome.runtime.lastError) {
-                debug.error("[RTWA Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
+                debug.error("[ART Background] Error creating context menu error notification:", chrome.runtime.lastError.message);
               } else {
-                debug.log("[RTWA Background] Notification created (context menu error), ID:", notificationId);
+                debug.log("[ART Background] Notification created (context menu error), ID:", notificationId);
               }
             });
           } else {
-            debug.log('[RTWA Background] Generic torrent context menu ("addTorrentGeneric") registered.'); 
+            debug.log('[ART Background] Generic torrent context menu ("addTorrentGeneric") registered.'); 
           }
         });
       }
@@ -399,28 +399,28 @@ async function hasOffscreenDocument() {
 }
 
 async function setupOffscreenDocument() {
-    debug.log('[RTWA Background] setupOffscreenDocument: Checking status. isReady:', offscreenDocumentManager.isReady);
+    debug.log('[ART Background] setupOffscreenDocument: Checking status. isReady:', offscreenDocumentManager.isReady);
     if (await hasOffscreenDocument()) {
-        debug.log('[RTWA Background] setupOffscreenDocument: Document already exists.');
+        debug.log('[ART Background] setupOffscreenDocument: Document already exists.');
         if (!offscreenDocumentManager.isReady) {
-            debug.log('[RTWA Background] setupOffscreenDocument: Document exists but not marked ready. Waiting for readyPromise.');
+            debug.log('[ART Background] setupOffscreenDocument: Document exists but not marked ready. Waiting for readyPromise.');
             await offscreenDocumentManager.readyPromise;
         }
-        debug.log('[RTWA Background] setupOffscreenDocument: Document confirmed ready or became ready.');
+        debug.log('[ART Background] setupOffscreenDocument: Document confirmed ready or became ready.');
         return;
     }
 
     if (offscreenDocumentManager.creatingPromise) {
-        debug.log('[RTWA Background] setupOffscreenDocument: Creation already in progress. Waiting.');
+        debug.log('[ART Background] setupOffscreenDocument: Creation already in progress. Waiting.');
         await offscreenDocumentManager.creatingPromise;
         if (!offscreenDocumentManager.isReady) { 
-             debug.log('[RTWA Background] setupOffscreenDocument: Waited for creation, now waiting for readyPromise again.');
+             debug.log('[ART Background] setupOffscreenDocument: Waited for creation, now waiting for readyPromise again.');
              await offscreenDocumentManager.readyPromise;
         }
         return;
     }
 
-    debug.log('[RTWA Background] setupOffscreenDocument: Creating new offscreen document.');
+    debug.log('[ART Background] setupOffscreenDocument: Creating new offscreen document.');
     offscreenDocumentManager.markAsCreating(); 
 
     const promise = chrome.offscreen.createDocument({
@@ -432,17 +432,17 @@ async function setupOffscreenDocument() {
 
     try {
         await promise;
-        debug.log('[RTWA Background] setupOffscreenDocument: chrome.offscreen.createDocument resolved. Waiting for readyPromise (offscreenReady message).');
+        debug.log('[ART Background] setupOffscreenDocument: chrome.offscreen.createDocument resolved. Waiting for readyPromise (offscreenReady message).');
         await offscreenDocumentManager.readyPromise; 
-        debug.log('[RTWA Background] setupOffscreenDocument: Offscreen document is now fully ready.');
+        debug.log('[ART Background] setupOffscreenDocument: Offscreen document is now fully ready.');
     } catch (error) {
         if (error.message.startsWith('Only a single offscreen document may be created')) {
-            debug.warn('[RTWA Background] setupOffscreenDocument: Race condition - document created by another call. Waiting for its readyPromise.');
+            debug.warn('[ART Background] setupOffscreenDocument: Race condition - document created by another call. Waiting for its readyPromise.');
             if (!offscreenDocumentManager.isReady) {
                  await offscreenDocumentManager.readyPromise;
             }
         } else {
-            debug.error('[RTWA Background] setupOffscreenDocument: Error creating offscreen document:', error);
+            debug.error('[ART Background] setupOffscreenDocument: Error creating offscreen document:', error);
             offscreenDocumentManager.isReady = false;
             offscreenDocumentManager._setupReadyPromise(); 
             throw error; 
@@ -463,27 +463,27 @@ async function playSound(soundFile) {
     await setupOffscreenDocument(); 
 
     if (offscreenDocumentManager.isReady) {
-        debug.log('[RTWA Background] playSound: Sending message to offscreen document for:', soundFile);
+        debug.log('[ART Background] playSound: Sending message to offscreen document for:', soundFile);
         chrome.runtime.sendMessage({
             action: 'playSound',
             soundFile: chrome.runtime.getURL(soundFile)
         }, (response) => {
             if (chrome.runtime.lastError) {
-                debug.warn('[RTWA Background] playSound: Error sending message to offscreen document:', chrome.runtime.lastError.message, 'Sound file:', soundFile);
+                debug.warn('[ART Background] playSound: Error sending message to offscreen document:', chrome.runtime.lastError.message, 'Sound file:', soundFile);
             } else if (response && response.error) {
-                debug.warn('[RTWA Background] playSound: Offscreen document reported error playing sound:', response.error, 'Sound file:', soundFile);
+                debug.warn('[ART Background] playSound: Offscreen document reported error playing sound:', response.error, 'Sound file:', soundFile);
             } else if (response && response.success) {
-                debug.log('[RTWA Background] playSound: Offscreen document confirmed sound played for:', soundFile);
+                debug.log('[ART Background] playSound: Offscreen document confirmed sound played for:', soundFile);
             } else {
-                debug.warn('[RTWA Background] playSound: No specific response or error from offscreen document for:', soundFile, 'Response:', response);
+                debug.warn('[ART Background] playSound: No specific response or error from offscreen document for:', soundFile, 'Response:', response);
             }
         });
     } else {
-        debug.warn('[RTWA Background] Offscreen document not ready or available after setup to play sound:', soundFile);
+        debug.warn('[ART Background] Offscreen document not ready or available after setup to play sound:', soundFile);
     }
 
   } catch (e) {
-    debug.warn(`[RTWA Background] Error in playSound setup or message sending:`, e);
+    debug.warn(`[ART Background] Error in playSound setup or message sending:`, e);
   }
 }
 
@@ -492,23 +492,23 @@ async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, curre
     const { trackerUrlRules } = await chrome.storage.local.get('trackerUrlRules');
 
     if (trackerUrlRules && trackerUrlRules.length > 0 && announceUrls && announceUrls.length > 0) {
-        debug.log('[RTWA Background] applyTrackerRulesLogic: Checking rules against announce URLs:', announceUrls);
+        debug.log('[ART Background] applyTrackerRulesLogic: Checking rules against announce URLs:', announceUrls);
         for (const rule of trackerUrlRules) {
             for (const announceUrl of announceUrls) {
                 if (announceUrl.includes(rule.trackerUrlPattern)) {
-                    debug.log(`[RTWA Background] Tracker rule matched: Pattern "${rule.trackerUrlPattern}" found in "${announceUrl}"`);
+                    debug.log(`[ART Background] Tracker rule matched: Pattern "${rule.trackerUrlPattern}" found in "${announceUrl}"`);
                     if (rule.label) {
                         currentTorrentOptions.category = rule.label;
                         currentTorrentOptions.labels = [rule.label];
                         if (currentTagsToUse) {
                              currentTorrentOptions.labels = currentTorrentOptions.labels.concat(currentTagsToUse.split(',').map(t => t.trim()).filter(t => t && t !== rule.label));
                         }
-                        debug.log(`[RTWA Background] Applied label from rule: "${rule.label}"`);
+                        debug.log(`[ART Background] Applied label from rule: "${rule.label}"`);
                         appliedRule = true;
                     }
                     if (rule.directory) {
                         currentTorrentOptions.downloadDir = rule.directory;
-                        debug.log(`[RTWA Background] Applied directory from rule: "${rule.directory}"`);
+                        debug.log(`[ART Background] Applied directory from rule: "${rule.directory}"`);
                         appliedRule = true;
                     }
                     if (appliedRule) break; 
@@ -517,7 +517,7 @@ async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, curre
             if (appliedRule) break; 
         }
     } else {
-        debug.log('[RTWA Background] applyTrackerRulesLogic: No tracker rules configured or no/empty announce URLs to process.');
+        debug.log('[ART Background] applyTrackerRulesLogic: No tracker rules configured or no/empty announce URLs to process.');
     }
     return { wasRuleApplied: appliedRule, torrentOptions: currentTorrentOptions };
 }
@@ -539,15 +539,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     } catch (error) {
       debug.error("Error determining target server:", error);
       const errorMsg = `Error determining target server: ${error.message}`;
-      debug.log("[RTWA Background] Creating error notification (determineTargetServer):", errorMsg);
+      debug.log("[ART Background] Creating error notification (determineTargetServer):", errorMsg);
       chrome.notifications.create({
         type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
         message: errorMsg
       }, (notificationId) => {
         if (chrome.runtime.lastError) {
-          debug.error("[RTWA Background] Error creating determineTargetServer notification:", chrome.runtime.lastError.message);
+          debug.error("[ART Background] Error creating determineTargetServer notification:", chrome.runtime.lastError.message);
         } else {
-          debug.log("[RTWA Background] Notification created (determineTargetServer), ID:", notificationId);
+          debug.log("[ART Background] Notification created (determineTargetServer), ID:", notificationId);
         }
       });
       chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -557,15 +557,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   
   if (!serverToUse) {
     const msg = 'No target server could be determined. Please configure servers in options and select an active one in the popup.';
-    debug.log("[RTWA Background] Creating error notification (no target server):", msg);
+    debug.log("[ART Background] Creating error notification (no target server):", msg);
     chrome.notifications.create({
       type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
       message: msg
     }, (notificationId) => {
       if (chrome.runtime.lastError) {
-        debug.error("[RTWA Background] Error creating no target server notification:", chrome.runtime.lastError.message);
+        debug.error("[ART Background] Error creating no target server notification:", chrome.runtime.lastError.message);
       } else {
-        debug.log("[RTWA Background] Notification created (no target server), ID:", notificationId);
+        debug.log("[ART Background] Notification created (no target server), ID:", notificationId);
       }
     });
     chrome.storage.local.set({ lastActionStatus: msg });
@@ -596,37 +596,37 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   let wasRuleApplied = false; 
   
   if (!isMagnet) { 
-    debug.log(`[RTWA Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`);
+    debug.log(`[ART Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`);
     try {
       const response = await fetch(torrentUrl, { credentials: 'include' });
       if (!response.ok) {
         throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
       }
       const contentType = response.headers.get('content-type');
-      debug.log(`[RTWA Background] Fetched ${torrentUrl}, Content-Type: ${contentType}`);
+      debug.log(`[ART Background] Fetched ${torrentUrl}, Content-Type: ${contentType}`);
       if (contentType && (contentType.includes('application/x-bittorrent') || contentType.includes('application/octet-stream') || contentType.includes('application/torrent'))) {
         const arrayBuffer = await response.arrayBuffer();
         if (arrayBuffer && arrayBuffer.byteLength > 0) {
           torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
-          debug.log(`[RTWA Background] Successfully fetched and base64 encoded .torrent content (Content-Type: ${contentType}) for: ${torrentUrl}`);
+          debug.log(`[ART Background] Successfully fetched and base64 encoded .torrent content (Content-Type: ${contentType}) for: ${torrentUrl}`);
         } else {
-          debug.warn(`[RTWA Background] URL ${torrentUrl} had .torrent Content-Type but empty/invalid body. Sending URL to client.`);
+          debug.warn(`[ART Background] URL ${torrentUrl} had .torrent Content-Type but empty/invalid body. Sending URL to client.`);
           torrentOptions.torrentFileContentBase64 = null; 
         }
       } else {
-        debug.warn(`[RTWA Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Assuming it is a torrent and attempting to use content anyway.`);
+        debug.warn(`[ART Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Assuming it is a torrent and attempting to use content anyway.`);
         const arrayBuffer = await response.arrayBuffer();
         if (arrayBuffer && arrayBuffer.byteLength > 0) {
           torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(arrayBuffer);
-          debug.log(`[RTWA Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`);
+          debug.log(`[ART Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`);
         } else {
-          debug.warn(`[RTWA Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`);
+          debug.warn(`[ART Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`);
           torrentOptions.torrentFileContentBase64 = null;
         }
       }
 
     } catch (fetchError) {
-      debug.warn(`[RTWA Background] Error attempting to fetch content for ${torrentUrl}:`, fetchError.message, ". Will send URL to client as is.");
+      debug.warn(`[ART Background] Error attempting to fetch content for ${torrentUrl}:`, fetchError.message, ". Will send URL to client as is.");
       torrentOptions.torrentFileContentBase64 = null; 
     }
   }
@@ -635,7 +635,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   let ruleApplicationResult; 
 
   if (isMagnet) {
-    debug.log('[RTWA Background] Applying tracker URL rules for magnet link...');
+    debug.log('[ART Background] Applying tracker URL rules for magnet link...');
     const magnetTrackers = [];
     try {
         const urlParams = new URLSearchParams(torrentUrl.substring(torrentUrl.indexOf('?') + 1));
@@ -645,10 +645,10 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
             }
         });
     } catch(e) {
-        debug.error('[RTWA Background] Error parsing magnet link for trackers:', e);
+        debug.error('[ART Background] Error parsing magnet link for trackers:', e);
     }
     if (magnetTrackers.length > 0) {
-        debug.log('[RTWA Background] Extracted magnet trackers:', magnetTrackers);
+        debug.log('[ART Background] Extracted magnet trackers:', magnetTrackers);
         let tempOptions = {...torrentOptions}; // Operate on a copy for rule application
         ruleApplicationResult = await applyTrackerRulesLogic(magnetTrackers, tempOptions, tagsToUse);
         torrentOptions = ruleApplicationResult.torrentOptions; 
@@ -656,7 +656,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // No trackers, no rules applied
     }
   } else if (torrentOptions.torrentFileContentBase64) {
-    debug.log('[RTWA Background] Applying tracker URL rules for .torrent file...');
+    debug.log('[ART Background] Applying tracker URL rules for .torrent file...');
     try {
       const torrentDataBuffer = Uint8Array.from(atob(torrentOptions.torrentFileContentBase64), c => c.charCodeAt(0));
       const decodedTorrent = bencode.decode(torrentDataBuffer);
@@ -673,7 +673,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         });
       }
       announceUrls = [...new Set(announceUrls)];
-      debug.log('[RTWA Background] Extracted .torrent announce URLs:', announceUrls);
+      debug.log('[ART Background] Extracted .torrent announce URLs:', announceUrls);
       if (announceUrls.length > 0) {
         let tempOptions = {...torrentOptions}; // Operate on a copy
         ruleApplicationResult = await applyTrackerRulesLogic(announceUrls, tempOptions, tagsToUse);
@@ -682,7 +682,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // No announce URLs, no rules applied
       }
     } catch (e) {
-      debug.error('[RTWA Background] Error decoding .torrent or extracting trackers for rules:', e);
+      debug.error('[ART Background] Error decoding .torrent or extracting trackers for rules:', e);
       ruleApplicationResult = { wasRuleApplied: false, torrentOptions }; // Error, no rules applied
     }
   } else {
@@ -697,12 +697,12 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
   if (!apiClient || typeof apiClient.addTorrent !== 'function') {
     const errorMsg = `No valid API handler found for client type: ${clientType}`;
     debug.error(errorMsg);
-    debug.log("[RTWA Background] Creating error notification (no API handler):", errorMsg);
+    debug.log("[ART Background] Creating error notification (no API handler):", errorMsg);
     chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: errorMsg }, (notificationId) => {
       if (chrome.runtime.lastError) {
-        debug.error("[RTWA Background] Error creating no API handler notification:", chrome.runtime.lastError.message);
+        debug.error("[ART Background] Error creating no API handler notification:", chrome.runtime.lastError.message);
       } else {
-        debug.log("[RTWA Background] Notification created (no API handler), ID:", notificationId);
+        debug.log("[ART Background] Notification created (no API handler), ID:", notificationId);
       }
     });
     chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -724,15 +724,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         successMsg += ` (Tracker rule applied)`;
       }
       if (enableTextNotifications) {
-        debug.log("[RTWA Background] Creating success notification:", successMsg);
+        debug.log("[ART Background] Creating success notification:", successMsg);
         chrome.notifications.create({
           type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent', 
           message: successMsg
         }, (notificationId) => {
           if (chrome.runtime.lastError) {
-            debug.error("[RTWA Background] Error creating success notification:", chrome.runtime.lastError.message);
+            debug.error("[ART Background] Error creating success notification:", chrome.runtime.lastError.message);
           } else {
-            debug.log("[RTWA Background] Notification created (success), ID:", notificationId);
+            debug.log("[ART Background] Notification created (success), ID:", notificationId);
           }
         });
       }
@@ -754,15 +754,15 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     debug.error(`Error in addTorrentToClient for "${serverName}" (${clientType}):`, error.message);
     const notificationErrorMessage = error.message.substring(0, 150);
     if (enableTextNotifications) {
-      debug.log("[RTWA Background] Creating error notification (addTorrentToClient catch):", notificationErrorMessage);
+      debug.log("[ART Background] Creating error notification (addTorrentToClient catch):", notificationErrorMessage);
       chrome.notifications.create({
         type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
         message: notificationErrorMessage
       }, (notificationId) => {
         if (chrome.runtime.lastError) {
-          debug.error("[RTWA Background] Error creating addTorrentToClient catch notification:", chrome.runtime.lastError.message);
+          debug.error("[ART Background] Error creating addTorrentToClient catch notification:", chrome.runtime.lastError.message);
         } else {
-            debug.log("[RTWA Background] Notification created (addTorrentToClient catch), ID:", notificationId);
+            debug.log("[ART Background] Notification created (addTorrentToClient catch), ID:", notificationId);
           }
         });
     }
@@ -786,10 +786,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     let isMagnet = linkUrl.startsWith("magnet:");
     let isTorrentFile = /\.torrent($|\?|#)/i.test(linkUrl); 
     if (!isMagnet && !isTorrentFile) {
-      debug.log(`[RTWA Background] Link URL "${linkUrl}" does not strictly end with .torrent. Proceeding to addTorrentToClient for content type check.`);
+      debug.log(`[ART Background] Link URL "${linkUrl}" does not strictly end with .torrent. Proceeding to addTorrentToClient for content type check.`);
     }
-    debug.log(`[RTWA Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
-    debug.log(`[RTWA Background] Link type detection: isMagnet=${isMagnet}, isTorrentFile=${isTorrentFile}`);
+    debug.log(`[ART Background] Context menu clicked. Item ID: ${info.menuItemId}, Link URL: ${info.linkUrl}, Page URL: ${info.pageUrl}`);
+    debug.log(`[ART Background] Link type detection: isMagnet=${isMagnet}, isTorrentFile=${isTorrentFile}`);
     
     let selectedServer = null;
     
@@ -804,7 +804,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       
       if (!selectedServer) {
         const errorMsg = `Server not found for ID: ${serverId}`;
-        debug.error("[RTWA Background] Error in context menu click:", errorMsg);
+        debug.error("[ART Background] Error in context menu click:", errorMsg);
         chrome.notifications.create({ 
           type: 'basic', 
           iconUrl: 'icons/icon-48x48.png', 
@@ -817,7 +817,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       
       if (!selectedServer.clientType) {
         const errorMsg = `Server configuration is incomplete (missing clientType) for server: ${selectedServer.name}`;
-        debug.error("[RTWA Background] Error in context menu click:", errorMsg);
+        debug.error("[ART Background] Error in context menu click:", errorMsg);
         chrome.notifications.create({ 
           type: 'basic', 
           iconUrl: 'icons/icon-48x48.png', 
@@ -828,25 +828,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         return;
       }
       
-      debug.log("[RTWA Background] Selected server:", {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType });
+      debug.log("[ART Background] Selected server:", {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType });
     } else {
       // Original generic menu item clicked - use original logic
       const settings = await chrome.storage.local.get(['advancedAddDialog', 'servers', 'activeServerId', 'enableUrlBasedServerSelection', 'urlToServerMappings']);
       const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
-      debug.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
+      debug.log("[ART Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
       
       try {
         selectedServer = await determineTargetServer(info.pageUrl);
-        debug.log("[RTWA Background] Determined serverForDialog:", selectedServer ? {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType } : null);
+        debug.log("[ART Background] Determined serverForDialog:", selectedServer ? {id: selectedServer.id, name: selectedServer.name, clientType: selectedServer.clientType } : null);
       } catch (e) { 
-        debug.error("[RTWA Background] Error in determineTargetServer:", e);
+        debug.error("[ART Background] Error in determineTargetServer:", e);
         const errorMsg = `Error determining server: ${e.message}`;
-        debug.log("[RTWA Background] Creating error notification (determineTargetServer in onClicked):", errorMsg);
+        debug.log("[ART Background] Creating error notification (determineTargetServer in onClicked):", errorMsg);
         chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: errorMsg }, (notificationId) => {
           if(chrome.runtime.lastError) {
-            debug.error("[RTWA Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
+            debug.error("[ART Background] Error creating determineTargetServer (onClicked) notification:", chrome.runtime.lastError.message);
           } else {
-            debug.log("[RTWA Background] Notification created (determineTargetServer onClicked), ID:", notificationId);
+            debug.log("[ART Background] Notification created (determineTargetServer onClicked), ID:", notificationId);
           }
         });
         chrome.storage.local.set({ lastActionStatus: errorMsg });
@@ -855,12 +855,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       
       if (!selectedServer || !selectedServer.clientType) { 
         const msg = 'No target server determined or server config is incomplete (missing clientType). Configure servers in options.';
-        debug.log("[RTWA Background] Creating error notification (no serverForDialog in onClicked):", msg);
+        debug.log("[ART Background] Creating error notification (no serverForDialog in onClicked):", msg);
         chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error', message: msg }, (notificationId) => {
           if(chrome.runtime.lastError) {
-            debug.error("[RTWA Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
+            debug.error("[ART Background] Error creating no serverForDialog (onClicked) notification:", chrome.runtime.lastError.message);
           } else {
-            debug.log("[RTWA Background] Notification created (no serverForDialog onClicked), ID:", notificationId);
+            debug.log("[ART Background] Notification created (no serverForDialog onClicked), ID:", notificationId);
           }
         });
         chrome.storage.local.set({ lastActionStatus: msg });
@@ -871,7 +871,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     // Common logic for both cases
     const settings = await chrome.storage.local.get(['advancedAddDialog']);
     const showAdvancedDialog = ['always', 'manual'].includes(settings.advancedAddDialog);
-    debug.log("[RTWA Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
+    debug.log("[ART Background] advancedAddDialog from storage:", settings.advancedAddDialog, "Effective value:", showAdvancedDialog);
     
     if (showAdvancedDialog) {
       popAdvancedDialog(info.linkUrl, selectedServer);

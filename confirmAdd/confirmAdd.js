@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         debug.setEnabled(true);
     }
 
-    debug.log("[RTWA ConfirmAdd] DOMContentLoaded triggered.");
+    debug.log("[ART ConfirmAdd] DOMContentLoaded triggered.");
     const serverNameDisplay = document.getElementById('serverNameDisplay');
     const torrentUrlDisplay = document.getElementById('torrentUrlDisplay');
     const tagsInput = document.getElementById('tagsInput');
@@ -30,29 +30,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     let activeServerId = '';
     let activeServer = null;
 
-    debug.log("[RTWA ConfirmAdd] window.location.search:", window.location.search);
+    debug.log("[ART ConfirmAdd] window.location.search:", window.location.search);
     const urlParams = new URLSearchParams(window.location.search);
     const rawUrlParam = urlParams.get('url');
     const rawServerIdParam = urlParams.get('serverId');
-    debug.log("[RTWA ConfirmAdd] Raw params - url:", rawUrlParam, "serverId:", rawServerIdParam);
+    debug.log("[ART ConfirmAdd] Raw params - url:", rawUrlParam, "serverId:", rawServerIdParam);
 
     torrentUrl = decodeURIComponent(rawUrlParam || '');
     activeServerId = rawServerIdParam;
-    debug.log("[RTWA ConfirmAdd] Decoded params - torrentUrl:", torrentUrl, "activeServerId:", activeServerId);
+    debug.log("[ART ConfirmAdd] Decoded params - torrentUrl:", torrentUrl, "activeServerId:", activeServerId);
 
     torrentUrlDisplay.textContent = torrentUrl || 'N/A';
 
     const isMagnetLink = torrentUrl.startsWith('magnet:');
     if (!isMagnetLink && torrentUrl) {
-        debug.log("[RTWA ConfirmAdd] Not a magnet link, showing file selection section.");
+        debug.log("[ART ConfirmAdd] Not a magnet link, showing file selection section.");
         fileSelectionSection.style.display = 'block';
     } else if (isMagnetLink) {
-        debug.log("[RTWA ConfirmAdd] Is a magnet link, file selection section remains hidden.");
+        debug.log("[ART ConfirmAdd] Is a magnet link, file selection section remains hidden.");
     }
 
 
     if (!torrentUrl || !activeServerId) {
-        debug.error("[RTWA ConfirmAdd] Error: Missing torrent URL or server ID. Params were:", 
+        debug.error("[ART ConfirmAdd] Error: Missing torrent URL or server ID. Params were:", 
             "url:", torrentUrl, "serverId:", activeServerId);
         document.body.innerHTML = '<p class="p-4 text-red-600 dark:text-red-400">Error: Missing torrent URL or server ID. Please close this window and try again. Check console for details.</p>';
         return;
@@ -122,13 +122,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Fetching torrent file info...</p>';
             
             try {
-                debug.log("[RTWA ConfirmAdd] Attempting to fetch .torrent file from URL:", torrentUrl);
+                debug.log("[ART ConfirmAdd] Attempting to fetch .torrent file from URL:", torrentUrl);
                 const response = await fetch(torrentUrl);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch .torrent file: ${response.status} ${response.statusText}`);
                 }
                 const arrayBuffer = await response.arrayBuffer();
-                debug.log("[RTWA ConfirmAdd] Fetched ArrayBuffer.byteLength:", arrayBuffer.byteLength);
+                debug.log("[ART ConfirmAdd] Fetched ArrayBuffer.byteLength:", arrayBuffer.byteLength);
                 
                 if (arrayBuffer.byteLength === 0) {
                     throw new Error("Fetched .torrent file is empty.");
@@ -136,12 +136,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Convert ArrayBuffer to Buffer for 'bencode' library
                 const buffer = Buffer.from(arrayBuffer);
-                debug.log("[RTWA ConfirmAdd] Created Buffer object (first few bytes):", buffer.slice(0, 20)); // Log a slice to avoid huge output
-                debug.log("[RTWA ConfirmAdd] Is 'buffer' an instance of Buffer?:", buffer instanceof Buffer);
+                debug.log("[ART ConfirmAdd] Created Buffer object (first few bytes):", buffer.slice(0, 20)); // Log a slice to avoid huge output
+                debug.log("[ART ConfirmAdd] Is 'buffer' an instance of Buffer?:", buffer instanceof Buffer);
                 
                 // Decode. Even with 'utf8' option, values might still be Buffers/Uint8Arrays, so we'll .toString() them.
                 const torrentData = bencode.decode(buffer); // Using default decode, will handle toString below
-                debug.log("[RTWA ConfirmAdd] Decoded torrent data (raw):", torrentData);
+                debug.log("[ART ConfirmAdd] Decoded torrent data (raw):", torrentData);
 
                 let files = [];
                 if (torrentData && torrentData.info) {
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="py-1">
                             <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 p-1 rounded">
                                 <input type="checkbox" 
-                                       class="rtwa-file-select-checkbox h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500" 
+                                       class="art-file-select-checkbox h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500" 
                                        data-file-index="${file.index}" 
                                        data-file-path="${escapeHtml(file.name)}" 
                                        checked>
@@ -229,12 +229,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     selectAllFilesButton.addEventListener('click', () => {
-        const checkboxes = fileListContainer.querySelectorAll('.rtwa-file-select-checkbox');
+        const checkboxes = fileListContainer.querySelectorAll('.art-file-select-checkbox');
         checkboxes.forEach(cb => cb.checked = true);
     });
 
     deselectAllFilesButton.addEventListener('click', () => {
-        const checkboxes = fileListContainer.querySelectorAll('.rtwa-file-select-checkbox');
+        const checkboxes = fileListContainer.querySelectorAll('.art-file-select-checkbox');
         checkboxes.forEach(cb => cb.checked = false);
     });
 
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalFileCount = 0;
 
         if (!isMagnetLink && selectFilesToggle.checked) {
-            const fileCheckboxes = fileListContainer.querySelectorAll('.rtwa-file-select-checkbox');
+            const fileCheckboxes = fileListContainer.querySelectorAll('.art-file-select-checkbox');
             totalFileCount = fileCheckboxes.length;
             fileCheckboxes.forEach(cb => {
                 if (cb.checked) {
