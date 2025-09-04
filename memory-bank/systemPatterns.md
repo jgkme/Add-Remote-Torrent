@@ -52,7 +52,7 @@
     -   `urlToServerMappings`: Array of objects, e.g., `{ id: "map_uuid", websitePattern: "example.com", serverId: "server_uuid" }`.
     -   `enableUrlBasedServerSelection`: Boolean.
     -   `advancedAddDialog`: String (`never`, `always`, `manual`, `catch`).
-    -   `linkCatchingPatterns`: Array of objects, e.g., `{ id: "uuid", pattern: "regex-string", isDefault: boolean }`.
+    -   `linkCatchingPatterns`: Array of objects, e.g., `{ id: "uuid", pattern: "regex-string" }`.
     -   `lastActionStatus`: String.
     -   **Migration:** The system automatically migrates the legacy `linkmatches` (tilde-separated string) into the new `linkCatchingPatterns` array format upon first run after the update.
 -   **Dynamic Link Detection:**

@@ -25,6 +25,7 @@ Please give it a try and create some feedbacks or issues here.
 - BiglyBT
 - Kodi Elementum
 - Buffalo Torrent Client
+- Porla
 
 ## Core Features
 
@@ -126,6 +127,7 @@ We are working on a feature to make this process easier by allowing you to repor
     *   **Feature:** Added two default patterns to catch common `.torrent` file links and `torrents.php` download links, improving out-of-the-box functionality.
     *   **Migration:** Implemented a seamless, one-time migration for existing users. The old `linkmatches` tilde-separated string is automatically converted into the new array-based format, preserving all user-defined patterns.
 *   **v0.3.18 (2025-09-05):**
+    *   **Feature:** Added support for four new clients: BiglyBT, Flood, Porla, and an updated Elementum handler.
     *   **Feature:** Added a new option to show download directories in the context menu. This allows for adding torrents to specific directories in one click.
     *   **Fix:** Corrected a bug where the context menu would fail to update if a server had no download directories defined.
     *   **Fix:** Added error handling to the content script to prevent "context invalidated" errors on dynamic pages.

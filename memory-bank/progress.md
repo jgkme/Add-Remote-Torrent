@@ -37,6 +37,7 @@
 -   **Release v0.3.19 (Current Release):**
     -   [X] **Feature:** Overhauled the "Custom Link Catching Patterns" setting with a new dynamic UI for adding, editing, and deleting individual patterns.
     -   [X] **Feature:** Added two default regex patterns for common torrent link formats.
+    -   [X] **Correction:** The default patterns are no longer permanent and can be edited or deleted by the user.
     -   [X] **Migration:** Implemented an automatic, one-time migration to convert users' old, tilde-separated patterns into the new array-based format, ensuring no data loss.
     -   [X] **Refactor:** Updated the background and content scripts to use the new `linkCatchingPatterns` data structure, removing the legacy `linkmatches` code.
 
