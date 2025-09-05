@@ -251,7 +251,15 @@ const initLinkMonitor = async (options) => {
 window.addEventListener('pageshow', () => {
     // Run on 'pageshow' event (should also trigger on browser back/forward when the page is cached)
     debug.log('[ART ContentScript] pageshow event detected, (re)initializing link monitor');
-    getOptions().then(initLinkMonitor);
+    getOptions().then(initLinkMonitor).catch(error => {
+        // If the context is invalidated, this is expected during extension reloads.
+        // We can log it quietly without throwing a scary error in the console.
+        if (error.message.includes('Extension context invalidated') || error.message.includes('No response')) {
+            debug.log('[ART ContentScript] Could not initialize. Extension context is invalid, likely due to an update or reload.');
+        } else {
+            debug.error('[ART ContentScript] Failed to initialize:', error);
+        }
+    });
 });
 
 // Register a listener for messages from the background script
