@@ -520,34 +520,41 @@ async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, curre
 
 
 async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined) {
-  let serverToUse = serverConfigFromDialog; 
+  let serverToUse = null;
   let serverDeterminedByRule = false;
 
+  // Determine server logic:
+  // 1. Check if a URL rule matches. If so, the rule-based server wins.
+  // 2. If no rule matches, use the server from the context menu click (serverConfigFromDialog).
+  // 3. If neither of the above, use the active server (which is the fallback inside determineTargetServer).
+  
+  const { activeServerId, enableUrlBasedServerSelection } = await chrome.storage.local.get(['activeServerId', 'enableUrlBasedServerSelection']);
+  const ruleBasedServer = await determineTargetServer(sourcePageUrl);
+
+  let useRuleServer = false;
+  if (enableUrlBasedServerSelection && ruleBasedServer && ruleBasedServer.id !== activeServerId) {
+      // A rule matched and gave a server different from the active one. This is a strong signal.
+      useRuleServer = true;
+      serverDeterminedByRule = true;
+  } else if (enableUrlBasedServerSelection && ruleBasedServer && !activeServerId) {
+      // Case where there is no active server set, but a rule matches.
+      useRuleServer = true;
+      serverDeterminedByRule = true;
+  }
+
+  if (useRuleServer) {
+      serverToUse = ruleBasedServer;
+  } else {
+      // If no rule applied, use the server from the context click (if provided),
+      // otherwise, fall back to the result from determineTargetServer (which would be the active server).
+      serverToUse = serverConfigFromDialog || ruleBasedServer;
+  }
+  
+  // Final fallback if no server could be determined at all.
   if (!serverToUse) {
-    try {
-      serverToUse = await determineTargetServer(sourcePageUrl); 
-      if (sourcePageUrl && serverToUse) { 
-          const settings = await chrome.storage.local.get(['activeServerId', 'enableUrlBasedServerSelection']);
-          if (settings.enableUrlBasedServerSelection && serverToUse.id !== settings.activeServerId) {
-              serverDeterminedByRule = true; 
-          }
-      }
-    } catch (error) {
-      debug.error("Error determining target server:", error);
-      const errorMsg = `Error determining target server: ${error.message}`;
-      debug.log("[ART Background] Creating error notification (determineTargetServer):", errorMsg);
-      chrome.notifications.create({
-        type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
-        message: errorMsg
-      }, (notificationId) => {
-        if (chrome.runtime.lastError) {
-          debug.error("[ART Background] Error creating determineTargetServer notification:", chrome.runtime.lastError.message);
-        } else {
-          debug.log("[ART Background] Notification created (determineTargetServer), ID:", notificationId);
-        }
-      });
-      chrome.storage.local.set({ lastActionStatus: errorMsg });
-      return;
+    const { servers } = await chrome.storage.local.get('servers');
+    if (servers && servers.length > 0) {
+        serverToUse = servers.find(s => s.id === activeServerId) || servers[0];
     }
   }
   

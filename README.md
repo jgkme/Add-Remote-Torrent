@@ -122,6 +122,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.3.20 (2025-09-06):**
+    *   **Fix:** Corrected a regression where the "URL-to-Server Mappings" feature was being ignored. The server selection logic now correctly prioritizes URL-based rules over context menu selections, restoring the expected automatic routing behavior.
 *   **v0.3.19 (2025-09-05):**
     *   **Feature:** Overhauled the "Custom Link Catching Patterns" setting. It now features a user-friendly UI for adding, editing, and deleting individual regex patterns, replacing the old, single-string input.
     *   **Feature:** Added two default patterns to catch common `.torrent` file links and `torrents.php` download links, improving out-of-the-box functionality.
