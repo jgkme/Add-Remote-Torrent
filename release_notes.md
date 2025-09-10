@@ -1,6 +1,14 @@
-### v0.4.4 (2025-09-10)
+### v0.4.5 (2025-09-10)
 
-*   **Enhancement:** The "Advanced Connection Test" feature has been expanded. It now retrieves the client version for Synology Download Station, QNAP Download Station, and BiglyBT, and free space information for Synology and BiglyBT. This information is now visible on the Dashboard.
+*   **Enhancement:** Completed a comprehensive review of all major API handlers to provide advanced information on the Dashboard. The following clients now report extended details:
+    *   **qBittorrent:** Version & Free Space
+    *   **Transmission:** Version & Free Space
+    *   **Deluge:** Version & Free Space
+    *   **rTorrent:** Version & Free Space
+    *   **Synology Download Station:** Version & Free Space
+    *   **QNAP Download Station:** Version
+    *   **uTorrent:** Version
+    *   **BiglyBT:** Version & Free Space
 *   **Fix:** Corrected a critical bug where the "context invalidated" error would spam the console on pages with dynamic content. The content script now handles this error gracefully.
 *   **Fix:** Improved the `LinkMonitor` to more reliably detect torrent links on dynamic web pages (e.g., Telegram, Facebook) by re-scanning sections of the page when significant changes are detected.
 *   **Fix:** Added the `dashboard` directory to the build process, resolving an `ERR_FILE_NOT_FOUND` error when trying to access the new Dashboard page.
