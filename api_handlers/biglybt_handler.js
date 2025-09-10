@@ -79,5 +79,21 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-    return makeRpcRequest(serverConfig, 'session-get');
+    const result = await makeRpcRequest(serverConfig, 'session-get', {
+        fields: ["version", "rpc-version", "download-dir-free-space"]
+    });
+
+    if (result.success && result.data) {
+        const { version, "rpc-version": rpcVersion, "download-dir-free-space": freeSpace } = result.data;
+        return {
+            success: true,
+            data: {
+                message: 'Successfully connected to BiglyBT.',
+                version: version,
+                rpcVersion: rpcVersion,
+                freeSpace: freeSpace
+            }
+        };
+    }
+    return result; // Return original result if it failed
 }

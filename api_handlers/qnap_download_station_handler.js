@@ -232,25 +232,26 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-    // A common test is to get Download Station's configuration or status.
-    // Example command might be 'get_config', 'get_status', 'get_station_info'.
-    // This requires knowing a valid, lightweight command.
-    // For now, we'll assume 'get_config' as a placeholder.
-    // The SID fetch in makeQnapApiRequest already tests basic auth and connectivity.
+    // Test by getting system info, which is a known valid command.
     try {
-        const result = await makeQnapApiRequest(serverConfig, 'get_config', { /* output: 'json' */ }, 'GET'); 
+        const result = await makeQnapApiRequest(serverConfig, 'get_system_info', {}, 'GET'); 
         if (result.success && result.data) {
-            return { success: true, data: { message: "Successfully connected to QNAP Download Station.", details: result.data } };
+            return { 
+                success: true, 
+                data: { 
+                    message: "Successfully connected to QNAP Download Station.",
+                    version: result.data.version // The API returns a 'version' field
+                } 
+            };
         }
-        // result.error should be structured if it came from makeQnapApiRequest
         return { 
             success: false, 
             error: result.error || {
-                userMessage: 'Failed to get QNAP Download Station config or unexpected response.',
+                userMessage: 'Failed to get QNAP Download Station system info.',
                 errorCode: "TEST_CONN_FAILED"
             }
         };
-    } catch (error) { // Should be caught by makeQnapApiRequest's SID handling
+    } catch (error) {
          return { 
             success: false, 
             error: {

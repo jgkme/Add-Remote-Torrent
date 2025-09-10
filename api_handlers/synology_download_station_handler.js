@@ -250,44 +250,46 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-    // Test by trying to get API info, which requires login.
     try {
-        // getSynologySid will throw if it fails, makeSynologyApiRequest will catch and structure it.
-        // So, a successful call to makeSynologyApiRequest implies SID was obtained.
-        
-        // API: SYNO.API.Info, Method: query
-        const result = await makeSynologyApiRequest(
-            serverConfig,
-            'SYNO.API.Info', 
-            '1', // Version for SYNO.API.Info
-            'query',
-            { query: 'SYNO.DownloadStation.Task,SYNO.API.Auth' } 
+        // A successful call to makeSynologyApiRequest implies SID was obtained.
+        const infoResult = await makeSynologyApiRequest(
+            serverConfig, 'SYNO.API.Info', '1', 'query', 
+            { query: 'SYNO.DownloadStation.Info,SYNO.DownloadStation.Statistic' }
         );
 
-        if (result.success && result.data && result.data['SYNO.DownloadStation.Task']) {
-            const dsInfo = result.data['SYNO.DownloadStation.Task'];
-            debug.log(`Synology DownloadStation.Task API Info: minVersion=${dsInfo.minVersion}, maxVersion=${dsInfo.maxVersion}, path=${dsInfo.path}`); // Log versions
-            return { 
-                success: true, 
-                data: { 
-                    message: "Successfully connected and queried Synology Download Station API info.",
-                    minVersion: dsInfo.minVersion,
-                    maxVersion: dsInfo.maxVersion,
-                    path: dsInfo.path 
-                } 
-            };
+        if (!infoResult.success) {
+            return { success: false, error: infoResult.error };
         }
-        // If result.success is false, result.error is already the structured error object
-        return { 
-            success: false, 
-            error: result.error || {
-                userMessage: 'Failed to query Synology API info or DownloadStation API not found.',
-                errorCode: "TEST_CONN_API_INFO_FAILED"
+
+        const dsInfo = infoResult.data['SYNO.DownloadStation.Info'];
+        const dsStatInfo = infoResult.data['SYNO.DownloadStation.Statistic'];
+
+        if (!dsInfo || !dsStatInfo) {
+            return { success: false, error: { userMessage: 'Download Station API info not found.' } };
+        }
+
+        const statResult = await makeSynologyApiRequest(
+            serverConfig, 'SYNO.DownloadStation.Statistic', dsStatInfo.maxVersion, 'getinfo', {}
+        );
+
+        let freeSpace = -1;
+        if (statResult.success && statResult.data) {
+            // The API returns free space of the default download directory.
+            freeSpace = statResult.data.download_shared_folder_free_space;
+        }
+
+        return {
+            success: true,
+            data: {
+                message: 'Successfully connected to Synology Download Station.',
+                version: `API v${dsInfo.maxVersion}`, // Use API maxVersion as the version
+                freeSpace: freeSpace,
             }
         };
-    } catch (error) { // Should ideally be caught by makeSynologyApiRequest's SID handling
-        return { 
-            success: false, 
+
+    } catch (error) {
+        return {
+            success: false,
             error: {
                 userMessage: "Synology connection test failed due to an unexpected error.",
                 technicalDetail: error.message,
