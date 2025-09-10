@@ -178,13 +178,26 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
   async function _resumeTorrent(hash) {
     const resumeUrl = getApiUrl(url, 'torrents/resume');
-    const formData = new FormData(); 
+    const formData = new FormData();
     formData.append('hashes', hash);
-    const response = await makeAuthenticatedQbitRequest(resumeUrl, formData, 'POST');
-     if (!response.ok) {
+
+    // This function is called after a successful login/add, so we can rely on the existing session cookie.
+    // A direct fetch is more appropriate here than re-using makeAuthenticatedQbitRequest.
+    const response = await fetch(resumeUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Referer': new URL(url).href,
+            'Origin': new URL(url).origin
+        },
+        credentials: 'include'
+    });
+
+    if (!response.ok) {
         const errorText = await response.text();
         debug.error(`Failed to resume torrent ${hash}. Server response: ${errorText}`);
-        throw new Error(`Failed to resume torrent. Status: ${response.status}`);
+        // Throw a more specific error to be caught by the calling function
+        throw new Error(`Failed to resume torrent ${hash}. Server response: ${response.statusText}`);
     }
     debug.log(`qBittorrent: Resumed torrent ${hash}`);
     return response.ok;
