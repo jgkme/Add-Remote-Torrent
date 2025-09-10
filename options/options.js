@@ -809,9 +809,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (clientType === 'qbittorrent') {
             serverData.qbittorrentSavePath = qbittorrentSavePath;
         }
-        if (id) { 
+        if (id) {
             const index = servers.findIndex(s => s.id === id);
-            if (index > -1) servers[index] = { ...servers[index], ...serverData };
+            if (index > -1) {
+                // Preserve existing status fields when editing
+                const existingServer = servers[index];
+                servers[index] = { 
+                    ...existingServer, // Keep old status fields
+                    ...serverData      // Overwrite with new form data
+                };
+            }
         } else { 
             serverData.id = generateId();
             servers.push(serverData);
@@ -1243,9 +1250,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const serverId = mapToServerSelect.value;
         if (!websitePattern || !serverId) { displayMappingFormStatus('Website Pattern and Target Server are required.', 'error'); return; }
         const mappingData = { websitePattern, serverId };
-        if (id) { 
-            const index = urlToServerMappings.findIndex(m => m.id === id);
-            if (index > -1) urlToServerMappings[index] = { ...urlToServerMappings[index], ...mappingData };
+        if (id) {
+            const index = servers.findIndex(s => s.id === id);
+            if (index > -1) {
+                // Preserve existing status fields when editing
+                const existingServer = servers[index];
+                servers[index] = { 
+                    ...existingServer, // Keep old status fields
+                    ...serverData      // Overwrite with new form data
+                };
+            }
         } else { 
             mappingData.id = generateMappingId();
             urlToServerMappings.push(mappingData);
