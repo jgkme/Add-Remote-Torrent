@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clearLastActionStatusButton = document.getElementById('clearLastActionStatusButton');
     const manualUrlInput = document.getElementById('manualUrlInput');
     const manualAddButton = document.getElementById('manualAddButton');
+    const openDashboardButton = document.getElementById('openDashboardButton');
     const openOptionsButton = document.getElementById('openOptionsButton');
     const reportIssueButton = document.getElementById('reportIssueButton');
 
@@ -146,6 +147,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             window.open(chrome.runtime.getURL('options/options.html'));
         }
+    });
+
+    // Open dashboard page
+    openDashboardButton.addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
     });
 
     // Initial load

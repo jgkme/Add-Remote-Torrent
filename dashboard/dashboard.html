@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Add Remote Torrent - Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/tailwind.css">
+  <script src="../js/theme.js" defer></script>
+  <style>
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4 md:p-8">
+  <div class="container mx-auto max-w-6xl">
+    <header class="mb-8 flex justify-between items-center">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
+      <a href="../options/options.html" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+        Go to Options
+      </a>
+    </header>
+
+    <!-- Server Status Section -->
+    <section id="serverStatusSection" class="mb-8">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Server Status</h2>
+      <div id="serverStatusContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Server status cards will be populated here by dashboard.js -->
+        <p class="text-gray-500 dark:text-gray-400">Loading server statuses...</p>
+      </div>
+    </section>
+
+    <!-- Action History Section -->
+    <section id="actionHistorySection">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h2>
+      <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <ul id="actionHistoryList" class="space-y-4">
+          <!-- Action history items will be populated here by dashboard.js -->
+          <p class="text-gray-500 dark:text-gray-400">Loading recent activity...</p>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+  <script src="dashboard.js"></script>
+</body>
+</html>
