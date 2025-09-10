@@ -329,6 +329,37 @@ function base64ToBlob(base64, type = 'application/x-bittorrent') {
   }
 }
 
+async function getBuildInfo(serverConfig) {
+    const { url } = serverConfig;
+    const buildInfoUrl = getApiUrl(url, 'app/buildInfo');
+    const webUIVersionUrl = getApiUrl(url, 'app/webapiVersion');
+    const preferencesUrl = getApiUrl(url, 'app/preferences');
+
+    // We can reuse the authenticated request helper, assuming login is handled by the caller
+    const buildInfoResp = await fetch(buildInfoUrl, { credentials: 'include' });
+    const webUIVersionResp = await fetch(webUIVersionUrl, { credentials: 'include' });
+    const preferencesResp = await fetch(preferencesUrl, { credentials: 'include' });
+
+    if (!buildInfoResp.ok || !webUIVersionResp.ok || !preferencesResp.ok) {
+        debug.warn('Could not fetch all build info details.');
+        return {};
+    }
+
+    const buildInfo = await buildInfoResp.json();
+    const webUIVersion = await webUIVersionResp.text();
+    const preferences = await preferencesResp.json();
+
+    return {
+        qtVersion: buildInfo.qt,
+        libtorrentVersion: buildInfo.libtorrent,
+        boostVersion: buildInfo.boost,
+        opensslVersion: buildInfo.openssl,
+        zlibVersion: buildInfo.zlib,
+        webUIVersion: webUIVersion.trim(),
+        freeSpace: preferences.free_space_on_disk,
+    };
+}
+
 export async function testConnection(serverConfig) {
   const { url, username, password } = serverConfig; // serverConfig.url is the full base URL
   
@@ -393,7 +424,26 @@ export async function testConnection(serverConfig) {
 
     if (response.ok) {
       if (responseText.trim().toLowerCase() === 'ok.') {
-        return { success: true, data: { message: 'Authentication successful.' } }; 
+        try {
+            const version = await getQbittorrentVersion(serverConfig);
+            const buildInfo = await getBuildInfo(serverConfig);
+            return { 
+                success: true, 
+                data: { 
+                    message: 'Authentication successful.',
+                    version: version,
+                    ...buildInfo
+                } 
+            };
+        } catch (infoError) {
+            debug.error('Login successful, but failed to get additional server info:', infoError);
+            return { 
+                success: true, 
+                data: { 
+                    message: 'Authentication successful, but could not retrieve detailed server info.' 
+                } 
+            };
+        }
       } else {
         return { 
           success: false, 

@@ -557,6 +557,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         toggleClientSpecificFields('qbittorrent'); 
     }
 
+    function formatBytes(bytes, decimals = 2) {
+        if (!bytes || bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
     function renderServerList() {
         serverListUl.innerHTML = ''; 
         if (servers.length === 0) {
@@ -589,7 +598,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const clientTypeSpan = document.createElement('p');
             clientTypeSpan.className = 'text-sm text-gray-500 dark:text-gray-400';
             clientTypeSpan.textContent = `Client: ${server.clientType || 'N/A'}`;
+            if (server.version) {
+                clientTypeSpan.textContent += ` (v${server.version})`;
+            }
             serverInfoDiv.appendChild(clientTypeSpan);
+
+            if (typeof server.freeSpace === 'number' && server.freeSpace >= 0) {
+                const freeSpaceSpan = document.createElement('p');
+                freeSpaceSpan.className = 'text-sm text-gray-500 dark:text-gray-400';
+                freeSpaceSpan.textContent = `Free Space: ${formatBytes(server.freeSpace)}`;
+                serverInfoDiv.appendChild(freeSpaceSpan);
+            }
+
             const urlSpan = document.createElement('p');
             urlSpan.className = 'text-sm text-gray-500 dark:text-gray-400 break-all';
             urlSpan.textContent = `URL: ${server.url}`;
@@ -847,10 +867,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (granted) {
                 chrome.runtime.sendMessage({ action: 'testConnection', config: serverConfig }, (response) => {
                     lastConnectionTestFailed = !response?.success; // Track test result
-                    if (chrome.runtime.lastError) displayFormStatus(`Error: ${chrome.runtime.lastError.message}`, 'error');
-                    else if (response) {
+                    if (chrome.runtime.lastError) {
+                        displayFormStatus(`Error: ${chrome.runtime.lastError.message}`, 'error');
+                    } else if (response) {
                         if (response.success) {
-                            displayFormStatus('Connection successful!', 'success');
+                            let successMessage = response.data.message || 'Connection successful!';
+                            displayFormStatus(successMessage, 'success');
+
+                            // If we have an ID, it means we are editing an existing server.
+                            // Let's save the advanced info.
+                            if (serverConfig.id && response.data) {
+                                const serverIndex = servers.findIndex(s => s.id === serverConfig.id);
+                                if (serverIndex > -1) {
+                                    servers[serverIndex].version = response.data.version;
+                                    servers[serverIndex].freeSpace = response.data.freeSpace;
+                                    // Persist the updated server info
+                                    chrome.storage.local.set({ servers }, () => {
+                                        renderServerList(); // Re-render to show new info
+                                    });
+                                }
+                            }
                         } else {
                             let errorMessage = "Connection failed.";
                             if (response.error && response.error.userMessage) errorMessage = `Connection failed: ${response.error.userMessage}`;
@@ -858,9 +894,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             else if (response.error) errorMessage = `Connection failed: ${JSON.stringify(response.error)}`;
                             displayFormStatus(errorMessage, 'error');
                         }
-                    } else displayFormStatus('No response from service worker.', 'error');
+                    } else {
+                        displayFormStatus('No response from service worker.', 'error');
+                    }
                 });
-            } else displayFormStatus('Host permission not granted for this URL. Please save the server configuration first to request permission.', 'error');
+            } else {
+                displayFormStatus('Host permission not granted for this URL. Please save the server configuration first to request permission.', 'error');
+            }
         });
     });
 

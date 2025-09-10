@@ -334,17 +334,19 @@ export async function testConnection(serverConfig) {
         };
     }
     
-    const sessionCheckResult = await makeRpcRequest(serverConfig.url, 'auth.check_session', [], serverConfig);
-    if (sessionCheckResult.success && sessionCheckResult.data === true) { 
-        return { success: true, data: { message: "Deluge session is valid." } };
-    }
-    
-    delugeSessionCookie = null; 
+    // If connected, get more details
+    const hostStatusResponse = await makeRpcRequest(serverConfig.url, 'web.get_host_status', [0], serverConfig); // Assuming first host
+    const freeSpaceResponse = await makeRpcRequest(serverConfig.url, 'core.get_free_space', [], serverConfig);
+
+    const daemonVersion = (hostStatusResponse && hostStatusResponse.success && hostStatusResponse.data) ? hostStatusResponse.data[4] : 'N/A';
+    const freeSpace = (freeSpaceResponse && freeSpaceResponse.success && typeof freeSpaceResponse.data === 'number') ? freeSpaceResponse.data : -1;
+
     return { 
-        success: false, 
-        error: sessionCheckResult.error || { // sessionCheckResult.error should be standardized
-            userMessage: 'Deluge session check failed after login.',
-            errorCode: "SESSION_CHECK_FAILED"
-        }
+        success: true, 
+        data: { 
+            message: 'Successfully connected to Deluge.',
+            version: daemonVersion,
+            freeSpace: freeSpace
+        } 
     };
 }
