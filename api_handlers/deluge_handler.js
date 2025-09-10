@@ -327,29 +327,38 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 export async function testConnection(serverConfig) {
     const loginAttempt = await login(serverConfig);
     if (!loginAttempt.success) {
-        // loginAttempt.error is already standardized
         return { 
             success: false, 
-            error: loginAttempt.error || { // Fallback
+            error: loginAttempt.error || {
                 userMessage: "Deluge login failed during connection test.",
                 errorCode: "TEST_LOGIN_FAILED"
             }
         };
     }
     
-    // If connected, get more details
-    const hostStatusResponse = await makeRpcRequest(serverConfig.url, 'web.get_host_status', [0], serverConfig); // Assuming first host
-    const freeSpaceResponse = await makeRpcRequest(serverConfig.url, 'core.get_free_space', [], serverConfig);
+    const sessionStatusResult = await makeRpcRequest(serverConfig.url, 'core.get_session_status', [[]], serverConfig);
+    const freeSpaceResult = await makeRpcRequest(serverConfig.url, 'core.get_free_space', [], serverConfig);
 
-    const daemonVersion = (hostStatusResponse && hostStatusResponse.success && hostStatusResponse.data) ? hostStatusResponse.data[4] : 'N/A';
-    const freeSpace = (freeSpaceResponse && freeSpaceResponse.success && typeof freeSpaceResponse.data === 'number') ? freeSpaceResponse.data : -1;
+    if (sessionStatusResult.success && sessionStatusResult.data) {
+        const stats = sessionStatusResult.data;
+        return {
+            success: true,
+            data: {
+                message: 'Successfully connected to Deluge.',
+                version: stats.libtorrent_version,
+                freeSpace: freeSpaceResult.success ? freeSpaceResult.data : -1,
+                total_torrents: stats.num_torrents,
+                dl_info_speed: stats.payload_download_rate,
+                up_info_speed: stats.payload_upload_rate,
+            }
+        };
+    }
 
     return { 
-        success: true, 
-        data: { 
-            message: 'Successfully connected to Deluge.',
-            version: daemonVersion,
-            freeSpace: freeSpace
-        } 
+        success: false, 
+        error: sessionStatusResult.error || {
+            userMessage: 'Failed to get session status from Deluge.',
+            errorCode: "TEST_CONN_FAILED"
+        }
     };
 }

@@ -1,9 +1,9 @@
 ### v0.4.5 (2025-09-10)
 
-*   **Enhancement:** Completed a comprehensive review of all API handlers to provide advanced information on the Dashboard. The following clients now report extended details:
-    *   **qBittorrent:** Version & Free Space
-    *   **Transmission:** Version & Free Space
-    *   **Deluge:** Version & Free Space
+*   **Enhancement: Pro Dashboard:** The dashboard is now significantly more powerful. After a comprehensive review of all client APIs, the following clients now report extended details:
+    *   **qBittorrent:** Version & Free Space, Global Speeds, Total Torrents
+    *   **Transmission:** Version & Free Space, Global Speeds, Total Torrents
+    *   **Deluge:** Version & Free Space, Global Speeds, Total Torrents
     *   **rTorrent:** Version & Free Space
     *   **Synology Download Station:** Version & Free Space
     *   **QNAP Download Station:** Version

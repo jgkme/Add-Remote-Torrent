@@ -255,25 +255,19 @@ export async function testConnection(serverConfig) {
 	const path = serverConfig.rpcPath || '/transmission/rpc';
 	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
 	try {
-		const payload = {
-            method: "session-get",
-            arguments: {
-                fields: [
-                    "version",
-                    "rpc-version",
-                    "download-dir-free-space"
-                ]
-            }
-        };
-		const resultArgs = await makeRpcCall(rpcUrl, payload.method, payload.arguments, serverConfig);
-        const { version, "rpc-version": rpcVersion, "download-dir-free-space": freeSpace } = resultArgs;
+		const session = await makeRpcCall(rpcUrl, 'session-get', {}, serverConfig);
+        const stats = await makeRpcCall(rpcUrl, 'session-stats', {}, serverConfig);
+
 		return { 
             success: true, 
             data: { 
                 message: 'Successfully connected to Transmission.',
-                version: version,
-                rpcVersion: rpcVersion,
-                freeSpace: freeSpace
+                version: session.version,
+                rpcVersion: session['rpc-version'],
+                freeSpace: session['download-dir-free-space'],
+                total_torrents: stats.torrentCount,
+                dl_info_speed: stats.downloadSpeed,
+                up_info_speed: stats.uploadSpeed,
             } 
         };
 	} catch (error) {

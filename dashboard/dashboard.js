@@ -30,11 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(v${server.version})` : ''}</p>
                     <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
-                    ${(typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? `
-                        <div class="mt-2">
-                            <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${formatBytes(server.freeSpace)}</p>
-                        </div>
-                    ` : ''}
+                    ${(typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${formatBytes(server.freeSpace)}</p>` : ''}
+                    ${(typeof server.total_torrents === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${server.total_torrents}</p>` : ''}
+                    ${(typeof server.dl_info_speed === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${formatBytes(server.dl_info_speed)}/s</p>` : ''}
+                    ${(typeof server.up_info_speed === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${formatBytes(server.up_info_speed)}/s</p>` : ''}
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? new Date(server.lastChecked).toLocaleString() : 'Never'}</p>
                 </div>
             `;

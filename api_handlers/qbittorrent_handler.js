@@ -333,21 +333,23 @@ async function getBuildInfo(serverConfig) {
     const { url } = serverConfig;
     const buildInfoUrl = getApiUrl(url, 'app/buildInfo');
     const webUIVersionUrl = getApiUrl(url, 'app/webapiVersion');
-    const preferencesUrl = getApiUrl(url, 'app/preferences');
+    const mainDataUrl = getApiUrl(url, 'sync/maindata');
 
     // We can reuse the authenticated request helper, assuming login is handled by the caller
     const buildInfoResp = await fetch(buildInfoUrl, { credentials: 'include' });
     const webUIVersionResp = await fetch(webUIVersionUrl, { credentials: 'include' });
-    const preferencesResp = await fetch(preferencesUrl, { credentials: 'include' });
+    const mainDataResp = await fetch(mainDataUrl, { credentials: 'include' });
 
-    if (!buildInfoResp.ok || !webUIVersionResp.ok || !preferencesResp.ok) {
+    if (!buildInfoResp.ok || !webUIVersionResp.ok || !mainDataResp.ok) {
         debug.warn('Could not fetch all build info details.');
         return {};
     }
 
     const buildInfo = await buildInfoResp.json();
     const webUIVersion = await webUIVersionResp.text();
-    const preferences = await preferencesResp.json();
+    const mainData = await mainDataResp.json();
+
+    const serverState = mainData.server_state || {};
 
     return {
         qtVersion: buildInfo.qt,
@@ -356,7 +358,10 @@ async function getBuildInfo(serverConfig) {
         opensslVersion: buildInfo.openssl,
         zlibVersion: buildInfo.zlib,
         webUIVersion: webUIVersion.trim(),
-        freeSpace: preferences.free_space_on_disk,
+        freeSpace: serverState.free_space_on_disk,
+        dl_info_speed: serverState.dl_info_speed,
+        up_info_speed: serverState.up_info_speed,
+        total_torrents: mainData.torrents ? Object.keys(mainData.torrents).length : 0,
     };
 }
 
