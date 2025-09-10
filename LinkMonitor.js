@@ -1,27 +1,35 @@
 import { debug } from './debug';
 
 const handleMutations = (mutationsList, callback) => {
-    debug.log('linkMonitor: handleMutations', mutationsList.length, 'mutations');
+    // Use a Set to avoid processing the same link multiple times per mutation batch
+    const linksToProcess = new Set();
+
     for (const mutation of mutationsList) {
         if (mutation.type === 'childList') {
-            mutation.addedNodes.forEach(node => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (node.tagName === 'A') {
-                        // debug.log('linkMonitor: New link added:', node.href);
-                        callback && callback(node, 'node added');
+            // If a large number of nodes are added, it's likely a dynamic content load.
+            // Re-scanning the parent is more reliable than iterating every single node.
+            if (mutation.addedNodes.length > 5 && mutation.target.querySelectorAll) {
+                mutation.target.querySelectorAll('a').forEach(link => linksToProcess.add(link));
+            } else {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.tagName === 'A') {
+                            linksToProcess.add(node);
+                        }
+                        if (node.querySelectorAll) {
+                            node.querySelectorAll('a').forEach(link => linksToProcess.add(link));
+                        }
                     }
-                    node.querySelectorAll?.('a').forEach(a => {
-                        // debug.log('linkMonitor: New link added in subtree:', a.href);
-                        callback && callback(a, 'node added in subtree');
-                    });
-                }
-            });
-        } else if (mutation.type === 'attributes') {
-            if (mutation.target.tagName === 'A' && mutation.attributeName === 'href') {
-                // debug.log('Link href changed:', mutation.target.href);
-                callback && callback(mutation.target, 'node href changed');
+                });
             }
+        } else if (mutation.type === 'attributes' && mutation.target.tagName === 'A') {
+            linksToProcess.add(mutation.target);
         }
+    }
+
+    if (linksToProcess.size > 0) {
+        // debug.log(`LinkMonitor: Processing ${linksToProcess.size} unique links from mutations.`);
+        linksToProcess.forEach(link => callback && callback(link, 'mutation detected'));
     }
 };
 

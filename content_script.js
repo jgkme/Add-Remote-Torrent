@@ -252,12 +252,12 @@ window.addEventListener('pageshow', () => {
     // Run on 'pageshow' event (should also trigger on browser back/forward when the page is cached)
     debug.log('[ART ContentScript] pageshow event detected, (re)initializing link monitor');
     getOptions().then(initLinkMonitor).catch(error => {
-        // If the context is invalidated, this is expected during extension reloads.
-        // We can log it quietly without throwing a scary error in the console.
-        if (error.message.includes('Extension context invalidated') || error.message.includes('No response')) {
-            debug.log('[ART ContentScript] Could not initialize. Extension context is invalid, likely due to an update or reload.');
+        // This is the critical error to catch. When the extension reloads, the context is invalidated.
+        // We can't do anything about it, but we can prevent the error from spamming the console.
+        if (error.message.includes("Extension context invalidated") || error.message.includes("Receiving end does not exist")) {
+            debug.log("[ART ContentScript] Extension has been updated or reloaded. Content script will be re-injected on next page load. This is normal.");
         } else {
-            debug.error('[ART ContentScript] Failed to initialize:', error);
+            debug.error("[ART ContentScript] Failed to initialize:", error);
         }
     });
 });
