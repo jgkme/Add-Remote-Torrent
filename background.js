@@ -147,8 +147,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     addTorrentToClient(request.url);
     return false; 
   } else if (request.action === 'addTorrentWithCustomParams' && request.params) {
-    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir } = request.params;
-    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount);
+    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir, contentLayout } = request.params;
+    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount, contentLayout);
     return false; 
   } else if (request.action === 'addTorrent' && request.url) {
     const { url, pageUrl } = request;
@@ -519,7 +519,7 @@ async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, curre
 }
 
 
-async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined) {
+async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined, customContentLayout = null) {
   let serverToUse = null;
   let serverDeterminedByRule = false;
 
@@ -591,6 +591,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     labels: labelsArray,
     selectedFileIndices: selectedFileIndices,
     totalFileCount: totalFileCount,
+    contentLayout: customContentLayout,
     torrentFileContentBase64: null, 
     originalTorrentUrl: torrentUrl 
   };

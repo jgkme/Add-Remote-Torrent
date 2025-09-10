@@ -1,3 +1,3 @@
-### v0.3.20 (2025-09-06)
+### v0.3.21 (2025-09-06)
 
-*   **Fix:** Corrected a regression where the "URL-to-Server Mappings" feature was being ignored. The server selection logic now correctly prioritizes URL-based rules over context menu selections, restoring the expected automatic routing behavior.
+*   **Fix:** Resolved a critical "Extension context invalidated" error that occurred during extension reloads. The content script now handles this expected error gracefully, preventing console errors on every page load and improving overall stability.

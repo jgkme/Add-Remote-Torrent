@@ -51,6 +51,16 @@
         <label for="pausedInput" class="text-sm font-medium text-gray-700 dark:text-gray-300">Add in Paused State</label>
       </div>
 
+      <!-- qBittorrent Specific Options -->
+      <div id="qbittorrentOptions" class="form-group mt-3" style="display: none;">
+        <label for="contentLayoutInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Content Layout (qBittorrent):</label>
+        <select id="contentLayoutInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+          <option value="Original">Original</option>
+          <option value="Subfolder">Create subfolder</option>
+          <option value="NoSubfolder">Don't create subfolder</option>
+        </select>
+      </div>
+
       <div id="fileSelectionSection" class="form-group mt-4" style="display: none;">
         <div class="flex items-center space-x-2 mb-2">
             <input type="checkbox" id="selectFilesToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">

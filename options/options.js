@@ -29,7 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const serverFormTitle = document.getElementById('serverFormTitle');
     const serverIdInput = document.getElementById('serverId');
     const serverNameInput = document.getElementById('serverName');
-    const clientTypeSelect = document.getElementById('clientType'); 
+    const clientTypeSelect = document.getElementById('clientType');
+    const clientTypeHelpIcon = document.getElementById('client-type-help-icon');
     const serverUrlInput = document.getElementById('qbUrl'); 
     const serverUsernameInput = document.getElementById('qbUsername'); 
     const serverPasswordInput = document.getElementById('qbPassword'); 
@@ -285,9 +286,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    const clientHints = {
+        qbittorrent: 'For versions 4.3.0 and newer, you may need to disable "CSRF Protection" in the WebUI options for the extension to connect properly.',
+        transmission: 'The default RPC path is usually <strong>/transmission/rpc</strong>. Ensure your server\'s URL is correct (e.g., http://localhost:9091).',
+        deluge: 'The password for the Deluge WebUI is often separate from the daemon password and is managed in the WebUI plugin settings. It may be blank by default.',
+        utorrent: 'This handler is for modern uTorrent WebUI versions. Ensure the "Relative Path" is correct (e.g., /gui/). The extension will try to auto-detect this.',
+        utorrent_old: 'Use this for very old versions of uTorrent (e.g., v2.0.4) that do not use a CSRF token for authentication.',
+        rtorrent: 'This requires a web server with an XML-RPC endpoint configured (like ruTorrent). For direct connection, provide the full SCGI/HTTPRPC URL.',
+        rutorrent: 'Enter the full URL to your ruTorrent dashboard (e.g., https://server.com/rutorrent). The relative path for plugins is usually not needed.',
+        synology_download_station: 'Use your Synology NAS login credentials. Ensure the Download Station application is installed and running.',
+        qnap_download_station: 'Use your QNAP NAS login credentials. Ensure the Download Station application is installed and running.',
+        kodi_elementum: 'No username or password is required. The default URL is typically http://localhost:65220.',
+        flood: 'Flood is a modern WebUI for rTorrent. Use your Flood login credentials.',
+        default: 'No specific hints for this client. Ensure URL, username, and password are correct.'
+    };
+
     function toggleClientSpecificFields(clientType) {
         const clientHintDiv = document.getElementById('clientSpecificHint');
-        clientHintDiv.innerHTML = ''; // Clear previous hint
+        const hintText = clientHints[clientType] || clientHints.default;
+        clientHintDiv.innerHTML = hintText;
+        clientHintDiv.style.display = 'none'; // Always hide hint on change, user must click icon to see it.
 
         // Ensure elements exist before trying to set style or textContent
         const rpcPathGrp = document.getElementById('rpcPathGroup');
@@ -332,7 +350,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         switch (clientType) {
             case 'qbittorrent':
                 if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
-                clientHintDiv.innerHTML = 'For versions 4.3.0+, you may need to disable "CSRF Protection" in the WebUI options.';
                 break;
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
@@ -347,7 +364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             case 'rtorrent':
                 if(scgiPathGrp) scgiPathGrp.style.display = 'block';
-                clientHintDiv.innerHTML = 'For seedbox.io, the SCGI/HTTPRPC URL may look like: https://<user>.seedbox.io/RPC/<numbers>/'
                 if(rtorrentPriorityGroup) rtorrentPriorityGroup.style.display = 'block';
                 if(rtorrentThrottleGroup) rtorrentThrottleGroup.style.display = 'block';
                 if(rtorrentPeerSettingsGroup) rtorrentPeerSettingsGroup.style.display = 'block';
@@ -359,10 +375,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(ruTorrentOptions) ruTorrentOptions.style.display = 'block';
                 if (urlLabel) urlLabel.textContent = 'ruTorrent URL:';
                 serverUrlInput.placeholder = 'http://localhost/rutorrent';
-                clientHintDiv.innerHTML = 'Enter the full URL to ruTorrent (e.g., https://server.com/rutorrent) in the URL field and leave the relative path blank.';
                 break;
             case 'utorrent_old':
-                clientHintDiv.innerHTML = 'Use this for very old versions of uTorrent (e.g., v2.0.4) that do not use a CSRF token.';
                 break;
             case 'torrentflux':
                 if(torrentfluxRelativePathGroup) torrentfluxRelativePathGroup.style.display = 'block';
@@ -615,6 +629,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Event Handlers ---
+    clientTypeHelpIcon.addEventListener('click', () => {
+        const clientHintDiv = document.getElementById('clientSpecificHint');
+        if (clientHintDiv.style.display === 'none') {
+            clientHintDiv.style.display = 'block';
+        } else {
+            clientHintDiv.style.display = 'none';
+        }
+    });
+
     showAddServerFormButton.addEventListener('click', () => {
         showServerForm(false);
     });

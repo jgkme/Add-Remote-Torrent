@@ -232,6 +232,18 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
     if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir); // Use 'savepath' (lowercase) for qBittorrent API
     
+    if (torrentOptions.contentLayout && torrentOptions.contentLayout !== 'Original') {
+        // For qBittorrent API v2.8.0+
+        addTorrentFormData.append('contentLayout', torrentOptions.contentLayout);
+        // For older APIs, 'root_folder' was used. We can add it for compatibility,
+        // though modern qBittorrent will ignore it if contentLayout is present.
+        if (torrentOptions.contentLayout === 'Subfolder') {
+            addTorrentFormData.append('root_folder', "true");
+        } else if (torrentOptions.contentLayout === 'NoSubfolder') {
+            addTorrentFormData.append('root_folder', "false");
+        }
+    }
+
     const version = await getQbittorrentVersion(serverConfig);
     const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
 

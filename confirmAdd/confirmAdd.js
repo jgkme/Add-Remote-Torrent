@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pausedInput = document.getElementById('pausedInput');
     const confirmButton = document.getElementById('confirmButton');
     const cancelButton = document.getElementById('cancelButton');
+    const qbittorrentOptions = document.getElementById('qbittorrentOptions');
+    const contentLayoutInput = document.getElementById('contentLayoutInput');
     const fileSelectionSection = document.getElementById('fileSelectionSection');
     const selectFilesToggle = document.getElementById('selectFilesToggle');
     const fileListContainer = document.getElementById('fileListContainer');
@@ -107,6 +109,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         pausedInput.checked = activeServer.addPaused || false;
+
+            if (activeServer.clientType === 'qbittorrent') {
+                qbittorrentOptions.style.display = 'block';
+            }
         } else {
             const errorPara = document.createElement('p');
       errorPara.textContent = `Error: Could not find server with ID ${activeServerId}. Please close this window.`;
@@ -264,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             addPaused: pausedInput.checked,
             selectedFileIndices: (!isMagnetLink && selectFilesToggle.checked) ? selectedFileIndices : undefined,
             totalFileCount: (!isMagnetLink && selectFilesToggle.checked && totalFileCount > 0) ? totalFileCount : undefined,
+            contentLayout: contentLayoutInput.value,
         };
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {
