@@ -196,6 +196,12 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     if (!response.ok) {
         const errorText = await response.text();
         debug.error(`Failed to resume torrent ${hash}. Server response: ${errorText}`);
+        
+        // Handle specific error cases
+        if (response.status === 404 || errorText.includes('Not Found')) {
+            throw new Error(`Torrent with hash ${hash} not found on server. It may have been removed or the hash is incorrect.`);
+        }
+        
         // Throw a more specific error to be caught by the calling function
         throw new Error(`Failed to resume torrent ${hash}. Server response: ${response.statusText}`);
     }
@@ -293,19 +299,37 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (newHash) {
         debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
-        if (useFileSelection) {
-            const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
-            const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
+        
+        try {
+            if (useFileSelection) {
+                const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
+                const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
 
-            await _setFilePriorities(newHash, deselectedFileIndices, 0);
-            await _setFilePriorities(newHash, selectedFileIndices, 1);
-        }
+                await _setFilePriorities(newHash, deselectedFileIndices, 0);
+                await _setFilePriorities(newHash, selectedFileIndices, 1);
+            }
 
-        if (!userWantsPaused) {
-            await _resumeTorrent(newHash);
+            if (!userWantsPaused) {
+                try {
+                    await _resumeTorrent(newHash);
+                } catch (resumeError) {
+                    debug.warn(`qBittorrent: Failed to resume torrent ${newHash}, but torrent was added successfully. Error: ${resumeError.message}`);
+                    // Don't throw here - just log the warning and continue
+                }
+            }
+            // Return success with the identified hash
+            return { success: true, hash: newHash };
+        } catch (postAddError) {
+            debug.error(`qBittorrent: Error during post-add operations for hash ${newHash}:`, postAddError);
+            // Return success since the torrent was added, but with a warning about post-add operations
+            return { 
+                success: true, 
+                hash: newHash,
+                data: { 
+                    warning: `Torrent added successfully, but there was an error with post-add operations: ${postAddError.message}` 
+                } 
+            };
         }
-        // Return success with the identified hash
-        return { success: true, hash: newHash };
     } else {
         debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", userWantsPaused);
         return { success: true, data: { warning: "Torrent added, but file priorities might not have been set due to hash identification failure."} };
@@ -393,18 +417,60 @@ function base64ToBlob(base64, type = 'application/x-bittorrent') {
 }
 
 async function getBuildInfo(serverConfig) {
-    const { url } = serverConfig;
+    const { url, username, password } = serverConfig;
     const buildInfoUrl = getApiUrl(url, 'app/buildInfo');
     const webUIVersionUrl = getApiUrl(url, 'app/webapiVersion');
     const mainDataUrl = getApiUrl(url, 'sync/maindata');
+    const loginApiUrl = getApiUrl(url, 'auth/login');
+    
+    const serverUrlObj = new URL(url);
+    const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
+    const referer = new URL(url).href;
 
-    // We can reuse the authenticated request helper, assuming login is handled by the caller
-    const buildInfoResp = await fetch(buildInfoUrl, { credentials: 'include' });
-    const webUIVersionResp = await fetch(webUIVersionUrl, { credentials: 'include' });
-    const mainDataResp = await fetch(mainDataUrl, { credentials: 'include' });
+    const loginHeaders = {
+        'Referer': referer,
+        'Origin': origin,
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+
+    // Ensure we're authenticated before making API calls
+    const loginBodyParams = new URLSearchParams();
+    loginBodyParams.append('username', username);
+    loginBodyParams.append('password', password);
+
+    const loginResp = await fetch(loginApiUrl, {
+        method: 'POST',
+        body: loginBodyParams.toString(),
+        headers: loginHeaders,
+        credentials: 'include'
+    });
+
+    if (!loginResp.ok) {
+        debug.warn('Login failed in getBuildInfo, returning empty data.');
+        return {};
+    }
+
+    const commonHeaders = {
+        'Referer': referer,
+        'Origin': origin
+    };
+
+    // Now make the authenticated API calls
+    const buildInfoResp = await fetch(buildInfoUrl, { 
+        headers: commonHeaders,
+        credentials: 'include' 
+    });
+    const webUIVersionResp = await fetch(webUIVersionUrl, { 
+        headers: commonHeaders,
+        credentials: 'include' 
+    });
+    const mainDataResp = await fetch(mainDataUrl, { 
+        headers: commonHeaders,
+        credentials: 'include' 
+    });
 
     if (!buildInfoResp.ok || !webUIVersionResp.ok || !mainDataResp.ok) {
-        debug.warn('Could not fetch all build info details.');
+        debug.warn('Could not fetch all build info details after authentication.');
         return {};
     }
 
@@ -413,6 +479,9 @@ async function getBuildInfo(serverConfig) {
     const mainData = await mainDataResp.json();
 
     const serverState = mainData.server_state || {};
+
+    debug.log('qBittorrent getBuildInfo - serverState:', serverState);
+    debug.log('qBittorrent getBuildInfo - mainData.torrents count:', mainData.torrents ? Object.keys(mainData.torrents).length : 'no torrents object');
 
     return {
         qtVersion: buildInfo.qt,

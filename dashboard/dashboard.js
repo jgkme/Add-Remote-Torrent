@@ -26,16 +26,16 @@ document.addEventListener('DOMContentLoaded', () => {
             cardElement.className = `bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 ${isOnline ? 'border-green-500' : 'border-red-500'}`;
 
             const freeSpace = (typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? formatBytes(server.freeSpace) : 'N/A';
-            const totalTorrents = (typeof server.total_torrents === 'number') ? server.total_torrents : 'N/A';
-            const dlSpeed = (typeof server.dl_info_speed === 'number') ? `${formatBytes(server.dl_info_speed)}/s` : 'N/A';
-            const ulSpeed = (typeof server.up_info_speed === 'number') ? `${formatBytes(server.up_info_speed)}/s` : 'N/A';
+            const totalTorrents = (typeof server.torrents === 'number') ? server.torrents : 'N/A';
+            const dlSpeed = (typeof server.downloadSpeed === 'number') ? `${formatBytes(server.downloadSpeed)}/s` : 'N/A';
+            const ulSpeed = (typeof server.uploadSpeed === 'number') ? `${formatBytes(server.uploadSpeed)}/s` : 'N/A';
 
             cardElement.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${server.name}</h3>
                     <span class="px-2 py-1 text-xs font-semibold text-white ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full">${isOnline ? 'Online' : 'Offline'}</span>
                 </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(v${server.version})` : ''}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(${server.version.startsWith('v') ? server.version : 'v' + server.version})` : ''}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${freeSpace}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${totalTorrents}</p>
