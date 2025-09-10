@@ -171,7 +171,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
             message: msg
           });
-          chrome.storage.local.set({ lastActionStatus: msg });
+          updateActionHistory(msg);
           sendResponse({ error: msg });
         }
       } catch (error) {
@@ -181,7 +181,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           type: 'basic', iconUrl: 'icons/icon-48x48.png', title: 'Add Remote Torrent Error',
           message: errorMsg
         });
-        chrome.storage.local.set({ lastActionStatus: errorMsg });
+        updateActionHistory(errorMsg);
         sendResponse({ error: errorMsg });
       }
     })();
@@ -204,6 +204,44 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   debug.log("[ART Background] onInstalled event triggered.");
   createContextMenus();
+  // Setup the periodic server status check alarm
+  chrome.alarms.create('serverStatusCheck', {
+    delayInMinutes: 1, // Check 1 minute after startup
+    periodInMinutes: 15 // Then check every 15 minutes
+  });
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'serverStatusCheck') {
+        debug.log('[ART Background] Running periodic server status check...');
+        const { servers } = await chrome.storage.local.get('servers');
+        if (!servers || servers.length === 0) {
+            debug.log('[ART Background] No servers configured, skipping status check.');
+            return;
+        }
+
+        const updatedServers = await Promise.all(servers.map(async (server) => {
+            const apiClient = getClientApi(server.clientType);
+            if (!apiClient) {
+                return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+            }
+            try {
+                const result = await apiClient.testConnection(server);
+                return { 
+                    ...server, 
+                    status: result.success ? 'online' : 'offline', 
+                    lastChecked: new Date().toISOString(),
+                    version: result.success ? result.data.version : server.version, // Update version/freespace on successful check
+                    freeSpace: result.success ? result.data.freeSpace : server.freeSpace
+                };
+            } catch (e) {
+                return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+            }
+        }));
+
+        await chrome.storage.local.set({ servers: updatedServers });
+        debug.log('[ART Background] Server status check complete. Updated server statuses in storage.');
+    }
 });
 
 // Listen for storage changes to update context menu when servers are modified
@@ -449,6 +487,14 @@ async function setupOffscreenDocument() {
 }
 
 
+async function updateActionHistory(newMessage) {
+    const { actionHistory = [] } = await chrome.storage.local.get('actionHistory');
+    const timestamp = new Date().toISOString();
+    actionHistory.unshift({ message: newMessage, timestamp }); // Add new message to the front
+    const truncatedHistory = actionHistory.slice(0, 10); // Keep only the last 10
+    await chrome.storage.local.set({ actionHistory: truncatedHistory, lastActionStatus: newMessage }); // Keep lastActionStatus for popup
+}
+
 async function playSound(soundFile) {
   try {
     const { enableSoundNotifications } = await chrome.storage.local.get('enableSoundNotifications');
@@ -571,7 +617,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         debug.log("[ART Background] Notification created (no target server), ID:", notificationId);
       }
     });
-    chrome.storage.local.set({ lastActionStatus: msg });
+    updateActionHistory(msg);
     return;
   }
 
@@ -709,7 +755,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         debug.log("[ART Background] Notification created (no API handler), ID:", notificationId);
       }
     });
-    chrome.storage.local.set({ lastActionStatus: errorMsg });
+    updateActionHistory(errorMsg);
     return;
   }
 
@@ -741,7 +787,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         });
       }
       playSound('audio/success.mp3'); 
-      chrome.storage.local.set({ lastActionStatus: successMsg });
+      updateActionHistory(successMsg);
     } else {
       let userFriendlyError = `Failed to add torrent to "${serverName}" (${clientType}).`;
       if (result.error && typeof result.error === 'object' && result.error.userMessage) {
@@ -771,7 +817,7 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
         });
     }
       playSound('audio/failure.mp3'); 
-      chrome.storage.local.set({ lastActionStatus: notificationErrorMessage });
+      updateActionHistory(notificationErrorMessage);
   }
 }
 

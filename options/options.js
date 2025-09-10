@@ -588,6 +588,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nameSpan = document.createElement('span');
             nameSpan.className = 'font-semibold text-lg text-gray-800 dark:text-white';
             nameSpan.textContent = server.name;
+
+            const statusIndicator = document.createElement('span');
+            statusIndicator.className = `ml-2 inline-block h-3 w-3 rounded-full ${server.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`;
+            statusIndicator.title = `Status: ${server.status || 'Unknown'}${server.lastChecked ? ' (Last checked: ' + new Date(server.lastChecked).toLocaleString() + ')' : ''}`;
+            nameSpan.appendChild(statusIndicator);
+
             serverInfoDiv.appendChild(nameSpan);
             if (server.id === activeServerId) {
                 const activeBadge = document.createElement('span');
