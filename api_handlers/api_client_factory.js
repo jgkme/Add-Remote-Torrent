@@ -24,6 +24,7 @@ import * as flood from './flood_handler.js';
 import * as tribler from './tribler_handler.js';
 import * as biglybt from './biglybt_handler.js';
 import * as porla from './porla_handler.js';
+import * as vuze_xmwebui from './vuze_xmwebui_handler.js';
 
 const clientHandlers = {
     qbittorrent,
@@ -46,7 +47,8 @@ const clientHandlers = {
     flood,
     tribler,
     biglybt,
-    porla
+    porla,
+    vuze_xmwebui
 };
 
 export function getClientApi(clientType) {

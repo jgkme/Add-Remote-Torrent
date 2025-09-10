@@ -71,11 +71,21 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-    // webui.getVersion does not exist, use core.getSystemInfo instead.
     const result = await makeRpcRequest(serverConfig, 'core.getSystemInfo', []);
-    if (result.success) {
-        // The result is a complex object, just confirm success.
-        return { success: true, data: { version: 'N/A' } };
+    if (result.success && result.data && result.data.versions) {
+        return { 
+            success: true, 
+            data: { 
+                version: result.data.versions.hadouken,
+                message: "Successfully connected to Hadouken."
+            } 
+        };
     }
-    return result;
+    return {
+        success: false,
+        error: result.error || {
+            userMessage: "Failed to get system info from Hadouken.",
+            errorCode: "TEST_CONN_FAILED"
+        }
+    };
 }

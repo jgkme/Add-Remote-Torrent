@@ -123,7 +123,7 @@ We are working on a feature to make this process easier by allowing you to repor
 
 ## Changelog
 *   **v0.4.5 (2025-09-10):**
-    *   **Enhancement:** Completed a comprehensive review of all major API handlers to provide advanced information on the Dashboard. The following clients now report extended details:
+    *   **Enhancement:** Completed a comprehensive review of all API handlers to provide advanced information on the Dashboard. The following clients now report extended details:
         *   **qBittorrent:** Version & Free Space
         *   **Transmission:** Version & Free Space
         *   **Deluge:** Version & Free Space
@@ -132,6 +132,10 @@ We are working on a feature to make this process easier by allowing you to repor
         *   **QNAP Download Station:** Version
         *   **uTorrent:** Version
         *   **BiglyBT:** Version & Free Space
+        *   **Vuze (XML WebUI):** Version & Free Space
+        *   **Porla:** Version
+        *   **Hadouken:** Version
+    *   **Feature:** Added a new "Vuze (XML WebUI)" client type to support the modern, Transmission-compatible API.
     *   **Fix:** Corrected a critical bug where the "context invalidated" error would spam the console on pages with dynamic content. The content script now handles this error gracefully.
     *   **Fix:** Improved the `LinkMonitor` to more reliably detect torrent links on dynamic web pages (e.g., Telegram, Facebook) by re-scanning sections of the page when significant changes are detected.
     *   **Fix:** Added the `dashboard` directory to the build process, resolving an `ERR_FILE_NOT_FOUND` error when trying to access the new Dashboard page.

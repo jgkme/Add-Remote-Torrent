@@ -93,7 +93,17 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 export async function testConnection(serverConfig) {
     try {
         const token = await authenticateForToken(serverConfig);
-        return makeApiRequest(serverConfig, 'porla.ping', {}, token);
+        const result = await makeApiRequest(serverConfig, 'sys.versions', {}, token);
+        if (result.success && result.data) {
+            return {
+                success: true,
+                data: {
+                    message: 'Successfully connected to Porla.',
+                    version: result.data.porla
+                }
+            };
+        }
+        return result;
     } catch (error) {
         return { success: false, error: { userMessage: `Failed to connect to Porla: ${error.message}` } };
     }

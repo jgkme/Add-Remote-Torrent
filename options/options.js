@@ -298,6 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         qnap_download_station: 'Use your QNAP NAS login credentials. Ensure the Download Station application is installed and running.',
         kodi_elementum: 'No username or password is required. The default URL is typically http://localhost:65220.',
         flood: 'Flood is a modern WebUI for rTorrent. Use your Flood login credentials.',
+        vuze_xmwebui: 'This requires the "Vuze Web Remote" plugin (xmwebui) to be installed in Vuze. It uses a Transmission-compatible API.',
         default: 'No specific hints for this client. Ensure URL, username, and password are correct.'
     };
 
