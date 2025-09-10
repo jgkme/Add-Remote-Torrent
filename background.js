@@ -225,7 +225,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   });
 });
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+async function onAlarm(alarm) {
     if (alarm.name === 'serverStatusCheck') {
         debug.log('[ART Background] Running periodic server status check...');
         const { servers } = await chrome.storage.local.get('servers');
@@ -241,16 +241,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
             }
             try {
                 const result = await apiClient.testConnection(server);
-                const torrentInfo = result.success ? (result.data.torrentsInfo || {}) : {};
                 return { 
                     ...server, 
                     status: result.success ? 'online' : 'offline', 
                     lastChecked: new Date().toISOString(),
-                    version: result.success ? result.data.version : server.version,
-                    freeSpace: result.success ? result.data.freeSpace : server.freeSpace,
-                    torrents: torrentInfo.total,
-                    uploadSpeed: torrentInfo.uploadSpeed,
-                    downloadSpeed: torrentInfo.downloadSpeed,
+                    version: result.success ? result.data?.version : server.version,
+                    freeSpace: result.success ? result.data?.freeSpace : server.freeSpace,
+                    torrents: result.data?.torrentsInfo?.total,
+                    uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
+                    downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
                 };
             } catch (e) {
                 return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
@@ -314,7 +313,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
             debug.log('[ART Background] Notified and removed completed torrents from tracking:', completedHashes);
         }
     }
-});
+}
+
+chrome.alarms.onAlarm.addListener(onAlarm);
 
 // Listen for storage changes to update context menu when servers are modified
 chrome.storage.onChanged.addListener((changes, namespace) => {

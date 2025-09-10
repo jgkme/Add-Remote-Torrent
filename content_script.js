@@ -151,7 +151,15 @@ const registerLinks = options => {
         [art_modal_open_func, art_modal_close_func] = art_initModalLogic();
 
         if (options.linksfoundindicator === true) {
-            chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksFound });
+            try {
+                chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksFound });
+            } catch (error) {
+                if (error.message.includes("Extension context invalidated")) {
+                    debug.log("Context invalidated, could not update badge. This is expected during extension reloads.");
+                } else {
+                    throw error;
+                }
+            }
         }
     }
 }
@@ -192,11 +200,20 @@ const addClickHandler = (el = {}, options) => {
                 // For now, let's assume a generic 'askForLabelDirOnPage' flag.
                 // NEW PREFLIGHT LOGIC:
                 const pageUrl = window.location.href;
-                chrome.runtime.sendMessage({
-                    action: 'addTorrent',
-                    url: url,
-                    pageUrl: pageUrl
-                });
+                try {
+                    chrome.runtime.sendMessage({
+                        action: 'addTorrent',
+                        url: url,
+                        pageUrl: pageUrl
+                    });
+                } catch (error) {
+                    if (error.message.includes("Extension context invalidated")) {
+                        debug.log("Context invalidated, could not send torrent. Please reload the page. This is expected during extension reloads.");
+                        alert("The extension has been updated. Please reload the page and click the link again.");
+                    } else {
+                        throw error;
+                    }
+                }
             } else {
                 if (!el._art_is_torrent) {
                     debug.log('[ART ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
@@ -212,7 +229,15 @@ const updateBadge = () => {
         .length;
 
     debug.log('[ART ContentScript] updateBadge(): updateBadge message with count:', torrentLinksOnPage);
-    chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksOnPage });
+    try {
+        chrome.runtime.sendMessage({ action: 'updateBadge', count: torrentLinksOnPage });
+    } catch (error) {
+        if (error.message.includes("Extension context invalidated")) {
+            debug.log("Context invalidated, could not update badge. This is expected during extension reloads.");
+        } else {
+            throw error;
+        }
+    }
 };
 const updateBadgeDebounced = debounce(updateBadge, 50);
 
