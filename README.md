@@ -122,8 +122,6 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
-*   **v0.4.11 (2025-09-11):**
-    *   **Fix (Critical):** Corrected a regression in the qBittorrent handler that caused a "404 Not Found" error when attempting to resume a torrent after adding it.
 *   **v0.4.10 (2025-09-11):**
     *   **Fix (Critical):** Implemented a more robust `safeSendMessage` wrapper in the content script to finally resolve the "Extension context invalidated" errors that occurred on dynamic pages.
     *   **Fix:** Corrected a `ReferenceError: onAlarm is not defined` in the background script, ensuring periodic tasks (like server status checks and completion notifications) now run correctly.
