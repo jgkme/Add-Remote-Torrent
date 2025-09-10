@@ -268,3 +268,32 @@ export async function testConnection(serverConfig) {
         };
     }
 }
+
+export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
+    const result = await makeXmlRpcRequest(serverConfig, 'd.multicall2', ['', 'main', 'd.hash=', 'd.name=', 'd.complete=']);
+    if (result.success && typeof result.data === 'string') {
+        try {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(result.data, "text/xml");
+            const torrents = [];
+            const values = xmlDoc.getElementsByTagName('value');
+            for (let i = 0; i < values.length; i++) {
+                const members = values[i].getElementsByTagName('member');
+                if (members.length === 3) {
+                    const hash = members[0].getElementsByTagName('string')[0].textContent;
+                    const name = members[1].getElementsByTagName('string')[0].textContent;
+                    const complete = members[2].getElementsByTagName('i4')[0].textContent;
+                    if (complete === '1') {
+                        torrents.push({ id: hash, name: name });
+                    }
+                }
+            }
+            const newlyCompletedTorrents = torrents.filter(torrent => !notifiedTorrents.includes(torrent.id));
+            return newlyCompletedTorrents;
+        } catch (e) {
+            debug.error('Error parsing rTorrent multicall response:', e);
+            return [];
+        }
+    }
+    return [];
+}

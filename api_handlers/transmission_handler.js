@@ -251,6 +251,28 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 	}
 }
 
+export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
+	const path = serverConfig.rpcPath || '/transmission/rpc';
+	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+	const getArgs = { fields: ["id", "name", "isFinished"] };
+
+	try {
+		const result = await makeRpcCall(rpcUrl, 'torrent-get', getArgs, serverConfig);
+		if (result && result.torrents) {
+			const completedTorrents = result.torrents.filter(torrent => torrent.isFinished);
+			const newlyCompletedTorrents = completedTorrents.filter(torrent => !notifiedTorrents.includes(torrent.id));
+			return newlyCompletedTorrents.map(torrent => ({
+				id: torrent.id,
+				name: torrent.name
+			}));
+		}
+		return [];
+	} catch (error) {
+		debug.error('Error getting completed torrents from Transmission:', error);
+		return [];
+	}
+}
+
 export async function testConnection(serverConfig) {
 	const path = serverConfig.rpcPath || '/transmission/rpc';
 	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;

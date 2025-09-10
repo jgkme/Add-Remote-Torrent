@@ -1,3 +1,7 @@
+### v0.4.7 (2025-09-10)
+
+*   **Feat(Notifications):** Added support for "Download Complete" notifications for qBittorrent, Transmission, Deluge, and rTorrent clients. The extension will now check for completed torrents every minute and display a desktop notification.
+
 ### v0.4.6 (2025-09-10)
 
 *   **Fix(Dashboard):** The dashboard now correctly displays advanced server information (Free Space, Total Torrents, Speeds) for all supported clients. It will display "N/A" if a specific data point is not available.

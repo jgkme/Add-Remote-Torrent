@@ -121,6 +121,36 @@ async function login(serverConfig) {
     };
 }
 
+export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
+    if (!delugeSessionCookie) {
+        const loginAttempt = await login(serverConfig);
+        if (!loginAttempt.success) {
+            debug.error('Deluge login failed, cannot get completed torrents.');
+            return [];
+        }
+    }
+
+    const filter = { 'state': 'Seeding' };
+    const keys = ['name'];
+    const getTorrentsResult = await makeRpcRequest(serverConfig.url, 'core.get_torrents_status', [filter, keys], serverConfig);
+
+    if (getTorrentsResult.success && getTorrentsResult.data) {
+        const torrents = getTorrentsResult.data;
+        const newlyCompletedTorrents = [];
+        for (const torrentId in torrents) {
+            if (!notifiedTorrents.includes(torrentId)) {
+                newlyCompletedTorrents.push({
+                    id: torrentId,
+                    name: torrents[torrentId].name
+                });
+            }
+        }
+        return newlyCompletedTorrents;
+    }
+
+    return [];
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // serverConfig: { url, password, clientType, ... }
     // torrentOptions: { downloadDir, paused, category, tags, selectedFileIndices, totalFileCount, torrentFileContentBase64, originalTorrentUrl }

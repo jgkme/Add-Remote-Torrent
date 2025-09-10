@@ -218,6 +218,11 @@ chrome.runtime.onInstalled.addListener(async () => {
     delayInMinutes: 1, // Check 1 minute after startup
     periodInMinutes: 15 // Then check every 15 minutes
   });
+
+  chrome.alarms.create('torrentStatusCheck', {
+    delayInMinutes: 1, // Check 1 minute after startup
+    periodInMinutes: 1 // Then check every 1 minute
+  });
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -250,6 +255,42 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
         await chrome.storage.local.set({ servers: updatedServers });
         debug.log('[ART Background] Server status check complete. Updated server statuses in storage.');
+    } else if (alarm.name === 'torrentStatusCheck') {
+        debug.log('[ART Background] Running periodic torrent status check...');
+        const { servers, notifiedTorrents = [] } = await chrome.storage.local.get(['servers', 'notifiedTorrents']);
+        if (!servers || servers.length === 0) {
+            debug.log('[ART Background] No servers configured, skipping torrent status check.');
+            return;
+        }
+
+        for (const server of servers) {
+            if (server.status !== 'online') continue;
+
+            const apiClient = getClientApi(server.clientType);
+            if (!apiClient || typeof apiClient.getCompletedTorrents !== 'function') {
+                continue;
+            }
+
+            try {
+                const completedTorrents = await apiClient.getCompletedTorrents(server, notifiedTorrents);
+                for (const torrent of completedTorrents) {
+                    if (!notifiedTorrents.includes(torrent.id)) {
+                        const notificationId = `downloadComplete-${torrent.id}`;
+                        chrome.notifications.create(notificationId, {
+                            type: 'basic',
+                            iconUrl: 'icons/icon-48x48.png',
+                            title: 'Download Complete',
+                            message: `"${torrent.name}" has finished downloading.`
+                        });
+                        notifiedTorrents.push(torrent.id);
+                    }
+                }
+            } catch (e) {
+                debug.error(`[ART Background] Error checking torrent status for ${server.name}:`, e);
+            }
+        }
+
+        await chrome.storage.local.set({ notifiedTorrents });
     }
 });
 

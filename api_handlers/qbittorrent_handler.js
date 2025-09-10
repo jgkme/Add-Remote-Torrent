@@ -314,6 +314,56 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
   }
 }
 
+export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
+  const { url, username, password } = serverConfig;
+  const torrentsInfoUrl = getApiUrl(url, 'torrents/info?filter=completed');
+  const loginApiUrl = getApiUrl(url, 'auth/login');
+  const serverUrlObj = new URL(url);
+  const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
+  const referer = new URL(url).href;
+
+  const loginHeaders = {
+    'Referer': referer,
+    'Origin': origin,
+    'Content-Type': 'application/x-www-form-urlencoded'
+  };
+
+  const loginBodyParams = new URLSearchParams();
+  loginBodyParams.append('username', username);
+  loginBodyParams.append('password', password);
+
+  const loginResp = await fetch(loginApiUrl, {
+    method: 'POST',
+    body: loginBodyParams.toString(),
+    headers: loginHeaders,
+    credentials: 'include'
+  });
+
+  if (!loginResp.ok) {
+    throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
+  }
+
+  const response = await fetch(torrentsInfoUrl, {
+    headers: {
+      'Referer': referer,
+      'Origin': origin
+    },
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get completed torrents: ${response.status} ${response.statusText}`);
+  }
+
+  const torrents = await response.json();
+  const newlyCompletedTorrents = torrents.filter(torrent => !notifiedTorrents.includes(torrent.hash));
+
+  return newlyCompletedTorrents.map(torrent => ({
+    id: torrent.hash,
+    name: torrent.name
+  }));
+}
+
 function base64ToBlob(base64, type = 'application/x-bittorrent') {
   try {
     const byteCharacters = atob(base64);
