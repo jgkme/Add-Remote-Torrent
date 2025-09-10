@@ -67,6 +67,7 @@ module.exports = (env, argv) => {
           { from: 'options/options.html', to: 'options/options.html' },
           { from: 'popup/popup.html', to: 'popup/popup.html' },
           { from: 'confirmAdd/confirmAdd.html', to: 'confirmAdd/confirmAdd.html' },
+          { from: 'dashboard', to: 'dashboard' },
           { from: 'js/theme.js', to: 'js/theme.js' },
           { from: 'audio', to: 'audio' }, // Added to copy audio files
           { from: 'offscreen_audio.html', to: 'offscreen_audio.html' }, // Added to copy offscreen document
