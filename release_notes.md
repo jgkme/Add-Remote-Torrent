@@ -1,3 +1,13 @@
+### v0.4.10 (2025-09-11)
+
+*   **Fix (Critical):** Implemented a more robust `safeSendMessage` wrapper in the content script to finally resolve the "Extension context invalidated" errors that occurred on dynamic pages.
+*   **Fix:** Corrected a `ReferenceError: onAlarm is not defined` in the background script, ensuring periodic tasks (like server status checks and completion notifications) now run correctly.
+*   **Fix:** Hardened the server statistics handling logic to prevent "N/A" values from appearing for qBittorrent and other clients.
+
+### v0.4.9 (2025-09-11)
+
+*   **Internal:** This version was part of the iterative process to fix the critical bugs below and was superseded by v0.4.10.
+
 ### v0.4.8 (2025-09-11)
 
 *   **Fix (Critical):** Overhauled the "Download Complete" notification system to fix a major bug that caused notification spam. The system now intelligently tracks only torrents added *by the extension* and sends a single notification upon completion, ignoring all other torrents in the client.
