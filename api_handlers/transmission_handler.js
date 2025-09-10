@@ -171,7 +171,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addArguments['sequential-download'] = true;
     }
 
-    if (serverConfig.transmissionBandwidthPriority) {
+    if (torrentOptions.bandwidthPriority) {
+        addArguments.bandwidthPriority = Number(torrentOptions.bandwidthPriority);
+    } else if (serverConfig.transmissionBandwidthPriority) {
         addArguments.bandwidthPriority = Number(serverConfig.transmissionBandwidthPriority);
     }
 

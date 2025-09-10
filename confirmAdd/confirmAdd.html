@@ -61,6 +61,25 @@
         </select>
       </div>
 
+      <!-- Transmission Specific Options -->
+      <div id="transmissionOptions" class="form-group mt-3" style="display: none;">
+        <label for="bandwidthPriorityInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bandwidth Priority (Transmission):</label>
+        <select id="bandwidthPriorityInput" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+          <option value="0">Normal</option>
+          <option value="1">High</option>
+          <option value="-1">Low</option>
+        </select>
+      </div>
+
+      <!-- Deluge Specific Options -->
+      <div id="delugeOptions" class="form-group mt-3" style="display: none;">
+          <div class="flex items-center space-x-2">
+              <input type="checkbox" id="moveCompletedInput" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+              <label for="moveCompletedInput" class="text-sm font-medium text-gray-700 dark:text-gray-300">Move when completed (Deluge)</label>
+          </div>
+          <input type="text" id="moveCompletedPathInput" placeholder="Enter full path for move..." class="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" style="display: none;">
+      </div>
+
       <div id="fileSelectionSection" class="form-group mt-4" style="display: none;">
         <div class="flex items-center space-x-2 mb-2">
             <input type="checkbox" id="selectFilesToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">

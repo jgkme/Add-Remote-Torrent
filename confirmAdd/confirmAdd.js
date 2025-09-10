@@ -21,6 +21,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelButton = document.getElementById('cancelButton');
     const qbittorrentOptions = document.getElementById('qbittorrentOptions');
     const contentLayoutInput = document.getElementById('contentLayoutInput');
+    const transmissionOptions = document.getElementById('transmissionOptions');
+    const bandwidthPriorityInput = document.getElementById('bandwidthPriorityInput');
+    const delugeOptions = document.getElementById('delugeOptions');
+    const moveCompletedInput = document.getElementById('moveCompletedInput');
+    const moveCompletedPathInput = document.getElementById('moveCompletedPathInput');
     const fileSelectionSection = document.getElementById('fileSelectionSection');
     const selectFilesToggle = document.getElementById('selectFilesToggle');
     const fileListContainer = document.getElementById('fileListContainer');
@@ -112,6 +117,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (activeServer.clientType === 'qbittorrent') {
                 qbittorrentOptions.style.display = 'block';
+            } else if (activeServer.clientType === 'transmission') {
+                transmissionOptions.style.display = 'block';
+                // Set default value from server config if it exists
+                if (activeServer.transmissionBandwidthPriority) {
+                    bandwidthPriorityInput.value = activeServer.transmissionBandwidthPriority;
+                }
+            } else if (activeServer.clientType === 'deluge') {
+                delugeOptions.style.display = 'block';
+                moveCompletedInput.addEventListener('change', () => {
+                    moveCompletedPathInput.style.display = moveCompletedInput.checked ? 'block' : 'none';
+                });
+                // Set default values from server config
+                if (activeServer.delugeMoveCompletedPath) {
+                    moveCompletedInput.checked = true;
+                    moveCompletedPathInput.style.display = 'block';
+                    moveCompletedPathInput.value = activeServer.delugeMoveCompletedPath;
+                }
             }
         } else {
             const errorPara = document.createElement('p');
@@ -271,6 +293,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectedFileIndices: (!isMagnetLink && selectFilesToggle.checked) ? selectedFileIndices : undefined,
             totalFileCount: (!isMagnetLink && selectFilesToggle.checked && totalFileCount > 0) ? totalFileCount : undefined,
             contentLayout: contentLayoutInput.value,
+            bandwidthPriority: bandwidthPriorityInput.value,
+            moveCompleted: moveCompletedInput.checked,
+            moveCompletedPath: moveCompletedPathInput.value,
         };
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {

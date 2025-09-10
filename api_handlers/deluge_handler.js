@@ -193,7 +193,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
     }
 
-    if (serverConfig.delugeMoveCompletedPath) {
+    if (torrentOptions.moveCompleted && torrentOptions.moveCompletedPath) {
+        addOptions.move_completed = true;
+        addOptions.move_completed_path = torrentOptions.moveCompletedPath;
+    } else if (serverConfig.delugeMoveCompletedPath) {
         addOptions.move_completed = true;
         addOptions.move_completed_path = serverConfig.delugeMoveCompletedPath;
     }

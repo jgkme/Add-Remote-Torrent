@@ -147,8 +147,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     addTorrentToClient(request.url);
     return false; 
   } else if (request.action === 'addTorrentWithCustomParams' && request.params) {
-    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir, contentLayout } = request.params;
-    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount, contentLayout);
+    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath } = request.params;
+    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath);
     return false; 
   } else if (request.action === 'addTorrent' && request.url) {
     const { url, pageUrl } = request;
@@ -565,7 +565,7 @@ async function applyTrackerRulesLogic(announceUrls, currentTorrentOptions, curre
 }
 
 
-async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined, customContentLayout = null) {
+async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, customTags = null, customCategory = null, customAddPaused = null, sourcePageUrl = null, customDownloadDir = null, selectedFileIndices = undefined, totalFileCount = undefined, customContentLayout = null, customBandwidthPriority = null, customMoveCompleted = null, customMoveCompletedPath = null) {
   let serverToUse = null;
   let serverDeterminedByRule = false;
 
@@ -638,6 +638,9 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     selectedFileIndices: selectedFileIndices,
     totalFileCount: totalFileCount,
     contentLayout: customContentLayout,
+    bandwidthPriority: customBandwidthPriority,
+    moveCompleted: customMoveCompleted,
+    moveCompletedPath: customMoveCompletedPath,
     torrentFileContentBase64: null, 
     originalTorrentUrl: torrentUrl 
   };
