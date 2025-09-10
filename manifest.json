@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-    "version": "0.4.0",
+    "version": "0.4.1",
   "description": "Add Remote Torrent",
   "permissions": [
     "storage",
@@ -54,7 +54,9 @@
         "offscreen_audio.js",
         "css/tailwind.css",
         "add/add.html",
-        "add/add.js"
+        "add/add.js",
+        "dashboard/dashboard.html",
+        "dashboard/dashboard.js"
       ],
       "matches": ["<all_urls>"]
     }
