@@ -1,3 +1,8 @@
+### v0.4.6 (2025-09-10)
+
+*   **Fix(Dashboard):** The dashboard now correctly displays advanced server information (Free Space, Total Torrents, Speeds) for all supported clients. It will display "N/A" if a specific data point is not available.
+*   **Feat(Dashboard):** Added a "Show More" button to each server card on the dashboard. Clicking this will reveal the raw JSON data for the server, which will help in debugging cases where data is not appearing as expected.
+
 ### v0.4.5 (2025-09-10)
 
 *   **Enhancement: Pro Dashboard:** The dashboard is now significantly more powerful. After a comprehensive review of all client APIs, the following clients now report extended details:

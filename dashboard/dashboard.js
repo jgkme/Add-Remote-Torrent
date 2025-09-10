@@ -22,22 +22,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
         servers.forEach(server => {
             const isOnline = server.status === 'online';
-            const card = `
-                <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 ${isOnline ? 'border-green-500' : 'border-red-500'}">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${server.name}</h3>
-                        <span class="px-2 py-1 text-xs font-semibold text-white ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full">${isOnline ? 'Online' : 'Offline'}</span>
-                    </div>
-                    <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(v${server.version})` : ''}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
-                    ${(typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${formatBytes(server.freeSpace)}</p>` : ''}
-                    ${(typeof server.total_torrents === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${server.total_torrents}</p>` : ''}
-                    ${(typeof server.dl_info_speed === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${formatBytes(server.dl_info_speed)}/s</p>` : ''}
-                    ${(typeof server.up_info_speed === 'number') ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${formatBytes(server.up_info_speed)}/s</p>` : ''}
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? new Date(server.lastChecked).toLocaleString() : 'Never'}</p>
+            const cardElement = document.createElement('div');
+            cardElement.className = `bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 border-l-4 ${isOnline ? 'border-green-500' : 'border-red-500'}`;
+
+            const freeSpace = (typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? formatBytes(server.freeSpace) : 'N/A';
+            const totalTorrents = (typeof server.total_torrents === 'number') ? server.total_torrents : 'N/A';
+            const dlSpeed = (typeof server.dl_info_speed === 'number') ? `${formatBytes(server.dl_info_speed)}/s` : 'N/A';
+            const ulSpeed = (typeof server.up_info_speed === 'number') ? `${formatBytes(server.up_info_speed)}/s` : 'N/A';
+
+            cardElement.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${server.name}</h3>
+                    <span class="px-2 py-1 text-xs font-semibold text-white ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full">${isOnline ? 'Online' : 'Offline'}</span>
                 </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(v${server.version})` : ''}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${freeSpace}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${totalTorrents}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${dlSpeed}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${ulSpeed}</p>
+                <div class="mt-4">
+                    <button class="text-blue-500 hover:underline text-sm show-more-btn">Show More</button>
+                    <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                        <pre class="text-xs whitespace-pre-wrap break-all">${JSON.stringify(server, null, 2)}</pre>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? new Date(server.lastChecked).toLocaleString() : 'Never'}</p>
             `;
-            serverStatusContainer.innerHTML += card;
+            serverStatusContainer.appendChild(cardElement);
+        });
+
+        document.querySelectorAll('.show-more-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const rawData = e.target.nextElementSibling;
+                const isHidden = rawData.classList.contains('hidden');
+                if (isHidden) {
+                    rawData.classList.remove('hidden');
+                    e.target.textContent = 'Show Less';
+                } else {
+                    rawData.classList.add('hidden');
+                    e.target.textContent = 'Show More';
+                }
+            });
         });
     }
 
