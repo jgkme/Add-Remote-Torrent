@@ -1,3 +1,9 @@
+### v0.4.8 (2025-09-11)
+
+*   **Fix (Critical):** Overhauled the "Download Complete" notification system to fix a major bug that caused notification spam. The system now intelligently tracks only torrents added *by the extension* and sends a single notification upon completion, ignoring all other torrents in the client.
+*   **Fix:** Resolved an issue where qBittorrent servers would incorrectly display "N/A" for Torrents, DL Speed, and UL Speed in the popup and dashboard.
+*   **Feature:** Added a new setting on the Options page to allow users to enable or disable the "Download Complete" notifications, providing full control over this feature.
+
 ### v0.4.7 (2025-09-10)
 
 *   **Feat(Notifications):** Added support for "Download Complete" notifications for qBittorrent, Transmission, Deluge, and rTorrent clients. The extension will now check for completed torrents every minute and display a desktop notification.
@@ -18,9 +24,9 @@
     *   **QNAP Download Station:** Version
     *   **uTorrent:** Version
     *   **BiglyBT:** Version & Free Space
-    *   **Vuze (XML WebUI):** Version & Free Space
-    *   **Porla:** Version
-    *   **Hadouken:** Version
+    -   **Vuze (XML WebUI):** Version & Free Space
+    -   **Porla:** Version
+    -   **Hadouken:** Version
 *   **Feature:** Added a new "Vuze (XML WebUI)" client type to support the modern, Transmission-compatible API.
 *   **Fix:** Corrected a critical bug where the "context invalidated" error would spam the console on pages with dynamic content. The content script now handles this error gracefully.
 *   **Fix:** Improved the `LinkMonitor` to more reliably detect torrent links on dynamic web pages (e.g., Telegram, Facebook) by re-scanning sections of the page when significant changes are detected.

@@ -2,8 +2,8 @@
 
 ## 1. Current Project Status
 
--   **Overall:** Phase 3 (UI/UX Enhancements & System Modernization) is complete.
--   **Current Activity:** Preparing for the v0.3.19 release.
+-   **Overall:** A critical hotfix (v0.4.8) has been developed to address major bugs from the v0.4.7 release.
+-   **Current Activity:** Finalizing documentation before releasing the hotfix.
 
 ## 2. Phased Implementation Plan
 
@@ -20,34 +20,31 @@
 ---
 ### **Phase 2: Expanded Client Support & UX Refinements (Completed)**
 *Objective: Expand client compatibility and refine the user experience with major new features.*
-
--   **Release v0.3.18 (2025-09-05):**
-    -   [X] **Feature:** Added support for four new clients: BiglyBT, Flood, Porla, and an updated Elementum handler.
-    -   [X] **Feature:** Added a new global setting to show download directories as a nested submenu in the context menu.
-    -   [X] **Fix:** Corrected multiple bugs related to context menu creation and dynamic page handling.
-
--   **Release v0.3.17 (2025-08-29):**
-    -   [X] **Fix:** Implemented a comprehensive fix for uTorrent connectivity.
-    -   [X] **UX:** Improved the options page to auto-detect relative paths for uTorrent.
+-   **Status:** [X] Completed.
 
 ---
 ### **Phase 3: UI/UX Enhancements & System Modernization (Completed)**
 *Objective: Modernize core features with better UI and robust, future-proof logic.*
-
--   **Release v0.3.19 (Current Release):**
-    -   [X] **Feature:** Overhauled the "Custom Link Catching Patterns" setting with a new dynamic UI for adding, editing, and deleting individual patterns.
-    -   [X] **Feature:** Added two default regex patterns for common torrent link formats.
-    -   [X] **Correction:** The default patterns are no longer permanent and can be edited or deleted by the user.
-    -   [X] **Migration:** Implemented an automatic, one-time migration to convert users' old, tilde-separated patterns into the new array-based format, ensuring no data loss.
-    -   [X] **Refactor:** Updated the background and content scripts to use the new `linkCatchingPatterns` data structure, removing the legacy `linkmatches` code.
+-   **Status:** [X] Completed.
 
 ---
-### **Phase 4: Advanced Features & Polish (Future)**
+### **Phase 4: Stability & Hotfixes (In Progress)**
+*Objective: Address critical bugs and improve the stability of existing features.*
+
+-   **Release v0.4.8 (Current Hotfix):**
+    -   [X] **Fix (Critical):** Overhauled the download completion notification system to prevent notification spam. The system now only tracks and notifies for torrents added *by the extension*, ignoring the user's wider torrent list.
+    -   [X] **Fix:** Resolved a bug where qBittorrent servers would display "N/A" for total torrents and speed statistics in the popup and dashboard.
+    -   [X] **Feature:** Added a global setting in the Options page to allow users to enable or disable download completion notifications, providing full control over the feature.
+    -   [X] **Refactor:** Established a new `getTorrentsInfo(serverConfig, hashes)` function as a required standard for API handlers to support the new targeted notification system.
+
+---
+### **Phase 5: Advanced Features & Polish (Future)**
 *Objective: Introduce advanced client-specific options and further polish the overall extension.*
 -   [ ] Consider client-specific advanced options in the "Advanced Add Dialog".
 -   [ ] Further UI/UX improvements based on multi-client usage patterns and feedback.
 
 ## 3. Known Issues & Blockers
+-   **Low Priority:** The new `trackedTorrents` list does not currently handle cases where a torrent is deleted from the client before completing. This is a minor edge case and can be addressed later.
 -   **Placeholder Handler Functionality:** Many existing handlers (e.g., Buffalo, tTorrent) are still very basic and require significant work to become fully functional.
 -   **rTorrent Handler XML Complexity:** The rTorrent handler could be made more robust.
 
@@ -61,5 +58,7 @@
     -   **Status:** [X] Complete
 -   **Milestone 3 (UI/UX Modernization):** Phase 3 tasks completed.
     -   **Status:** [X] Complete
--   **Milestone 4 (Full Feature Set & Polish):** Phase 4 tasks.
+-   **Milestone 4 (Stability & Hotfixes):** Phase 4 tasks.
+    -   **Status:** [X] In Progress
+-   **Milestone 5 (Full Feature Set & Polish):** Phase 5 tasks.
     -   **Status:** [ ] Not Started

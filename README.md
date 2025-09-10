@@ -122,9 +122,21 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.8 (2025-09-11):**
+    *   **Fix (Critical):** Overhauled the "Download Complete" notification system to fix a major bug that caused notification spam. The system now intelligently tracks only torrents added *by the extension* and sends a single notification upon completion.
+    *   **Fix:** Resolved an issue where qBittorrent servers would incorrectly display "N/A" for Torrents, DL Speed, and UL Speed in the popup and dashboard.
+    *   **Feature:** Added a new setting on the Options page to allow users to enable or disable the "Download Complete" notifications.
+*   **v0.4.7 (2025-09-10):**
+    *   **Feat(Notifications):** Added support for "Download Complete" notifications for qBittorrent, Transmission, Deluge, and rTorrent clients.
+*   **v0.4.6 (2025-09-10):**
+    *   **Fix(Dashboard):** The dashboard now correctly displays advanced server information for all supported clients.
+    *   **Feat(Dashboard):** Added a "Show More" button to each server card on the dashboard to help with debugging.
 *   **v0.4.5 (2025-09-10):**
     *   **Enhancement:** Completed a comprehensive review of all API handlers to provide advanced information on the Dashboard. The following clients now report extended details:
-        *   **qBittorrent:** Version & Free Space
+        *   **qBittorrent:** Version & Free Space, Global Speeds, Total Torrents
+        *   **Transmission:** Version & Free Space, Global Speeds, Total Torrents
+        *   **Deluge:** Version & Free Space, Global Speeds, Total Torrents
+        *   **rTorrent:** Version & Free Space
         *   **Transmission:** Version & Free Space
         *   **Deluge:** Version & Free Space
         *   **rTorrent:** Version & Free Space

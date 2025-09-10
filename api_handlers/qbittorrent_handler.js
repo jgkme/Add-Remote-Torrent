@@ -194,18 +194,16 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const isMagnet = torrentUrl.startsWith('magnet:'); 
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
     
-    let initialHashes = [];
-    if (useFileSelection) {
-        initialHashes = await _fetchTorrentListHashes();
-    }
+    // Always fetch initial hashes to identify the new one later.
+    const initialHashes = await _fetchTorrentListHashes();
 
-    const addTorrentFormData = new FormData(); 
+    const addTorrentFormData = new FormData();
 
     if (torrentFileContentBase64) {
         debug.log("qBittorrent: Adding torrent using file content.");
         try {
             const blob = base64ToBlob(torrentFileContentBase64);
-            let fileName = 'file.torrent'; 
+            let fileName = 'file.torrent';
             if (originalTorrentUrl) {
                 try {
                     const urlPath = new URL(originalTorrentUrl).pathname;
@@ -230,13 +228,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addTorrentFormData.append('category', category);
         addTorrentFormData.append('autoTMM', 'true');
     }
-    if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir); // Use 'savepath' (lowercase) for qBittorrent API
-    
+    if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir);
+
     if (torrentOptions.contentLayout && torrentOptions.contentLayout !== 'Original') {
-        // For qBittorrent API v2.8.0+
         addTorrentFormData.append('contentLayout', torrentOptions.contentLayout);
-        // For older APIs, 'root_folder' was used. We can add it for compatibility,
-        // though modern qBittorrent will ignore it if contentLayout is present.
         if (torrentOptions.contentLayout === 'Subfolder') {
             addTorrentFormData.append('root_folder', "true");
         } else if (torrentOptions.contentLayout === 'NoSubfolder') {
@@ -246,60 +241,62 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     const version = await getQbittorrentVersion(serverConfig);
     const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
-
-    if (useFileSelection) {
-        addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
-    } else if (userWantsPaused) {
+    
+    if (useFileSelection || userWantsPaused) {
         addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
     }
-    
+
     debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${finalDownloadDir || 'default'}`);
 
     const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
     const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');
     const addResponseText = await addResponse.text();
 
-    // Handle duplicate torrents specifically. qBittorrent might return a 409 Conflict or just a specific text response.
     if (addResponseText.includes('already in the download list')) {
         debug.log('qBittorrent: Torrent is already in the download list.');
         return { success: true, duplicate: true, data: { message: 'Torrent is already in the download list.' } };
     }
 
     if (!addResponse.ok) {
-      // The response text has already been consumed, so we use it here.
-      return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: `Add torrent API returned: ${addResponse.status} ${addResponse.statusText}. Response: ${addResponseText}`, errorCode: "ADD_FAILED" }};
-    }
-    
-    if (addResponseText.trim().toLowerCase() !== 'ok.' && addResponseText.trim() !== '') {
-      return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" }};
+        return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: `Add torrent API returned: ${addResponse.status} ${addResponse.statusText}. Response: ${addResponseText}`, errorCode: "ADD_FAILED" }};
     }
 
-    if (useFileSelection || userWantsPaused) {
-        let newHash = null;
-        await new Promise(resolve => setTimeout(resolve, 1000)); 
+    if (addResponseText.trim().toLowerCase() !== 'ok.' && addResponseText.trim() !== '') {
+        return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" }};
+    }
+
+    // After successful addition, find the new hash
+    let newHash = null;
+    try {
+        // Wait a moment for the torrent to appear in the list
+        await new Promise(resolve => setTimeout(resolve, 1500));
         const currentHashes = await _fetchTorrentListHashes();
         newHash = currentHashes.find(h => !initialHashes.includes(h));
-
-        if (newHash) {
-            debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
-            if (useFileSelection) {
-                const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
-                const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
-
-                await _setFilePriorities(newHash, deselectedFileIndices, 0); 
-                await _setFilePriorities(newHash, selectedFileIndices, 1);   
-            }
-            
-            if (!userWantsPaused) { 
-                await _resumeTorrent(newHash);
-            }
-        } else {
-            debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", userWantsPaused);
-            return { success: true, data: { warning: "Torrent added, but file priorities might not have been set due to hash identification failure."} };
-        }
+    } catch (e) {
+        debug.error("Failed to fetch torrent list to identify new hash:", e);
+        // Return success but with a warning and no hash
+        return { success: true, data: { warning: "Torrent added, but could not confirm its hash for tracking." } };
     }
-    
-    return { success: true };
+
+    if (newHash) {
+        debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
+        if (useFileSelection) {
+            const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
+            const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
+
+            await _setFilePriorities(newHash, deselectedFileIndices, 0);
+            await _setFilePriorities(newHash, selectedFileIndices, 1);
+        }
+
+        if (!userWantsPaused) {
+            await _resumeTorrent(newHash);
+        }
+        // Return success with the identified hash
+        return { success: true, hash: newHash };
+    } else {
+        debug.warn("qBittorrent: Could not identify hash of newly added torrent. File priorities not set. Torrent added with default priorities and effective paused state:", userWantsPaused);
+        return { success: true, data: { warning: "Torrent added, but file priorities might not have been set due to hash identification failure."} };
+    }
 
   } catch (error) {
     debug.error('Error in qBittorrent addTorrent flow:', error);
@@ -314,9 +311,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
   }
 }
 
-export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
+export async function getTorrentsInfo(serverConfig, hashes) {
   const { url, username, password } = serverConfig;
-  const torrentsInfoUrl = getApiUrl(url, 'torrents/info?filter=completed');
+  if (!hashes || hashes.length === 0) {
+    return [];
+  }
+
+  const torrentsInfoUrl = getApiUrl(url, `torrents/info?hashes=${hashes.join('|')}`);
   const loginApiUrl = getApiUrl(url, 'auth/login');
   const serverUrlObj = new URL(url);
   const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -340,27 +341,26 @@ export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
   });
 
   if (!loginResp.ok) {
-    throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
+    throw new Error(`Login failed while getting torrent info: ${loginResp.status} ${loginResp.statusText}`);
   }
 
   const response = await fetch(torrentsInfoUrl, {
-    headers: {
-      'Referer': referer,
-      'Origin': origin
-    },
+    headers: { 'Referer': referer, 'Origin': origin },
     credentials: 'include'
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to get completed torrents: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to get torrents info: ${response.status} ${response.statusText}`);
   }
 
   const torrents = await response.json();
-  const newlyCompletedTorrents = torrents.filter(torrent => !notifiedTorrents.includes(torrent.hash));
-
-  return newlyCompletedTorrents.map(torrent => ({
-    id: torrent.hash,
-    name: torrent.name
+  
+  // Map to the standardized format expected by background.js
+  return torrents.map(torrent => ({
+    hash: torrent.hash,
+    name: torrent.name,
+    progress: torrent.progress, // progress is 0-1 float
+    isCompleted: torrent.progress >= 1 || torrent.state === 'uploading' || torrent.state === 'pausedUP' || torrent.state === 'checkingUP' || torrent.state === 'forcedUP'
   }));
 }
 
@@ -482,13 +482,18 @@ export async function testConnection(serverConfig) {
         try {
             const version = await getQbittorrentVersion(serverConfig);
             const buildInfo = await getBuildInfo(serverConfig);
-            return { 
-                success: true, 
-                data: { 
+            return {
+                success: true,
+                data: {
                     message: 'Authentication successful.',
                     version: version,
-                    ...buildInfo
-                } 
+                    freeSpace: buildInfo.freeSpace,
+                    torrentsInfo: {
+                        total: buildInfo.total_torrents,
+                        downloadSpeed: buildInfo.dl_info_speed,
+                        uploadSpeed: buildInfo.up_info_speed,
+                    }
+                }
             };
         } catch (infoError) {
             debug.error('Login successful, but failed to get additional server info:', infoError);

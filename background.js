@@ -241,12 +241,16 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
             }
             try {
                 const result = await apiClient.testConnection(server);
+                const torrentInfo = result.success ? (result.data.torrentsInfo || {}) : {};
                 return { 
                     ...server, 
                     status: result.success ? 'online' : 'offline', 
                     lastChecked: new Date().toISOString(),
-                    version: result.success ? result.data.version : server.version, // Update version/freespace on successful check
-                    freeSpace: result.success ? result.data.freeSpace : server.freeSpace
+                    version: result.success ? result.data.version : server.version,
+                    freeSpace: result.success ? result.data.freeSpace : server.freeSpace,
+                    torrents: torrentInfo.total,
+                    uploadSpeed: torrentInfo.uploadSpeed,
+                    downloadSpeed: torrentInfo.downloadSpeed,
                 };
             } catch (e) {
                 return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
@@ -257,32 +261,46 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         debug.log('[ART Background] Server status check complete. Updated server statuses in storage.');
     } else if (alarm.name === 'torrentStatusCheck') {
         debug.log('[ART Background] Running periodic torrent status check...');
-        const { servers, notifiedTorrents = [] } = await chrome.storage.local.get(['servers', 'notifiedTorrents']);
-        if (!servers || servers.length === 0) {
-            debug.log('[ART Background] No servers configured, skipping torrent status check.');
+        const { servers, trackedTorrents = [], enableCompletionNotifications } = await chrome.storage.local.get(['servers', 'trackedTorrents', 'enableCompletionNotifications']);
+
+        if (enableCompletionNotifications === false) {
+            debug.log('[ART Background] Torrent completion notifications are disabled. Skipping check.');
             return;
         }
+
+        if (!servers || servers.length === 0 || !trackedTorrents || trackedTorrents.length === 0) {
+            debug.log('[ART Background] No servers or no tracked torrents, skipping torrent status check.');
+            return;
+        }
+
+        let completedHashes = [];
 
         for (const server of servers) {
             if (server.status !== 'online') continue;
 
+            const torrentsOnThisServer = trackedTorrents.filter(t => t.serverId === server.id);
+            if (torrentsOnThisServer.length === 0) continue;
+
             const apiClient = getClientApi(server.clientType);
-            if (!apiClient || typeof apiClient.getCompletedTorrents !== 'function') {
+            if (!apiClient || typeof apiClient.getTorrentsInfo !== 'function') {
                 continue;
             }
 
             try {
-                const completedTorrents = await apiClient.getCompletedTorrents(server, notifiedTorrents);
-                for (const torrent of completedTorrents) {
-                    if (!notifiedTorrents.includes(torrent.id)) {
-                        const notificationId = `downloadComplete-${torrent.id}`;
+                const hashes = torrentsOnThisServer.map(t => t.hash);
+                const torrentsInfo = await apiClient.getTorrentsInfo(server, hashes);
+
+                for (const torrent of torrentsInfo) {
+                    // Check if torrent is complete (progress is 1 or state indicates completion)
+                    if (torrent.progress >= 1 || torrent.isCompleted) {
+                        const notificationId = `downloadComplete-${torrent.hash}`;
                         chrome.notifications.create(notificationId, {
                             type: 'basic',
                             iconUrl: 'icons/icon-48x48.png',
                             title: 'Download Complete',
-                            message: `"${torrent.name}" has finished downloading.`
+                            message: `"${torrent.name}" has finished downloading on ${server.name}.`
                         });
-                        notifiedTorrents.push(torrent.id);
+                        completedHashes.push(torrent.hash);
                     }
                 }
             } catch (e) {
@@ -290,7 +308,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
             }
         }
 
-        await chrome.storage.local.set({ notifiedTorrents });
+        if (completedHashes.length > 0) {
+            const updatedTrackedTorrents = trackedTorrents.filter(t => !completedHashes.includes(t.hash));
+            await chrome.storage.local.set({ trackedTorrents: updatedTrackedTorrents });
+            debug.log('[ART Background] Notified and removed completed torrents from tracking:', completedHashes);
+        }
     }
 });
 
@@ -816,6 +838,22 @@ async function addTorrentToClient(torrentUrl, serverConfigFromDialog = null, cus
     const { enableTextNotifications } = await chrome.storage.local.get('enableTextNotifications');
     const result = await apiClient.addTorrent(torrentOptions.originalTorrentUrl, serverToUse, torrentOptions);
     if (result.success) {
+      // Add to tracked torrents list if it's a new, successful addition
+      if (result.hash && !result.duplicate) {
+        const { trackedTorrents = [] } = await chrome.storage.local.get('trackedTorrents');
+        const newTrackedTorrent = {
+          hash: result.hash,
+          serverId: serverToUse.id,
+          added: new Date().toISOString()
+        };
+        // Avoid adding duplicates to the tracking list
+        if (!trackedTorrents.some(t => t.hash === result.hash)) {
+          trackedTorrents.push(newTrackedTorrent);
+          await chrome.storage.local.set({ trackedTorrents });
+          debug.log('[ART Background] Added new torrent to tracking list:', newTrackedTorrent);
+        }
+      }
+
       let successMsg = `Successfully added to "${serverName}" (${clientType}): ${torrentUrl.substring(0, 50)}...`;
       if (result.duplicate) {
         successMsg = `Torrent already exists on "${serverName}" (${clientType}): ${torrentUrl.substring(0, 50)}...`;

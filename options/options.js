@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const registerDelayInput = document.getElementById('registerDelayInput');
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
     const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
+    const enableCompletionNotificationsToggle = document.getElementById('enableCompletionNotificationsToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
     const showDownloadDirInContextMenuToggle = document.getElementById('showDownloadDirInContextMenuToggle');
 
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         registerDelay: 0,
         enableSoundNotifications: false,
         enableTextNotifications: false,
+        enableCompletionNotifications: true, // Default to true
         enableServerSpecificContextMenu: false,
         showDownloadDirInContextMenu: false,
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
@@ -944,6 +946,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.enableTextNotifications = enableTextNotificationsToggle.checked;
         chrome.storage.local.set({ enableTextNotifications: globalSettings.enableTextNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    enableCompletionNotificationsToggle.addEventListener('change', () => {
+        globalSettings.enableCompletionNotifications = enableCompletionNotificationsToggle.checked;
+        chrome.storage.local.set({ enableCompletionNotifications: globalSettings.enableCompletionNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
     enableServerSpecificContextMenuToggle.addEventListener('change', () => {
         globalSettings.enableServerSpecificContextMenu = enableServerSpecificContextMenuToggle.checked;
         chrome.storage.local.set({ enableServerSpecificContextMenu: globalSettings.enableServerSpecificContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -1053,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
-            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -1103,6 +1109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
             globalSettings.enableTextNotifications = result.enableTextNotifications || false;
             enableTextNotificationsToggle.checked = globalSettings.enableTextNotifications;
+            globalSettings.enableCompletionNotifications = result.enableCompletionNotifications !== false; // Default to true if undefined
+            enableCompletionNotificationsToggle.checked = globalSettings.enableCompletionNotifications;
             globalSettings.enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false; 
             enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
             globalSettings.showDownloadDirInContextMenu = result.showDownloadDirInContextMenu || false;
