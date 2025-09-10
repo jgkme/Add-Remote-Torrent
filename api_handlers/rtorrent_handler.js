@@ -231,15 +231,40 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function testConnection(serverConfig) {
-	const result = await makeXmlRpcRequest(serverConfig, 'system.client_version', []);
-	if (result.success) {
-		return { success: true, data: { version: result.data } };
-	}
-	return {
-		success: false,
-		error: result.error || {
-			userMessage: "Failed to connect or get rTorrent version.",
-			errorCode: "TEST_CONN_FAILED"
-		}
-	};
+    try {
+        const versionResult = await makeXmlRpcRequest(serverConfig, 'system.client_version', []);
+        const freeSpaceResult = await makeXmlRpcRequest(serverConfig, 'get_free_disk_space', ['']); // Empty string for default path
+        
+        if (versionResult.success) {
+            let freeSpace = -1;
+            if (freeSpaceResult.success && freeSpaceResult.data) {
+                freeSpace = parseInt(freeSpaceResult.data, 10);
+            }
+            return { 
+                success: true, 
+                data: { 
+                    version: versionResult.data,
+                    freeSpace: freeSpace,
+                    message: "Successfully connected to rTorrent."
+                } 
+            };
+        }
+        
+        return {
+            success: false,
+            error: versionResult.error || {
+                userMessage: "Failed to connect or get rTorrent version.",
+                errorCode: "TEST_CONN_FAILED"
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: {
+                userMessage: "An unexpected error occurred during rTorrent connection test.",
+                technicalDetail: error.message,
+                errorCode: "TEST_CONN_EXCEPTION"
+            }
+        };
+    }
 }
