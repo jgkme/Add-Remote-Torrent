@@ -23,7 +23,12 @@
 
     <!-- Server Status Section -->
     <section id="serverStatusSection" class="mb-8">
-      <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Server Status</h2>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Server Status</h2>
+        <button id="refreshAllButton" class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+          Refresh All
+        </button>
+      </div>
       <div id="serverStatusContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Server status cards will be populated here by dashboard.js -->
         <p class="text-gray-500 dark:text-gray-400">Loading server statuses...</p>
@@ -32,7 +37,12 @@
 
     <!-- Action History Section -->
     <section id="actionHistorySection">
-      <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h2>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Recent Activity</h2>
+        <button id="clearHistoryButton" class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-500 dark:hover:bg-red-600">
+          Clear History
+        </button>
+      </div>
       <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
         <ul id="actionHistoryList" class="space-y-4">
           <!-- Action history items will be populated here by dashboard.js -->

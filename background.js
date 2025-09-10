@@ -186,6 +186,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     })();
     return true;
+  } else if (request.action === 'triggerServerStatusCheck') {
+    // Manually trigger the alarm's action
+    chrome.alarms.get('serverStatusCheck', (alarm) => {
+        if (alarm) {
+            onAlarm(alarm);
+        }
+    });
+    sendResponse({ status: "Server status check triggered." });
+    return false;
   }
 });
 

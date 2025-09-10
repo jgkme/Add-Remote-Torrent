@@ -364,7 +364,13 @@ export async function testConnection(serverConfig) {
         const result = await makeApiRequest(serverConfig.url, 'getsettings', {}, serverConfig, 'GET');
         
         if (result.success && result.data && result.data.settings) {
-            return { success: true, data: { build: result.data.build, message: "Successfully fetched settings." } }; 
+            return { 
+                success: true, 
+                data: { 
+                    version: result.data.build, // uTorrent calls it 'build'
+                    message: "Successfully fetched settings." 
+                } 
+            }; 
         }
 
         // If makeApiRequest failed, its error object is already structured.

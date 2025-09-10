@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const serverStatusContainer = document.getElementById('serverStatusContainer');
     const actionHistoryList = document.getElementById('actionHistoryList');
+    const refreshAllButton = document.getElementById('refreshAllButton');
+    const clearHistoryButton = document.getElementById('clearHistoryButton');
 
     function formatBytes(bytes, decimals = 2) {
         if (!bytes || bytes === 0) return '0 Bytes';
@@ -28,7 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(v${server.version})` : ''}</p>
                     <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
-                    ${(typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? `<p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${formatBytes(server.freeSpace)}</p>` : ''}
+                    ${(typeof server.freeSpace === 'number' && server.freeSpace >= 0) ? `
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${formatBytes(server.freeSpace)}</p>
+                        </div>
+                    ` : ''}
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? new Date(server.lastChecked).toLocaleString() : 'Never'}</p>
                 </div>
             `;
@@ -76,4 +82,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load
     loadDashboardData();
+
+    refreshAllButton.addEventListener('click', () => {
+        refreshAllButton.disabled = true;
+        refreshAllButton.textContent = 'Refreshing...';
+        chrome.runtime.sendMessage({ action: 'triggerServerStatusCheck' }, () => {
+            // The storage listener will automatically update the UI.
+            // We can re-enable the button after a short delay.
+            setTimeout(() => {
+                refreshAllButton.disabled = false;
+                refreshAllButton.textContent = 'Refresh All';
+            }, 2000);
+        });
+    });
+
+    clearHistoryButton.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all recent activity?')) {
+            chrome.storage.local.set({ actionHistory: [] }, () => {
+                renderActionHistory([]);
+            });
+        }
+    });
 });
