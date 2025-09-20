@@ -3,27 +3,23 @@ import { debug } from '../debug';
 // qBittorrent API Handler
 // This file will contain the logic for interacting with the qBittorrent WebUI API.
 
-// Helper function to construct full API URLs for qBittorrent v2 API
-function getApiUrl(baseUrl, apiPath) {
-  const urlObj = new URL(baseUrl);
-  const origin = urlObj.origin; // e.g., http://192.168.0.13:8081
-  let pathname = urlObj.pathname; // e.g., / or /qbittorrent/
-
-  // Normalize pathname: remove trailing slash if it's not the root itself
-  if (pathname !== '/' && pathname.endsWith('/')) {
-    pathname = pathname.slice(0, -1);
-  }
-  // If pathname was originally just '/', it means the API is at the root of the origin.
-  // If there was no path in baseUrl, pathname is '/'.
-  // We want 'origin + (meaningful_sub_path_if_any) + /api/v2/apiPath'
-  
-  const base = origin + (pathname === '/' ? '' : pathname); 
-  return `${base}/api/v2/${apiPath}`;
-}
-
-async function getQbittorrentVersion(serverConfig) {
+const qbitSession = {
+  loginPromise: null,
+  isLoggedIn: false,
+  login: async function(serverConfig) {
+    if (this.loginPromise) {
+      await this.loginPromise;
+      return;
+    }
+    this.loginPromise = this._performLogin(serverConfig);
+    try {
+      await this.loginPromise;
+    } finally {
+      this.loginPromise = null;
+    }
+  },
+  _performLogin: async function(serverConfig) {
     const { url, username, password } = serverConfig;
-    const versionApiUrl = getApiUrl(url, 'app/version');
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
     const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -47,16 +43,69 @@ async function getQbittorrentVersion(serverConfig) {
     });
 
     if (!loginResp.ok) {
-        throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
+      this.isLoggedIn = false;
+      throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
+    }
+    const loginTxt = await loginResp.text();
+    if (loginTxt.trim().toLowerCase() !== 'ok.') {
+      this.isLoggedIn = false;
+      debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
+      throw new Error(`Login succeeded but server returned: ${loginTxt}`);
+    }
+    
+    this.isLoggedIn = true;
+    debug.log('qBittorrent session established.');
+  },
+  
+  fetch: async function(apiUrl, options, serverConfig, isRetry = false) {
+    if (!this.isLoggedIn && !isRetry) {
+      await this.login(serverConfig);
     }
 
-    const response = await fetch(versionApiUrl, {
-        headers: {
-            'Referer': referer,
-            'Origin': origin
-        },
-        credentials: 'include'
-    });
+    const finalOptions = {
+      ...options,
+      credentials: 'include',
+      headers: {
+        ...options.headers,
+        'Referer': new URL(serverConfig.url).href,
+        'Origin': new URL(serverConfig.url).origin
+      }
+    };
+
+    const response = await fetch(apiUrl, finalOptions);
+
+    if (response.status === 403 && !isRetry) {
+      debug.log('qBittorrent session expired (403), re-authenticating...');
+      this.isLoggedIn = false;
+      return this.fetch(apiUrl, options, serverConfig, true); // Retry once after logging in
+    }
+
+    return response;
+  }
+};
+
+
+// Helper function to construct full API URLs for qBittorrent v2 API
+function getApiUrl(baseUrl, apiPath) {
+  const urlObj = new URL(baseUrl);
+  const origin = urlObj.origin; // e.g., http://192.168.0.13:8081
+  let pathname = urlObj.pathname; // e.g., / or /qbittorrent/
+
+  // Normalize pathname: remove trailing slash if it's not the root itself
+  if (pathname !== '/' && pathname.endsWith('/')) {
+    pathname = pathname.slice(0, -1);
+  }
+  // If pathname was originally just '/', it means the API is at the root of the origin.
+  // If there was no path in baseUrl, pathname is '/'.
+  // We want 'origin + (meaningful_sub_path_if_any) + /api/v2/apiPath'
+  
+  const base = origin + (pathname === '/' ? '' : pathname); 
+  return `${base}/api/v2/${apiPath}`;
+}
+
+async function getQbittorrentVersion(serverConfig) {
+    const versionApiUrl = getApiUrl(serverConfig.url, 'app/version');
+    const response = await qbitSession.fetch(versionApiUrl, {}, serverConfig);
 
     if (!response.ok) {
         throw new Error(`Failed to get qBittorrent version: ${response.status} ${response.statusText}`);
@@ -87,72 +136,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
   // 2. Default path from server config
   const finalDownloadDir = torrentOptionsDownloadDir || qbittorrentSavePath;
 
-  const loginApiUrl = getApiUrl(url, 'auth/login');
-  const serverUrlObj = new URL(url);
-  const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
-  // For Referer, use the full URL provided in serverConfig.url, as this is what the browser would use.
-  const referer = new URL(url).href;
-
-
-  const commonHeadersForApi = { // For general API calls after login
-      'Referer': referer,
-      'Origin': origin
-  };
-  const loginHeaders = { // Specifically for login
-      'Referer': referer,
-      'Origin': origin,
-      'Content-Type': 'application/x-www-form-urlencoded'
-  };
-  
-  async function makeAuthenticatedQbitRequest(apiUrl, formData, method = 'POST', isJson = false) {
-    const loginBodyParams = new URLSearchParams();
-    loginBodyParams.append('username', username);
-    loginBodyParams.append('password', password);
-    
-    const loginResp = await fetch(loginApiUrl, { 
-        method: 'POST', 
-        body: loginBodyParams.toString(),
-        headers: loginHeaders, // Uses the corrected referer
-        credentials: 'include' 
-    });
-
-    if (!loginResp.ok) throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}. URL: ${loginApiUrl}. Check credentials and ensure qBittorrent is reachable and Referer/Origin headers are allowed if behind a reverse proxy.`);
-    const loginTxt = await loginResp.text();
-    if (loginTxt.trim().toLowerCase() !== 'ok.') debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
-
-    const options = { 
-        method,
-        headers: { ...commonHeadersForApi } // Uses the corrected referer
-    };
-
-    if (formData) {
-        if (isJson) {
-            options.body = JSON.stringify(formData);
-            options.headers['Content-Type'] = 'application/json';
-        } else { // Assuming FormData for file uploads, browser sets Content-Type
-            options.body = formData; 
-        }
-    }
-    options.credentials = 'include'; 
-    return fetch(apiUrl, options);
-  }
-
   async function _fetchTorrentListHashes() {
-    const torrentsInfoUrl = getApiUrl(url, 'torrents/info');
-    
-    const loginBodyParamsInternal = new URLSearchParams();
-    loginBodyParamsInternal.append('username', username);
-    loginBodyParamsInternal.append('password', password);
-    const loginResp = await fetch(loginApiUrl, { 
-        method: 'POST', 
-        body: loginBodyParamsInternal.toString(), 
-        headers: loginHeaders, // Uses the corrected referer
-        credentials: 'include'
-    });
-    if (!loginResp.ok) throw new Error(`Login failed before fetching torrent list: ${loginResp.status}`);
-    if ((await loginResp.text()).trim().toLowerCase() !== 'ok.') debug.warn('Login not Ok before fetching list.');
-
-    const response = await fetch(torrentsInfoUrl, { headers: commonHeadersForApi, credentials: 'include' }); // Uses corrected referer 
+    const torrentsInfoUrl = getApiUrl(serverConfig.url, 'torrents/info');
+    const response = await qbitSession.fetch(torrentsInfoUrl, {}, serverConfig);
     if (!response.ok) throw new Error(`Failed to fetch torrent list: ${response.status} ${response.statusText}. URL: ${torrentsInfoUrl}`);
     const torrents = await response.json();
     return torrents.map(t => t.hash);
@@ -166,7 +152,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     formData.append('id', fileIndices.join('|'));
     formData.append('priority', String(priority));
     
-    const response = await makeAuthenticatedQbitRequest(setPrioUrl, formData, 'POST');
+    const response = await qbitSession.fetch(setPrioUrl, { method: 'POST', body: formData }, serverConfig);
     if (!response.ok) {
         const errorText = await response.text();
         debug.error(`Failed to set file priorities for hash ${hash}, indices ${fileIndices.join(',')}, priority ${priority}. Server response: ${errorText}`);
@@ -181,17 +167,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const formData = new FormData();
     formData.append('hashes', hash);
 
-    // This function is called after a successful login/add, so we can rely on the existing session cookie.
-    // A direct fetch is more appropriate here than re-using makeAuthenticatedQbitRequest.
-    const response = await fetch(resumeUrl, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'Referer': new URL(url).href,
-            'Origin': new URL(url).origin
-        },
-        credentials: 'include'
-    });
+    const response = await qbitSession.fetch(resumeUrl, { method: 'POST', body: formData }, serverConfig);
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -267,8 +243,8 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     debug.log(`qBittorrent: Adding torrent. Paused: ${userWantsPaused}. File selection active: ${useFileSelection}. Save Path: ${finalDownloadDir || 'default'}`);
 
-    const addTorrentApiUrl = getApiUrl(url, 'torrents/add');
-    const addResponse = await makeAuthenticatedQbitRequest(addTorrentApiUrl, addTorrentFormData, 'POST');
+    const addTorrentApiUrl = getApiUrl(serverConfig.url, 'torrents/add');
+    const addResponse = await qbitSession.fetch(addTorrentApiUrl, { method: 'POST', body: addTorrentFormData }, serverConfig);
     const addResponseText = await addResponse.text();
 
     if (addResponseText.includes('already in the download list')) {
@@ -349,42 +325,12 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 }
 
 export async function getTorrentsInfo(serverConfig, hashes) {
-  const { url, username, password } = serverConfig;
   if (!hashes || hashes.length === 0) {
     return [];
   }
 
-  const torrentsInfoUrl = getApiUrl(url, `torrents/info?hashes=${hashes.join('|')}`);
-  const loginApiUrl = getApiUrl(url, 'auth/login');
-  const serverUrlObj = new URL(url);
-  const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
-  const referer = new URL(url).href;
-
-  const loginHeaders = {
-    'Referer': referer,
-    'Origin': origin,
-    'Content-Type': 'application/x-www-form-urlencoded'
-  };
-
-  const loginBodyParams = new URLSearchParams();
-  loginBodyParams.append('username', username);
-  loginBodyParams.append('password', password);
-
-  const loginResp = await fetch(loginApiUrl, {
-    method: 'POST',
-    body: loginBodyParams.toString(),
-    headers: loginHeaders,
-    credentials: 'include'
-  });
-
-  if (!loginResp.ok) {
-    throw new Error(`Login failed while getting torrent info: ${loginResp.status} ${loginResp.statusText}`);
-  }
-
-  const response = await fetch(torrentsInfoUrl, {
-    headers: { 'Referer': referer, 'Origin': origin },
-    credentials: 'include'
-  });
+  const torrentsInfoUrl = getApiUrl(serverConfig.url, `torrents/info?hashes=${hashes.join('|')}`);
+  const response = await qbitSession.fetch(torrentsInfoUrl, {}, serverConfig);
 
   if (!response.ok) {
     throw new Error(`Failed to get torrents info: ${response.status} ${response.statusText}`);
@@ -417,61 +363,36 @@ function base64ToBlob(base64, type = 'application/x-bittorrent') {
 }
 
 async function getBuildInfo(serverConfig) {
-    const { url, username, password } = serverConfig;
-    const buildInfoUrl = getApiUrl(url, 'app/buildInfo');
-    const webUIVersionUrl = getApiUrl(url, 'app/webapiVersion');
-    const mainDataUrl = getApiUrl(url, 'sync/maindata');
-    const loginApiUrl = getApiUrl(url, 'auth/login');
-    
-    const serverUrlObj = new URL(url);
-    const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
-    const referer = new URL(url).href;
+    const buildInfoUrl = getApiUrl(serverConfig.url, 'app/buildInfo');
+    const webUIVersionUrl = getApiUrl(serverConfig.url, 'app/webapiVersion');
+    const mainDataUrl = getApiUrl(serverConfig.url, 'sync/maindata');
 
-    const loginHeaders = {
-        'Referer': referer,
-        'Origin': origin,
-        'Content-Type': 'application/x-www-form-urlencoded'
-    };
-
-    // Ensure we're authenticated before making API calls
-    const loginBodyParams = new URLSearchParams();
-    loginBodyParams.append('username', username);
-    loginBodyParams.append('password', password);
-
-    const loginResp = await fetch(loginApiUrl, {
-        method: 'POST',
-        body: loginBodyParams.toString(),
-        headers: loginHeaders,
-        credentials: 'include'
-    });
-
-    if (!loginResp.ok) {
-        debug.warn('Login failed in getBuildInfo, returning empty data.');
-        return {};
-    }
-
-    const commonHeaders = {
-        'Referer': referer,
-        'Origin': origin
-    };
-
-    // Now make the authenticated API calls
-    const buildInfoResp = await fetch(buildInfoUrl, { 
-        headers: commonHeaders,
-        credentials: 'include' 
-    });
-    const webUIVersionResp = await fetch(webUIVersionUrl, { 
-        headers: commonHeaders,
-        credentials: 'include' 
-    });
-    const mainDataResp = await fetch(mainDataUrl, { 
-        headers: commonHeaders,
-        credentials: 'include' 
-    });
+    // Use Promise.all to fetch non-dependent resources concurrently
+    const [buildInfoResp, webUIVersionResp, mainDataResp] = await Promise.all([
+        qbitSession.fetch(buildInfoUrl, {}, serverConfig),
+        qbitSession.fetch(webUIVersionUrl, {}, serverConfig),
+        qbitSession.fetch(mainDataUrl, {}, serverConfig)
+    ]);
 
     if (!buildInfoResp.ok || !webUIVersionResp.ok || !mainDataResp.ok) {
         debug.warn('Could not fetch all build info details after authentication.');
-        return {};
+        // Attempt to return partial data if some requests succeeded
+        const buildInfo = buildInfoResp.ok ? await buildInfoResp.json() : {};
+        const webUIVersion = webUIVersionResp.ok ? await webUIVersionResp.text() : '';
+        const mainData = mainDataResp.ok ? await mainDataResp.json() : {};
+        const serverState = mainData.server_state || {};
+        return {
+            qtVersion: buildInfo.qt,
+            libtorrentVersion: buildInfo.libtorrent,
+            boostVersion: buildInfo.boost,
+            opensslVersion: buildInfo.openssl,
+            zlibVersion: buildInfo.zlib,
+            webUIVersion: webUIVersion.trim(),
+            freeSpace: serverState.free_space_on_disk,
+            dl_info_speed: serverState.dl_info_speed,
+            up_info_speed: serverState.up_info_speed,
+            total_torrents: mainData.torrents ? Object.keys(mainData.torrents).length : 0,
+        };
     }
 
     const buildInfo = await buildInfoResp.json();
@@ -498,122 +419,37 @@ async function getBuildInfo(serverConfig) {
 }
 
 export async function testConnection(serverConfig) {
-  const { url, username, password } = serverConfig; // serverConfig.url is the full base URL
-  
-  if (!url || typeof url !== 'string') {
-    return { 
-      success: false, 
-      error: { 
-        userMessage: 'qBittorrent URL is missing or invalid.',
-        errorCode: "INVALID_CONFIG"
-      }
-    };
-  }
-
-  let loginUrl;
-  let serverUrlObjInstance; // Renamed to avoid conflict with outer scope serverUrlObj if any
   try {
-    loginUrl = getApiUrl(url, 'auth/login');
-    serverUrlObjInstance = new URL(url);
-  } catch (e) {
-    return { 
-      success: false, 
-      error: {
-        userMessage: 'Invalid qBittorrent URL format.',
-        technicalDetail: e.message,
-        errorCode: "INVALID_URL_FORMAT"
-      }
+    // Force a login attempt. The session manager handles the actual fetch.
+    await qbitSession.login(serverConfig);
+
+    // After successful login, get version and build info.
+    // These calls will use the established session.
+    const version = await getQbittorrentVersion(serverConfig);
+    const buildInfo = await getBuildInfo(serverConfig);
+
+    return {
+        success: true,
+        data: {
+            message: 'Authentication successful.',
+            version: version,
+            freeSpace: buildInfo.freeSpace,
+            torrentsInfo: {
+                total: buildInfo.total_torrents,
+                downloadSpeed: buildInfo.dl_info_speed,
+                uploadSpeed: buildInfo.up_info_speed,
+            }
+        }
     };
-  }
-    
-  const loginBody = new URLSearchParams();
-  loginBody.append('username', username);
-  loginBody.append('password', password);
-
-  const originValue = `${serverUrlObjInstance.protocol}//${serverUrlObjInstance.host}`;
-  const refererValue = serverUrlObjInstance.href; 
-
-  const requestHeaders = {
-      'Referer': refererValue,
-      'Origin': originValue,
-      'Content-Type': 'application/x-www-form-urlencoded'
-  };
-
-  debug.log('[qBittorrent Handler] testConnection: Attempting login with:', {
-    url: loginUrl,
-    method: 'POST',
-    headers: requestHeaders,
-    body: loginBody.toString(),
-    credentials: 'include'
-  });
-
-  try {
-    const response = await fetch(loginUrl, {
-      method: 'POST',
-      body: loginBody.toString(),
-      headers: requestHeaders,
-      credentials: 'include' 
-    });
-
-    debug.log('[qBittorrent Handler] testConnection: Login response status:', response.status);
-    const responseText = await response.text(); 
-    debug.log('[qBittorrent Handler] testConnection: Login response text:', responseText);
-
-    if (response.ok) {
-      if (responseText.trim().toLowerCase() === 'ok.') {
-        try {
-            const version = await getQbittorrentVersion(serverConfig);
-            const buildInfo = await getBuildInfo(serverConfig);
-            return {
-                success: true,
-                data: {
-                    message: 'Authentication successful.',
-                    version: version,
-                    freeSpace: buildInfo.freeSpace,
-                    torrentsInfo: {
-                        total: buildInfo.total_torrents,
-                        downloadSpeed: buildInfo.dl_info_speed,
-                        uploadSpeed: buildInfo.up_info_speed,
-                    }
-                }
-            };
-        } catch (infoError) {
-            debug.error('Login successful, but failed to get additional server info:', infoError);
-            return { 
-                success: true, 
-                data: { 
-                    message: 'Authentication successful, but could not retrieve detailed server info.' 
-                } 
-            };
-        }
-      } else {
-        return { 
-          success: false, 
-          error: {
-            userMessage: "Authentication succeeded but server gave an unexpected response.",
-            technicalDetail: `Login response: ${responseText}`,
-            errorCode: "UNEXPECTED_AUTH_RESPONSE"
-          }
-        };
-      }
-    } else {
-      return { 
-        success: false, 
-        error: {
-          userMessage: "Authentication failed. Check credentials/URL. For qBittorrent v4.3.0+ (esp. v5.1.0+), also try disabling 'CSRF Protection' in WebUI > Options > Web UI, as browser extension requests can conflict with this.",
-          technicalDetail: `Login API returned: ${response.status} ${response.statusText}. Response body: ${responseText}`,
-          errorCode: "AUTH_FAILED"
-        }
-      };
-    }
   } catch (error) {
-    debug.error('[qBittorrent Handler] testConnection: Network or other error during fetch:', error);
+    debug.error('[qBittorrent Handler] testConnection failed:', error);
+    qbitSession.isLoggedIn = false; // Ensure session is marked as invalid on any failure
     return { 
       success: false, 
       error: {
-        userMessage: "Network error or qBittorrent server not reachable.",
+        userMessage: "Connection failed. Check URL, credentials, and network. For qBittorrent v4.3.0+, consider disabling 'CSRF Protection' in WebUI options.",
         technicalDetail: error.message,
-        errorCode: "NETWORK_ERROR"
+        errorCode: "CONNECTION_TEST_FAILED"
       }
     };
   }

@@ -46,8 +46,15 @@
         1.  `addTorrent(...)`: Must return `{ success: true, hash: '...' }` for new, successful additions to enable tracking.
         2.  `testConnection(...)`: Must return `{ success: true, data: { version, freeSpace, torrentsInfo: { total, downloadSpeed, uploadSpeed } } }` to populate the dashboard and popup.
         3.  `getTorrentsInfo(server, hashes)`: Must accept an array of hashes and return information about their status, including a `progress` or `isCompleted` flag.
--   **Dynamic Permissions:**
+    -   **Dynamic Permissions:**
     -   When a new server URL is saved, the extension uses `chrome.permissions.request` to ask for host permission for that specific origin. This avoids requesting overly broad permissions at install time.
+-   **Robust API Session Management:**
+    -   **Problem:** Initial implementations for session-based clients (like qBittorrent, Deluge) used a single global variable to store the session cookie/state. This was a critical flaw, causing authentication failures and race conditions when a user configured multiple servers of the same client type.
+    -   **Solution (New Pattern):** A robust, per-server session management pattern has been implemented.
+        1.  **Per-Server State:** Session state (e.g., cookies) is stored in a `Map`, keyed by the unique server URL. This completely isolates each server's session.
+        2.  **Authenticated Wrapper Function:** Each handler now uses a centralized wrapper function (e.g., `makeAuthenticatedRpcCall` or `qbitSession.fetch`) for making API calls.
+        3.  **Automatic Re-authentication:** This wrapper attempts the API call optimistically. If it detects an authentication failure (typically a `401 Unauthorized` or `403 Forbidden` response), it automatically triggers a login for that specific server, stores the new session state in the `Map`, and then retries the original request once.
+    -   **Benefit:** This pattern makes the API handlers stateless from the caller's perspective, gracefully handles expired sessions, and ensures stability in multi-server environments.
 
 ## 3. Component Relationships
 

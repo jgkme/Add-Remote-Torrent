@@ -3,14 +3,54 @@ import { debug } from '../debug';
 // Deluge API Handler
 // This file will contain the logic for interacting with the Deluge WebUI API (JSON-RPC).
 
-// Deluge uses a session cookie. We'll need to manage this.
-// This is a simplified placeholder; actual cookie management might be more complex
-// depending on how Chrome extension service workers handle cookies with fetch.
-let delugeSessionCookie = null;
-let delugeRequestId = 1; // For JSON-RPC id
+const delugeSessions = new Map(); // Stores session info keyed by server URL
+let delugeRequestId = 1;
 
-async function makeRpcRequest(url, method, params, serverConfig, isLogin = false) {
-    const apiUrl = `${url.replace(/\/$/, '')}/json`;
+// Centralized RPC call function with session management and retry logic.
+async function makeAuthenticatedRpcCall(serverConfig, method, params = []) {
+    // 1. Try the request. It will use an existing cookie if available.
+    let result = await _makeRpcRequest(serverConfig, method, params);
+
+    // 2. If it fails with an auth error, our session is invalid.
+    if (result.status === 401 || result.status === 403) {
+        debug.log(`Deluge: Session for ${serverConfig.url} is invalid or expired. Re-authenticating.`);
+        delugeSessions.delete(serverConfig.url); // Clear the invalid cookie
+
+        // 3. Attempt to log in to get a new session.
+        const loginSuccess = await _login(serverConfig);
+        if (loginSuccess) {
+            debug.log(`Deluge: Re-login successful. Retrying original request: ${method}`);
+            // 4. Retry the original request once more with the new session.
+            result = await _makeRpcRequest(serverConfig, method, params);
+        } else {
+            // If login fails, return a clear error.
+            return { 
+                success: false, 
+                error: {
+                    userMessage: "Deluge authentication failed. Please check your password.",
+                    errorCode: "AUTH_FAILED"
+                }
+            };
+        }
+    }
+    
+    return result;
+}
+
+// Internal login function. Returns true on success, false on failure.
+async function _login(serverConfig) {
+    const loginResult = await _makeRpcRequest(
+        serverConfig,
+        'auth.login',
+        [serverConfig.password],
+        true // isLogin = true
+    );
+    return loginResult.success && loginResult.data === true;
+}
+
+// Internal raw RPC request function.
+async function _makeRpcRequest(serverConfig, method, params, isLogin = false) {
+    const apiUrl = `${serverConfig.url.replace(/\/$/, '')}/json`;
     const payload = {
         method: method,
         params: params,
@@ -22,8 +62,9 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
         'Accept': 'application/json',
     };
 
-    if (delugeSessionCookie && !isLogin) {
-        headers['Cookie'] = delugeSessionCookie;
+    const sessionCookie = delugeSessions.get(serverConfig.url);
+    if (sessionCookie && !isLogin) {
+        headers['Cookie'] = sessionCookie;
     }
 
     try {
@@ -31,41 +72,30 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload),
-            credentials: 'include', // Ensure cookies are sent and received
+            credentials: 'include',
         });
 
         if (isLogin && response.headers.has('set-cookie')) {
-            // Attempt to capture the session cookie.
-            // Note: Service workers have limitations with direct cookie manipulation.
-            // This might need to be handled by the browser's cookie store automatically
-            // if the request is made from the extension's domain with appropriate permissions,
-            // or we might need a more robust way if 'credentials: include' is not enough.
-            // For now, we'll assume 'credentials: "include"' might work or that the cookie
-            // is httpOnly and managed by the browser. This is a known complexity.
             const rawCookies = response.headers.get('set-cookie');
-            // Simplistic parsing, might need refinement
             if (rawCookies) {
                 const sessionCookiePart = rawCookies.split(';').find(part => part.trim().startsWith('_session_id='));
                 if (sessionCookiePart) {
-                    delugeSessionCookie = sessionCookiePart.trim();
+                    delugeSessions.set(serverConfig.url, sessionCookiePart.trim());
+                    debug.log(`Deluge: Stored new session cookie for ${serverConfig.url}`);
                 }
             }
         }
 
         if (!response.ok) {
-            // Deluge might return 401 or 403 for auth issues, or other errors.
-             const errorText = await response.text();
+            const errorText = await response.text();
             debug.error(`Deluge API error: ${response.status} ${errorText}`);
-            let errorCode = "API_ERROR";
-            if (response.status === 401 || response.status === 403) errorCode = "AUTH_FAILED_SESSION";
             return { 
                 success: false, 
                 error: {
                     userMessage: "Deluge API request failed.",
                     technicalDetail: `API Error: ${response.status} ${errorText}`,
-                    errorCode: errorCode
                 },
-                status: response.status // Keep status for potential retry logic
+                status: response.status 
             };
         }
 
@@ -77,7 +107,6 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
                 error: {
                     userMessage: "Deluge server reported an error.",
                     technicalDetail: `RPC Error: ${result.error.message} (Code: ${result.error.code})`,
-                    errorCode: "RPC_ERROR"
                 }
             };
         }
@@ -90,139 +119,33 @@ async function makeRpcRequest(url, method, params, serverConfig, isLogin = false
             error: {
                 userMessage: "A network error occurred or the Deluge server could not be reached.",
                 technicalDetail: error.message,
-                errorCode: "NETWORK_ERROR"
             }
         };
     }
 }
 
-async function login(serverConfig) {
-    const loginResult = await makeRpcRequest(
-        serverConfig.url,
-        'auth.login',
-        [serverConfig.password], // Deluge typically uses only a password for the web UI
-        serverConfig,
-        true
-    );
-    // The makeRpcRequest handles setting delugeSessionCookie if login is successful
-    // and set-cookie header is present.
-    // auth.login returns true on success.
-    if (loginResult.success && loginResult.data === true) {
-        // Check if cookie was actually set (this is tricky from service worker)
-        return { success: true };
-    }
-    // loginResult.error here would already be the standardized error object from makeRpcRequest
-    return { 
-        success: false, 
-        error: loginResult.error || { 
-            userMessage: "Deluge login failed or cookie not set.", 
-            errorCode: "LOGIN_FAILED" 
-        } 
-    };
-}
-
-export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
-    if (!delugeSessionCookie) {
-        const loginAttempt = await login(serverConfig);
-        if (!loginAttempt.success) {
-            debug.error('Deluge login failed, cannot get completed torrents.');
-            return [];
-        }
-    }
-
-    const filter = { 'state': 'Seeding' };
-    const keys = ['name'];
-    const getTorrentsResult = await makeRpcRequest(serverConfig.url, 'core.get_torrents_status', [filter, keys], serverConfig);
-
-    if (getTorrentsResult.success && getTorrentsResult.data) {
-        const torrents = getTorrentsResult.data;
-        const newlyCompletedTorrents = [];
-        for (const torrentId in torrents) {
-            if (!notifiedTorrents.includes(torrentId)) {
-                newlyCompletedTorrents.push({
-                    id: torrentId,
-                    name: torrents[torrentId].name
-                });
-            }
-        }
-        return newlyCompletedTorrents;
-    }
-
-    return [];
-}
-
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
-    // serverConfig: { url, password, clientType, ... }
-    // torrentOptions: { downloadDir, paused, category, tags, selectedFileIndices, totalFileCount, torrentFileContentBase64, originalTorrentUrl }
-    // Note: `torrentUrl` parameter here is `originalTorrentUrl` from background.js
-
     const { 
         selectedFileIndices, 
         totalFileCount, 
         paused: userWantsPaused,
         torrentFileContentBase64,
-        // originalTorrentUrl is already passed as torrentUrl parameter
     } = torrentOptions;
 
     const isMagnet = torrentUrl.startsWith('magnet:');
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
 
-    if (!delugeSessionCookie) {
-        const loginAttempt = await login(serverConfig);
-        if (!loginAttempt.success) {
-            // loginAttempt.error is already the standardized error object
-            return { 
-                success: false, 
-                error: loginAttempt.error || { // Fallback, though login() should always provide error obj
-                    userMessage: "Deluge login required and failed.",
-                    errorCode: "LOGIN_REQUIRED_FAILED"
-                }
-            };
-        }
-    }
-
-    // Ensure logged in - Deluge needs a session.
-    if (!delugeSessionCookie && !serverConfig.isRetryingLogin) { // Add isRetryingLogin to prevent infinite loops
-        serverConfig.isRetryingLogin = true; // Mark that we are attempting a login sequence
-        const loginAttempt = await login(serverConfig);
-        serverConfig.isRetryingLogin = false; // Reset flag
-        if (!loginAttempt.success) {
-            return { success: false, error: loginAttempt.error || { userMessage: "Deluge login required and failed.", errorCode: "LOGIN_REQUIRED_FAILED" }};
-        }
-    }
-
-    let rpcMethod;
-    let rpcParams;
     const addOptions = {};
-
-    if (torrentOptions.downloadDir) {
-        addOptions.download_location = torrentOptions.downloadDir;
-    }
-
-    if (serverConfig.delugeDownloadSpeedLimit) {
-        addOptions.max_download_speed = Number(serverConfig.delugeDownloadSpeedLimit);
-    }
-
-    if (serverConfig.delugeUploadSpeedLimit) {
-        addOptions.max_upload_speed = Number(serverConfig.delugeUploadSpeedLimit);
-    }
-
-    if (serverConfig.delugeMaxConnections) {
-        addOptions.max_connections = Number(serverConfig.delugeMaxConnections);
-    }
-
-    if (serverConfig.delugeMaxUploadSlots) {
-        addOptions.max_upload_slots = Number(serverConfig.delugeMaxUploadSlots);
-    }
-
+    if (torrentOptions.downloadDir) addOptions.download_location = torrentOptions.downloadDir;
+    if (serverConfig.delugeDownloadSpeedLimit) addOptions.max_download_speed = Number(serverConfig.delugeDownloadSpeedLimit);
+    if (serverConfig.delugeUploadSpeedLimit) addOptions.max_upload_speed = Number(serverConfig.delugeUploadSpeedLimit);
+    if (serverConfig.delugeMaxConnections) addOptions.max_connections = Number(serverConfig.delugeMaxConnections);
+    if (serverConfig.delugeMaxUploadSlots) addOptions.max_upload_slots = Number(serverConfig.delugeMaxUploadSlots);
     if (serverConfig.delugeStopRatio) {
         addOptions.stop_at_ratio = true;
         addOptions.stop_ratio = Number(serverConfig.delugeStopRatio);
-        if (serverConfig.delugeRemoveAtRatio) {
-            addOptions.remove_at_ratio = true;
-        }
+        if (serverConfig.delugeRemoveAtRatio) addOptions.remove_at_ratio = true;
     }
-
     if (torrentOptions.moveCompleted && torrentOptions.moveCompletedPath) {
         addOptions.move_completed = true;
         addOptions.move_completed_path = torrentOptions.moveCompletedPath;
@@ -230,144 +153,80 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addOptions.move_completed = true;
         addOptions.move_completed_path = serverConfig.delugeMoveCompletedPath;
     }
-
-    if (serverConfig.delugeSequentialDownload) {
-        addOptions.sequential_download = true;
-    }
-
-    if (serverConfig.delugePrioritizeFirstLast) {
-        addOptions.prioritize_first_last_pieces = true;
-    }
-
-    if (serverConfig.delugePreAllocate) {
-        addOptions.pre_allocate_storage = true;
-    }
-
+    if (serverConfig.delugeSequentialDownload) addOptions.sequential_download = true;
+    if (serverConfig.delugePrioritizeFirstLast) addOptions.prioritize_first_last_pieces = true;
+    if (serverConfig.delugePreAllocate) addOptions.pre_allocate_storage = true;
+    
     const addPausedEffective = useFileSelection ? true : userWantsPaused;
     if (typeof addPausedEffective === 'boolean') {
         addOptions.add_paused = addPausedEffective;
     }
 
+    let rpcMethod;
+    let rpcParams;
+
     if (torrentFileContentBase64 && !isMagnet) {
         rpcMethod = 'core.add_torrent_file';
         let fileName = 'file.torrent';
-        if (torrentUrl) { // torrentUrl is originalTorrentUrl here
-            try {
-                const urlPath = new URL(torrentUrl).pathname;
-                const nameFromPath = urlPath.substring(urlPath.lastIndexOf('/') + 1);
-                if (nameFromPath && nameFromPath.toLowerCase().endsWith('.torrent')) {
-                    fileName = nameFromPath;
-                }
-            } catch (e) { /* ignore, use default */ }
-        }
+        try {
+            const urlPath = new URL(torrentUrl).pathname;
+            const nameFromPath = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+            if (nameFromPath && nameFromPath.toLowerCase().endsWith('.torrent')) fileName = nameFromPath;
+        } catch (e) { /* ignore */ }
         rpcParams = [fileName, torrentFileContentBase64, addOptions];
-        debug.log(`Deluge: Adding torrent using file content (core.add_torrent_file). Filename: ${fileName}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
     } else {
         rpcMethod = 'web.add_torrents';
-        const webAddParams = { path: torrentUrl, options: addOptions };
-        rpcParams = [[webAddParams]]; // web.add_torrents expects an array of torrent objects
-        debug.log(`Deluge: Adding torrent using URL (web.add_torrents). URL: ${torrentUrl}. Effective paused: ${addOptions.add_paused}. File selection active: ${useFileSelection}`);
+        rpcParams = [[{ path: torrentUrl, options: addOptions }]];
     }
     
-    const addResult = await makeRpcRequest(serverConfig.url, rpcMethod, rpcParams, serverConfig);
+    const addResult = await makeAuthenticatedRpcCall(serverConfig, rpcMethod, rpcParams);
 
     if (!addResult.success) {
-        if (addResult.error && addResult.error.errorCode === "AUTH_FAILED_SESSION" && !serverConfig.retriedLoginOnAdd) {
-            delugeSessionCookie = null;
-            serverConfig.retriedLoginOnAdd = true; // Prevent infinite retry for add
-            const loginAttempt = await login(serverConfig);
-            if (loginAttempt.success) {
-                return addTorrent(torrentUrl, serverConfig, torrentOptions); // Retry addTorrent
-            } else {
-                return { success: false, error: loginAttempt.error || { userMessage: "Deluge re-login attempt failed during add.", errorCode: "RELOGIN_FAILED_ON_ADD" }};
-            }
-        }
-        return { success: false, error: addResult.error || { userMessage: 'Failed to add torrent to Deluge or unexpected response.', errorCode: "ADD_FAILED_UNKNOWN" }};
+        return { success: false, error: addResult.error };
     }
     
     let torrentId = null;
-
     if (typeof addResult.data === 'string') {
-        // Data only contains the hash
-        torrentId = addResult.data; // This is the hash
-    } else if (Array.isArray(addResult.data) && addResult.data.length > 0 && Array.isArray(addResult.data[0]) && addResult.data[0].length >= 2) {
-        // Array of results, one for each torrent.
-        // Example success: [[true, "torrent_id_hash"]]
-        // Example failure: [[false, "Error message"]]
-
+        torrentId = addResult.data;
+    } else if (Array.isArray(addResult.data) && addResult.data.length > 0 && Array.isArray(addResult.data[0])) {
         const [successFlag, torrentIdOrError] = addResult.data[0];
-
-        if (!successFlag) {
-            return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError, errorCode: "ADD_RPC_ERROR" }};
-        }
-
-        torrentId = torrentIdOrError; // This is the hash
+        if (!successFlag) return { success: false, error: { userMessage: "Deluge reported an error adding the torrent.", technicalDetail: torrentIdOrError }};
+        torrentId = torrentIdOrError;
     } else if (addResult.data === true) {
-        // Some versions might just return true on success for web.add_torrents
-        // We won't have the hash, but we can report success.
         return { success: true, data: { message: "Torrent added successfully (hash not returned)." } };
-    } else {
-        // Unexpected format
-        return { success: false, error: { userMessage: "Deluge add torrent response format unexpected.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_UNEXPECTED_RESPONSE_FORMAT" }};
     }
 
-    // torrentId should be defined if we reached here
     if (!torrentId) {
-        return { success: false, error: { userMessage: "Torrent hash missing from Deluge response.", technicalDetail: JSON.stringify(addResult.data), errorCode: "ADD_MISSING_HASH" } };
+        return { success: false, error: { userMessage: "Torrent hash missing from Deluge response.", technicalDetail: JSON.stringify(addResult.data) } };
     }
 
     if (useFileSelection) {
-        try {
-            debug.log(`Deluge: Torrent added with ID ${torrentId}, proceeding with file selection.`);
-            const filePriorities = new Array(totalFileCount).fill(0); // 0: Do Not Download
-            selectedFileIndices.forEach(index => {
-                if (index >= 0 && index < totalFileCount) {
-                    filePriorities[index] = 1; // 1: Normal Priority
-                }
-            });
-
-            const setPrioOptions = { file_priorities: filePriorities };
-            const setPrioResult = await makeRpcRequest(serverConfig.url, 'core.set_torrent_options', [[torrentId], setPrioOptions], serverConfig);
-
-            if (!setPrioResult.success) {
-                debug.warn(`Deluge: Failed to set file priorities for ${torrentId}. Error: ${setPrioResult.error?.technicalDetail || 'Unknown'}`);
-                // Continue, but torrent might download all files or respect only initial paused state.
-            } else {
-                debug.log(`Deluge: File priorities set for ${torrentId}. Priorities: ${filePriorities.join(',')}`);
-            }
-
-            if (userWantsPaused === false) { // If user originally wanted it started
-                const resumeResult = await makeRpcRequest(serverConfig.url, 'core.resume_torrent', [[torrentId]], serverConfig);
-                if (resumeResult.success) {
-                    debug.log(`Deluge: Resumed torrent ${torrentId}.`);
-                } else {
-                    debug.warn(`Deluge: Failed to resume torrent ${torrentId} after setting priorities.`);
-                }
-            }
-        } catch (prioError) {
-            debug.error(`Deluge: Error during post-add file priority setting for ${torrentId}:`, prioError);
-            // Return success for add, but with a warning about file selection
-             return { success: true, data: { id: torrentId, name: torrentId, warning: `Torrent added, but an error occurred setting file priorities: ${prioError.message}` } };
+        const filePriorities = new Array(totalFileCount).fill(0);
+        selectedFileIndices.forEach(index => {
+            if (index >= 0 && index < totalFileCount) filePriorities[index] = 1;
+        });
+        const setPrioOptions = { file_priorities: filePriorities };
+        const setPrioResult = await makeAuthenticatedRpcCall(serverConfig, 'core.set_torrent_options', [[torrentId], setPrioOptions]);
+        if (!setPrioResult.success) debug.warn(`Deluge: Failed to set file priorities for ${torrentId}.`);
+        if (userWantsPaused === false) {
+            const resumeResult = await makeAuthenticatedRpcCall(serverConfig, 'core.resume_torrent', [[torrentId]]);
+            if (!resumeResult.success) debug.warn(`Deluge: Failed to resume torrent ${torrentId}.`);
         }
     }
     
-    return { success: true, data: { id: torrentId, name: torrentId } }; // Deluge add_torrents returns the ID (hash) as the "name" in this context
+    return { success: true, data: { id: torrentId, name: torrentId } };
 }
 
 export async function testConnection(serverConfig) {
-    const loginAttempt = await login(serverConfig);
-    if (!loginAttempt.success) {
-        return { 
-            success: false, 
-            error: loginAttempt.error || {
-                userMessage: "Deluge login failed during connection test.",
-                errorCode: "TEST_LOGIN_FAILED"
-            }
-        };
+    const loginSuccess = await _login(serverConfig);
+    if (!loginSuccess) {
+        return { success: false, error: { userMessage: "Deluge login failed. Please check your password." } };
     }
     
-    const sessionStatusResult = await makeRpcRequest(serverConfig.url, 'core.get_session_status', [[]], serverConfig);
-    const freeSpaceResult = await makeRpcRequest(serverConfig.url, 'core.get_free_space', [], serverConfig);
+    const [sessionStatusResult, freeSpaceResult] = await Promise.all([
+        makeAuthenticatedRpcCall(serverConfig, 'core.get_session_status', [[]]),
+        makeAuthenticatedRpcCall(serverConfig, 'core.get_free_space', [])
+    ]);
 
     if (sessionStatusResult.success && sessionStatusResult.data) {
         const stats = sessionStatusResult.data;
@@ -377,18 +236,31 @@ export async function testConnection(serverConfig) {
                 message: 'Successfully connected to Deluge.',
                 version: stats.libtorrent_version,
                 freeSpace: freeSpaceResult.success ? freeSpaceResult.data : -1,
-                total_torrents: stats.num_torrents,
-                dl_info_speed: stats.payload_download_rate,
-                up_info_speed: stats.payload_upload_rate,
+                torrentsInfo: {
+                    total: stats.num_torrents,
+                    downloadSpeed: stats.payload_download_rate,
+                    uploadSpeed: stats.payload_upload_rate,
+                }
             }
         };
     }
 
-    return { 
-        success: false, 
-        error: sessionStatusResult.error || {
-            userMessage: 'Failed to get session status from Deluge.',
-            errorCode: "TEST_CONN_FAILED"
-        }
-    };
+    return { success: false, error: sessionStatusResult.error || { userMessage: 'Failed to get session status from Deluge.' } };
+}
+
+export async function getTorrentsInfo(serverConfig, hashes) {
+    if (!hashes || hashes.length === 0) return [];
+    
+    const fields = ['name', 'progress', 'state'];
+    const getTorrentsResult = await makeAuthenticatedRpcCall(serverConfig, 'core.get_torrents_status', [{ id: hashes }, fields]);
+
+    if (!getTorrentsResult.success) return [];
+
+    const torrents = getTorrentsResult.data;
+    return Object.entries(torrents).map(([hash, details]) => ({
+        hash: hash,
+        name: details.name,
+        progress: details.progress / 100, // Deluge progress is 0-100
+        isCompleted: details.state === 'Seeding' || details.progress === 100,
+    }));
 }

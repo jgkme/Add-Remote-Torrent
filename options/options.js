@@ -1258,21 +1258,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const websitePattern = websitePatternInput.value.trim();
         const serverId = mapToServerSelect.value;
         if (!websitePattern || !serverId) { displayMappingFormStatus('Website Pattern and Target Server are required.', 'error'); return; }
-        const mappingData = { websitePattern, serverId };
-        if (id) {
-            const index = servers.findIndex(s => s.id === id);
+        
+        if (id) { // Editing an existing mapping
+            const index = urlToServerMappings.findIndex(m => m.id === id);
             if (index > -1) {
-                // Preserve existing status fields when editing
-                const existingServer = servers[index];
-                servers[index] = { 
-                    ...existingServer, // Keep old status fields
-                    ...serverData      // Overwrite with new form data
-                };
+                urlToServerMappings[index].websitePattern = websitePattern;
+                urlToServerMappings[index].serverId = serverId;
             }
-        } else { 
-            mappingData.id = generateMappingId();
+        } else { // Adding a new mapping
+            const mappingData = { 
+                id: generateMappingId(),
+                websitePattern, 
+                serverId 
+            };
             urlToServerMappings.push(mappingData);
         }
+
         chrome.storage.local.set({ urlToServerMappings }, () => {
             displayMappingFormStatus(id ? 'Rule updated!' : 'Rule added!', 'success');
             loadSettings(); 

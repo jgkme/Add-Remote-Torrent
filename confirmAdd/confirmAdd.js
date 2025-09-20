@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const finalParams = {
             url: torrentUrl,
-            server: activeServer, 
+            serverId: activeServer.id, 
             tags: tagsInput.value.trim(),
             category: categoryInput.value, // No need to trim since it's a selected value from dropdown
             downloadDir: directoryInput.value,

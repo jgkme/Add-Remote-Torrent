@@ -147,9 +147,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     addTorrentToClient(request.url);
     return false; 
   } else if (request.action === 'addTorrentWithCustomParams' && request.params) {
-    const { url, server, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath } = request.params;
-    addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath);
-    return false; 
+    const { url, serverId, tags, category, addPaused, selectedFileIndices, totalFileCount, downloadDir, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath } = request.params;
+    // Asynchronously find the server config from the ID
+    (async () => {
+        const { servers = [] } = await chrome.storage.local.get('servers');
+        const server = servers.find(s => s.id === serverId);
+        if (server) {
+            addTorrentToClient(url, server, tags, category, addPaused, null, downloadDir, selectedFileIndices, totalFileCount, contentLayout, bandwidthPriority, moveCompleted, moveCompletedPath);
+        } else {
+            debug.error(`[ART Background] addTorrentWithCustomParams failed: Could not find server with ID ${serverId}`);
+            // Optionally, create a notification for this failure
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon-48x48.png',
+                title: 'Add Remote Torrent Error',
+                message: `Failed to add torrent because the specified server could not be found.`
+            });
+        }
+    })();
+    return false;
   } else if (request.action === 'addTorrent' && request.url) {
     const { url, pageUrl } = request;
     (async () => {
@@ -234,29 +250,52 @@ async function onAlarm(alarm) {
             return;
         }
 
-        const updatedServers = await Promise.all(servers.map(async (server) => {
+        // Create a queue to process server checks with limited concurrency
+        const queue = [...servers];
+        const updatedServers = [];
+        const concurrency = 4; // Process up to 4 servers at a time
+
+        async function processQueue() {
+            const server = queue.shift();
+            if (!server) return;
+
             const apiClient = getClientApi(server.clientType);
+            let updatedServer;
             if (!apiClient) {
-                return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+                updatedServer = { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+            } else {
+                try {
+                    const result = await apiClient.testConnection(server);
+                    updatedServer = { 
+                        ...server, 
+                        status: result.success ? 'online' : 'offline', 
+                        lastChecked: new Date().toISOString(),
+                        version: result.success ? result.data?.version : server.version,
+                        freeSpace: result.success ? result.data?.freeSpace : server.freeSpace,
+                        torrents: result.data?.torrentsInfo?.total,
+                        uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
+                        downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
+                    };
+                } catch (e) {
+                    updatedServer = { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+                }
             }
-            try {
-                const result = await apiClient.testConnection(server);
-                return { 
-                    ...server, 
-                    status: result.success ? 'online' : 'offline', 
-                    lastChecked: new Date().toISOString(),
-                    version: result.success ? result.data?.version : server.version,
-                    freeSpace: result.success ? result.data?.freeSpace : server.freeSpace,
-                    torrents: result.data?.torrentsInfo?.total,
-                    uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
-                    downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
-                };
-            } catch (e) {
-                return { ...server, status: 'offline', lastChecked: new Date().toISOString() };
+            updatedServers.push(updatedServer);
+        }
+
+        const workers = Array(concurrency).fill(Promise.resolve());
+        await Promise.all(workers.map(async worker => {
+            while (queue.length > 0) {
+                await processQueue();
             }
         }));
 
-        await chrome.storage.local.set({ servers: updatedServers });
+        // Ensure the order is the same as the original servers array for consistency
+        const finalUpdatedServers = servers.map(originalServer => 
+            updatedServers.find(updated => updated.id === originalServer.id) || originalServer
+        );
+
+        await chrome.storage.local.set({ servers: finalUpdatedServers });
         debug.log('[ART Background] Server status check complete. Updated server statuses in storage.');
     } else if (alarm.name === 'torrentStatusCheck') {
         debug.log('[ART Background] Running periodic torrent status check...');
@@ -330,6 +369,7 @@ async function createContextMenus() {
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
       debug.error("Error removing context menus:", chrome.runtime.lastError.message);
+      return; // Stop execution if removing menus failed
     }
     
     chrome.storage.local.get(['servers', 'activeServerId', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu'], (result) => {

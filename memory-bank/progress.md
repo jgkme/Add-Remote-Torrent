@@ -37,6 +37,15 @@
     -   [X] **Feature:** Added a global setting in the Options page to allow users to enable or disable download completion notifications, providing full control over the feature.
     -   [X] **Refactor:** Established a new `getTorrentsInfo(serverConfig, hashes)` function as a required standard for API handlers to support the new targeted notification system.
 
+-   **Comprehensive Code Review & Refactoring (Self-initiated):**
+    -   [X] **Fix (Critical):** Refactored qBittorrent and Deluge API handlers to use a robust, per-server session manager, fixing major bugs in multi-server environments.
+    -   [X] **Fix (Critical):** Corrected a bug in the Options page that prevented URL-to-server mapping rules from being edited.
+    -   [X] **Fix (Security):** Patched a self-XSS vulnerability on the dashboard page by implementing secure, DOM-based HTML escaping.
+    -   [X] **Fix (Concurrency):** Replaced an unbounded `Promise.all` in the background server check with a concurrent queue to improve stability.
+    -   [X] **Fix (Error Handling):** Improved error handling for context menu creation to prevent inconsistent states.
+    -   [X] **Refactor:** Improved consistency of dynamic link detection in `LinkMonitor.js`.
+    -   [X] **Refactor:** Optimized data transfer from the "Advanced Add" dialog to the background script.
+
 ---
 ### **Phase 5: Advanced Features & Polish (Future)**
 *Objective: Introduce advanced client-specific options and further polish the overall extension.*

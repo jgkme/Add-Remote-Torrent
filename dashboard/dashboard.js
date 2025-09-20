@@ -4,6 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshAllButton = document.getElementById('refreshAllButton');
     const clearHistoryButton = document.getElementById('clearHistoryButton');
 
+    function escapeHtml(unsafe) {
+        if (unsafe === null || typeof unsafe === 'undefined') return '';
+        const div = document.createElement('div');
+        div.textContent = unsafe;
+        return div.innerHTML;
+    }
+
     function formatBytes(bytes, decimals = 2) {
         if (!bytes || bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -32,22 +39,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             cardElement.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${server.name}</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${escapeHtml(server.name)}</h3>
                     <span class="px-2 py-1 text-xs font-semibold text-white ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full">${isOnline ? 'Online' : 'Offline'}</span>
                 </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${server.clientType || 'N/A'} ${server.version ? `(${server.version.startsWith('v') ? server.version : 'v' + server.version})` : ''}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${server.url}</span></p>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${freeSpace}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${totalTorrents}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${dlSpeed}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${ulSpeed}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${escapeHtml(server.clientType || 'N/A')} ${server.version ? `(${escapeHtml(server.version.startsWith('v') ? server.version : 'v' + server.version)})` : ''}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${escapeHtml(server.url)}</span></p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${escapeHtml(freeSpace)}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${escapeHtml(totalTorrents)}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${escapeHtml(dlSpeed)}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${escapeHtml(ulSpeed)}</p>
                 <div class="mt-4">
                     <button class="text-blue-500 hover:underline text-sm show-more-btn">Show More</button>
                     <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                        <pre class="text-xs whitespace-pre-wrap break-all">${JSON.stringify(server, null, 2)}</pre>
+                        <pre class="text-xs whitespace-pre-wrap break-all">${escapeHtml(JSON.stringify(server, null, 2))}</pre>
                     </div>
                 </div>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? new Date(server.lastChecked).toLocaleString() : 'Never'}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? escapeHtml(new Date(server.lastChecked).toLocaleString()) : 'Never'}</p>
             `;
             serverStatusContainer.appendChild(cardElement);
         });
@@ -78,8 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isError = action.message.toLowerCase().includes('error') || action.message.toLowerCase().includes('failed');
             const item = `
                 <li class="border-b border-gray-200 dark:border-gray-700 pb-3">
-                    <p class="text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}">${action.message}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${new Date(action.timestamp).toLocaleString()}</p>
+                    <p class="text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}">${escapeHtml(action.message)}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHtml(new Date(action.timestamp).toLocaleString())}</p>
                 </li>
             `;
             actionHistoryList.innerHTML += item;
