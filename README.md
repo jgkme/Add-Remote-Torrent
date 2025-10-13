@@ -122,6 +122,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.14 (2025-09-20):**
+    *   **Feature:** Added customizable sound notifications. Users can now choose different sounds for success/failure notifications from the Options page (browser beeps, existing sounds, or custom .mp3 files in the audio/ folder).
+    *   **Enhancement:** Improved sound system with programmatic beep generation and automatic detection of available sound files.
 *   **v0.4.13 (2025-09-20):**
     *   **Fix (Critical):** Overhauled session management for qBittorrent and Deluge clients to be per-server, fixing major stability issues and race conditions in multi-server environments.
     *   **Fix (Critical):** Corrected a bug in the Options page that prevented URL-to-server mapping rules from being edited.
