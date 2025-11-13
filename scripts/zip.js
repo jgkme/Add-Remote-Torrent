@@ -1,5 +1,5 @@
 const { zip } = require('zip-a-folder');
-const Crx = require('crx');
+const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -46,12 +46,8 @@ async function buildPackages() {
         console.error('Please ensure "private.pem" exists in the project root.');
         process.exit(1);
     }
-    const privateKey = fs.readFileSync(privateKeyPath);
-    const crx = new Crx({ privateKey });
 
-    await crx.load(distFolder);
-    const crxBuffer = await crx.pack();
-    fs.writeFileSync(outputCrxFile, crxBuffer);
+    execSync(`npx crx3 -p "${privateKeyPath}" -o "${outputCrxFile}" "${distFolder}"`, { stdio: 'inherit' });
     console.log(`Successfully created signed package at ${outputCrxFile}`);
 
   } catch (error) {

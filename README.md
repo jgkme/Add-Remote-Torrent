@@ -122,6 +122,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.15 (2025-11-14):**
+    *   **Chore:** Replaced deprecated `crx` package with `crx3` for CRX file generation, ensuring continued compatibility with Chrome Web Store requirements.
+    *   **Security:** Updated all dependencies to address security vulnerabilities, including the moderate severity issue in the `tar` package.
 *   **v0.4.14 (2025-09-20):**
     *   **Feature:** Added customizable sound notifications. Users can now choose different sounds for success/failure notifications from the Options page (browser beeps, existing sounds, or custom .mp3 files in the audio/ folder).
     *   **Enhancement:** Improved sound system with programmatic beep generation and automatic detection of available sound files.
