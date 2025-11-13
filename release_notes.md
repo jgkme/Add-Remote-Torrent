@@ -1,3 +1,22 @@
+### v0.4.15 (2025-11-14)
+
+*   **Chore:** Replaced deprecated `crx` package with `crx3` for CRX file generation, ensuring continued compatibility with Chrome Web Store requirements.
+*   **Security:** Updated all dependencies to address security vulnerabilities, including the moderate severity issue in the `tar` package.
+
+### v0.4.14 (2025-09-20)
+
+*   **Feature:** Added customizable sound notifications. Users can now choose different sounds for success/failure notifications from the Options page (browser beeps, existing sounds, or custom .mp3 files in the audio/ folder).
+*   **Enhancement:** Improved sound system with programmatic beep generation and automatic detection of available sound files.
+
+### v0.4.13 (2025-09-20)
+
+*   **Fix (Critical):** Overhauled session management for qBittorrent and Deluge clients to be per-server, fixing major stability issues and race conditions in multi-server environments.
+*   **Fix (Critical):** Corrected a bug in the Options page that prevented URL-to-server mapping rules from being edited.
+*   **Fix (Security):** Patched a cross-site scripting (XSS) vulnerability on the dashboard page by implementing secure HTML escaping.
+*   **Fix (Performance):** Improved the background server status check to use a concurrent queue, preventing performance issues when many servers are configured.
+*   **Fix:** Hardened error handling for context menu creation.
+*   **Refactor:** Improved the consistency and reliability of dynamic link detection.
+
 ### v0.4.12 (2025-09-11)
 
 *   **Fix (Critical):** Resolved qBittorrent authentication issues that were causing "Failed to resume torrent" errors and dashboard "N/A" values. The `getBuildInfo` function now performs proper authentication before making API calls to `/api/v2/sync/maindata`, ensuring valid session data is returned for download/upload speeds and torrent counts.

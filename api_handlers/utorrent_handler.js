@@ -26,12 +26,20 @@ async function getCsrfToken(serverConfig) {
     
     debug.log(`uTorrent: Attempting to fetch CSRF token from ${tokenUrl}`);
 
+    const tokenHeaders = {};
+
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        tokenHeaders['Authorization'] = `Basic ${authString}`;
+    } else {
+        tokenHeaders['Authorization'] = `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`;
+    }
+
     try {
         const response = await fetch(tokenUrl, {
             method: 'GET',
-            headers: {
-                'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
-            },
+            headers: tokenHeaders,
             credentials: 'include',
         });
 
@@ -105,11 +113,17 @@ async function makeApiRequest(baseUrl, action, params = {}, serverConfig, method
     
     const fetchOptions = {
         method: method,
-        headers: {
-            'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`,
-        },
+        headers: {},
         credentials: 'include',
     };
+
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        fetchOptions.headers['Authorization'] = `Basic ${authString}`;
+    } else {
+        fetchOptions.headers['Authorization'] = `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`;
+    }
 
     if (method === 'POST' && params instanceof FormData) {
         fetchOptions.body = params; // FormData body for POST

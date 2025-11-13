@@ -36,8 +36,9 @@ async function fetchWithAuth(url, options, serverConfig) {
 	const headers = {
 		...options.headers,
 	};
-	if (serverConfig.username && serverConfig.password) {
-		headers['Authorization'] = `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`;
+	// Add basic auth header if enabled (for reverse proxy setups)
+	if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+		headers['Authorization'] = `Basic ${btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`)}`;
 	}
 	if (transmissionSessionId) {
 		headers['X-Transmission-Session-Id'] = transmissionSessionId;

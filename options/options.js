@@ -33,10 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clientTypeHelpIcon = document.getElementById('client-type-help-icon');
     const serverUrlInput = document.getElementById('qbUrl'); 
     const serverUsernameInput = document.getElementById('qbUsername'); 
-    const serverPasswordInput = document.getElementById('qbPassword'); 
-    const rpcPathGroup = document.getElementById('rpcPathGroup'); 
-    const rpcPathInput = document.getElementById('rpcPath'); 
-    const scgiPathGroup = document.getElementById('scgiPathGroup'); 
+    const serverPasswordInput = document.getElementById('qbPassword');
+    const useBasicAuthInput = document.getElementById('useBasicAuth');
+    const basicAuthGroup = document.getElementById('basicAuthGroup');
+    const basicAuthUsernameInput = document.getElementById('basicAuthUsername');
+    const basicAuthPasswordInput = document.getElementById('basicAuthPassword');
+    const rpcPathGroup = document.getElementById('rpcPathGroup');
+    const rpcPathInput = document.getElementById('rpcPath');
+    const scgiPathGroup = document.getElementById('scgiPathGroup');
     const scgiPathInput = document.getElementById('scgiPath');
     const qbittorrentSavePathGroup = document.getElementById('qbittorrentSavePathGroup');
     const qbittorrentSavePathInput = document.getElementById('qbittorrentSavePath');
@@ -202,8 +206,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     let linkCatchingPatterns = [];
 
     // --- Utility Functions ---
-    function generateId(prefix = 'server') { 
+    function generateId(prefix = 'server') {
         return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    }
+
+    function parseCredentialsFromUrl(urlString) {
+        try {
+            const url = new URL(urlString);
+            if (url.username && url.password) {
+                return {
+                    username: decodeURIComponent(url.username),
+                    password: decodeURIComponent(url.password),
+                    cleanUrl: `${url.protocol}//${url.host}${url.pathname}${url.search}${url.hash}`
+                };
+            }
+        } catch (e) {
+            // Invalid URL, return original
+        }
+        return { cleanUrl: urlString };
     }
 
     function displayFormStatus(message, type) {
@@ -434,16 +454,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         serverListSection.style.display = 'none';
         serverFormSection.style.display = 'block';
         serverFormTitle.textContent = isEditing ? 'Edit Server Profile' : 'Add New Server Profile';
-        let currentClientType = 'qbittorrent'; 
+        let currentClientType = 'qbittorrent';
         if (isEditing && server) {
             serverIdInput.value = server.id;
             serverNameInput.value = server.name;
             clientTypeSelect.value = server.clientType || 'qbittorrent';
             currentClientType = clientTypeSelect.value;
-            serverUrlInput.value = server.url; 
-            serverUsernameInput.value = server.username; 
-            serverPasswordInput.value = server.password; 
-            rpcPathInput.value = server.rpcPath || ''; 
+            serverUrlInput.value = server.url;
+            serverUsernameInput.value = server.username;
+            serverPasswordInput.value = server.password;
+            useBasicAuthInput.checked = server.useBasicAuth || false;
+            basicAuthUsernameInput.value = server.basicAuthUsername || '';
+            basicAuthPasswordInput.value = server.basicAuthPassword || '';
+            rpcPathInput.value = server.rpcPath || '';
             scgiPathInput.value = server.scgiPath || '';
             qbittorrentSavePathInput.value = server.qbittorrentSavePath || '';
             transmissionDownloadDirInput.value = server.transmissionDownloadDir || '';
@@ -480,16 +503,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             categoriesInput.value = server.categories || '';
             downloadDirectoriesInput.value = server.downloadDirectories || '';
             addPausedInput.checked = server.addPaused || false;
-            askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false; 
+            askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false;
         } else {
-            serverIdInput.value = ''; 
+            serverIdInput.value = '';
             serverNameInput.value = '';
             clientTypeSelect.value = 'qbittorrent';
             currentClientType = clientTypeSelect.value;
             serverUrlInput.value = '';
             serverUsernameInput.value = '';
             serverPasswordInput.value = '';
-            rpcPathInput.value = ''; 
+            useBasicAuthInput.checked = false;
+            basicAuthUsernameInput.value = '';
+            basicAuthPasswordInput.value = '';
+            rpcPathInput.value = '';
             scgiPathInput.value = '';
             qbittorrentSavePathInput.value = '';
             transmissionDownloadDirInput.value = '';
@@ -526,9 +552,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             categoriesInput.value = '';
             downloadDirectoriesInput.value = '';
             addPausedInput.checked = false;
-            askForLabelDirOnPageInput.checked = false; 
+            askForLabelDirOnPageInput.checked = false;
         }
-        toggleClientSpecificFields(currentClientType); 
+        // Update basic auth visibility
+        basicAuthGroup.style.display = useBasicAuthInput.checked ? 'block' : 'none';
+        toggleClientSpecificFields(currentClientType);
         formStatusMessageDiv.textContent = '';
         formStatusMessageDiv.className = 'status-message';
     }
@@ -667,6 +695,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    useBasicAuthInput.addEventListener('change', () => {
+        basicAuthGroup.style.display = useBasicAuthInput.checked ? 'block' : 'none';
+    });
+
     showAddServerFormButton.addEventListener('click', () => {
         showServerForm(false);
     });
@@ -686,6 +718,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const url = serverUrlInput.value.trim();
         const username = serverUsernameInput.value.trim();
         const password = serverPasswordInput.value;
+        const useBasicAuth = useBasicAuthInput.checked;
+        const basicAuthUsername = basicAuthUsernameInput.value.trim();
+        const basicAuthPassword = basicAuthPasswordInput.value;
         const rpcPath = rpcPathInput.value.trim();
         const scgiPath = scgiPathInput.value.trim();
         const qbittorrentSavePath = qbittorrentSavePathInput.value.trim();
@@ -734,17 +769,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        const serverData = { 
-            name, 
-            clientType, 
-            url, 
-            username, 
-            password, 
-            tags, 
-            category, 
+        const serverData = {
+            name,
+            clientType,
+            url,
+            username,
+            password,
+            useBasicAuth,
+            basicAuthUsername,
+            basicAuthPassword,
+            tags,
+            category,
             categories,
             downloadDirectories,
-            addPaused, 
+            addPaused,
             askForLabelDirOnPage,
             ruTorrentrelativepath,
             utorrentrelativepath,
@@ -776,7 +814,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             rtorrentUploadsMax,
             rtorrentUploadsMin,
             torrentfluxRelativePath
-        }; 
+        };
         
         if (clientType === 'transmission') {
             serverData.rpcPath = rpcPath;
@@ -858,12 +896,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     testConnectionButton.addEventListener('click', () => {
         const serverConfig = {
-            id: serverIdInput.value, 
+            id: serverIdInput.value,
             name: serverNameInput.value.trim(),
             clientType: clientTypeSelect.value,
             url: serverUrlInput.value.trim(),
             username: serverUsernameInput.value.trim(),
             password: serverPasswordInput.value,
+            useBasicAuth: useBasicAuthInput.checked,
+            basicAuthUsername: basicAuthUsernameInput.value.trim(),
+            basicAuthPassword: basicAuthPasswordInput.value,
             rpcPath: clientTypeSelect.value === 'transmission' ? rpcPathInput.value.trim() : undefined,
             scgiPath: clientTypeSelect.value === 'rtorrent' ? scgiPathInput.value.trim() : undefined,
             ruTorrentrelativepath: clientTypeSelect.value === 'rutorrent' ? ruTorrentPathInput.value.trim() : undefined,
@@ -1322,21 +1363,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     serverUrlInput.addEventListener('change', (event) => {
-        const clientType = clientTypeSelect.value;
-        if (clientType === 'utorrent' || clientType === 'bittorrent') {
-            try {
-                const url = new URL(event.target.value);
-                const path = url.pathname;
-                if (path && path !== '/' && path.length > 1) {
-                    const relPathInput = document.getElementById('utorrentRelativePath');
-                    if (relPathInput && !relPathInput.value) {
-                        relPathInput.value = path;
-                        serverUrlInput.value = url.origin;
-                        displayFormStatus('Auto-detected relative path. Please verify.', 'info');
+        const urlString = event.target.value.trim();
+        if (urlString) {
+            // Parse credentials from URL if present
+            const parsed = parseCredentialsFromUrl(urlString);
+            if (parsed.username && parsed.password) {
+                serverUrlInput.value = parsed.cleanUrl;
+                serverUsernameInput.value = parsed.username;
+                serverPasswordInput.value = parsed.password;
+                displayFormStatus('Credentials extracted from URL and moved to username/password fields.', 'info');
+            }
+
+            // Handle uTorrent/BitTorrent relative path detection
+            const clientType = clientTypeSelect.value;
+            if (clientType === 'utorrent' || clientType === 'bittorrent') {
+                try {
+                    const url = new URL(parsed.cleanUrl || urlString);
+                    const path = url.pathname;
+                    if (path && path !== '/' && path.length > 1) {
+                        const relPathInput = document.getElementById('utorrentRelativePath');
+                        if (relPathInput && !relPathInput.value) {
+                            relPathInput.value = path;
+                            serverUrlInput.value = url.origin;
+                            displayFormStatus('Auto-detected relative path. Please verify.', 'info');
+                        }
                     }
+                } catch (e) {
+                    // Ignore invalid URL formats during typing
                 }
-            } catch (e) {
-                // Ignore invalid URL formats during typing
             }
         }
     });

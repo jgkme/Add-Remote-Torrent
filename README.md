@@ -38,6 +38,10 @@ Please give it a try and create some feedbacks or issues here.
 *   **Advanced Management:**
     *   Define per-server default parameters (tags, category, download directory, initial paused state).
     *   Optional "Advanced Add Dialog" to customize parameters and select specific files before adding.
+*   **Authentication & Security:**
+    *   **Basic Auth Support:** Configure basic authentication for reverse proxy setups (Nginx, Apache, etc.) that require additional HTTP authentication headers.
+    *   **Automatic Credential Extraction:** URLs with embedded credentials (e.g., `http://user:pass@server.com`) are automatically parsed and configured.
+    *   **Per-Server Auth:** Each server can have its own basic auth credentials, independent of client authentication.
 *   **Server & Rule Management:**
     -   Manage multiple server profiles with client-specific settings.
     -   Test server connections.
@@ -122,6 +126,10 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.16 (2025-11-14):**
+    *   **Feature:** Added comprehensive basic authentication support for reverse proxy setups. All client handlers now support basic auth headers for servers behind authentication gateways (Nginx, Apache, etc.).
+    *   **Feature:** Automatic credential extraction from URLs - URLs with embedded credentials (e.g., `http://user:pass@server.com`) are automatically parsed and configured.
+    *   **Enhancement:** Per-server basic auth configuration, independent of client authentication, providing flexible deployment options.
 *   **v0.4.15 (2025-11-14):**
     *   **Chore:** Replaced deprecated `crx` package with `crx3` for CRX file generation, ensuring continued compatibility with Chrome Web Store requirements.
     *   **Security:** Updated all dependencies to address security vulnerabilities, including the moderate severity issue in the `tar` package.

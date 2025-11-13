@@ -30,9 +30,18 @@ async function getQnapSid(serverConfig) {
     loginParams.append('user', serverConfig.username);
     loginParams.append('pwd', serverConfig.password); 
 
+    const loginHeaders = {};
+
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        loginHeaders['Authorization'] = `Basic ${authString}`;
+    }
+
     try {
-        const response = await fetch(`${loginUrl}?${loginParams.toString()}`, { 
+        const response = await fetch(`${loginUrl}?${loginParams.toString()}`, {
             method: 'GET',
+            headers: loginHeaders
         });
 
         if (!response.ok) {

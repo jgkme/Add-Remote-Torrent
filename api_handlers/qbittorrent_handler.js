@@ -19,7 +19,7 @@ const qbitSession = {
     }
   },
   _performLogin: async function(serverConfig) {
-    const { url, username, password } = serverConfig;
+    const { url, username, password, basicAuthUsername, basicAuthPassword, useBasicAuth } = serverConfig;
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
     const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -30,6 +30,12 @@ const qbitSession = {
         'Origin': origin,
         'Content-Type': 'application/x-www-form-urlencoded'
     };
+
+    // Add basic auth header if enabled
+    if (useBasicAuth && basicAuthUsername && basicAuthPassword) {
+      const authString = btoa(`${basicAuthUsername}:${basicAuthPassword}`);
+      loginHeaders['Authorization'] = `Basic ${authString}`;
+    }
 
     const loginBodyParams = new URLSearchParams();
     loginBodyParams.append('username', username);
@@ -52,7 +58,7 @@ const qbitSession = {
       debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
       throw new Error(`Login succeeded but server returned: ${loginTxt}`);
     }
-    
+
     this.isLoggedIn = true;
     debug.log('qBittorrent session established.');
   },
@@ -71,6 +77,12 @@ const qbitSession = {
         'Origin': new URL(serverConfig.url).origin
       }
     };
+
+    // Add basic auth header if enabled
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+      const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+      finalOptions.headers['Authorization'] = `Basic ${authString}`;
+    }
 
     const response = await fetch(apiUrl, finalOptions);
 

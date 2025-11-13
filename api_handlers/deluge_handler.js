@@ -62,6 +62,12 @@ async function _makeRpcRequest(serverConfig, method, params, isLogin = false) {
         'Accept': 'application/json',
     };
 
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        headers['Authorization'] = `Basic ${authString}`;
+    }
+
     const sessionCookie = delugeSessions.get(serverConfig.url);
     if (sessionCookie && !isLogin) {
         headers['Cookie'] = sessionCookie;

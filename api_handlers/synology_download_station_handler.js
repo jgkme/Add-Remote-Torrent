@@ -31,8 +31,19 @@ async function getSynologySid(serverConfig) {
         format: 'sid'
     });
 
+    const authHeaders = {};
+
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        authHeaders['Authorization'] = `Basic ${authString}`;
+    }
+
     try {
-        const response = await fetch(`${authUrl}?${params.toString()}`, { method: 'GET' });
+        const response = await fetch(`${authUrl}?${params.toString()}`, {
+            method: 'GET',
+            headers: authHeaders
+        });
         if (!response.ok) {
             // This error will be caught by the catch block below
             throw new Error(`Synology auth request failed: ${response.status} ${response.statusText}`);

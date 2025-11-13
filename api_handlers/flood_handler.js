@@ -4,12 +4,20 @@ import { debug } from '../debug';
 
 async function authenticate(serverConfig) {
     const url = `${serverConfig.url.replace(/\/$/, '')}/api/auth/authenticate`;
+    const headers = {
+        'Content-Type': 'application/json; charset=UTF-8',
+    };
+
+    // Add basic auth header if enabled (for reverse proxy setups)
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        headers['Authorization'] = `Basic ${authString}`;
+    }
+
     try {
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=UTF-8',
-            },
+            headers: headers,
             body: JSON.stringify({ username: serverConfig.username, password: serverConfig.password }),
         });
         if (!response.ok) {

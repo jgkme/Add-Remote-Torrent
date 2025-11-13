@@ -62,7 +62,10 @@ async function makeXmlRpcRequest(serverConfig, methodName, params = []) {
 	const headers = {
 		'Content-Type': 'text/xml; charset=utf-8',
 	};
-	if (serverConfig.username && serverConfig.password) {
+	// Add basic auth header if enabled (for reverse proxy setups)
+	if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+		headers['Authorization'] = `Basic ${btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`)}`;
+	} else if (serverConfig.username && serverConfig.password) {
 		headers['Authorization'] = `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`;
 	}
 	try {
