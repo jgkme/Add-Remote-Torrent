@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
         const settingsToExport = {
-            servers, activeServerId, ...globalSettings, urlToServerMappings, trackerUrlRules 
+            servers, activeServerId, ...globalSettings, urlToServerMappings, trackerUrlRules, linkCatchingPatterns
         };
         const jsonString = JSON.stringify(settingsToExport, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
@@ -1044,6 +1044,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableServerSpecificContextMenu: importedSettings.enableServerSpecificContextMenu || false,
                         showDownloadDirInContextMenu: importedSettings.showDownloadDirInContextMenu || false,
                         trackerUrlRules: importedSettings.trackerUrlRules || [],
+                        linkCatchingPatterns: importedSettings.linkCatchingPatterns || [],
                         contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
                         bgDebugEnabled: Array.isArray(importedSettings.bgDebugEnabled) && importedSettings.bgDebugEnabled || ['log', 'warn', 'error'],
                     };

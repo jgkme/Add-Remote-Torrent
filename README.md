@@ -126,6 +126,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.17 (2025-11-15):**
+    *   **Fix:** Resolved a critical bug where custom link catching patterns were not being included in exported settings files. This ensures that custom URL patterns for torrent link detection are properly backed up and restored.
 *   **v0.4.16 (2025-11-14):**
     *   **Feature:** Added comprehensive basic authentication support for reverse proxy setups. All client handlers now support basic auth headers for servers behind authentication gateways (Nginx, Apache, etc.).
     *   **Feature:** Automatic credential extraction from URLs - URLs with embedded credentials (e.g., `http://user:pass@server.com`) are automatically parsed and configured.
