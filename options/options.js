@@ -636,7 +636,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             clientTypeSpan.className = 'text-sm text-gray-500 dark:text-gray-400';
             clientTypeSpan.textContent = `Client: ${server.clientType || 'N/A'}`;
             if (server.version) {
-                clientTypeSpan.textContent += ` (v${server.version})`;
+                // Normalise version so we don't end up with "vv5.1.2" if the API already includes a leading "v"
+                const rawVersion = String(server.version);
+                const normalisedVersion = rawVersion.replace(/^v/i, '');
+                clientTypeSpan.textContent += ` (v${normalisedVersion})`;
             }
             serverInfoDiv.appendChild(clientTypeSpan);
 

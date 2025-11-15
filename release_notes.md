@@ -1,3 +1,8 @@
+### v0.4.18 (2025-11-16)
+
+*   **Fix:** Corrected Options page client version display where some clients appeared as `vv5.1.2`.
+*   **Docs:** Updated README to reflect the new Custom Link Catching Patterns UI and clarified sound notification behavior.
+
 ### v0.4.15 (2025-11-14)
 
 *   **Chore:** Replaced deprecated `crx` package with `crx3` for CRX file generation, ensuring continued compatibility with Chrome Web Store requirements.
@@ -5,7 +10,7 @@
 
 ### v0.4.14 (2025-09-20)
 
-*   **Feature:** Added customizable sound notifications. Users can now choose different sounds for success/failure notifications from the Options page (browser beeps, existing sounds, or custom .mp3 files in the audio/ folder).
+*   **Feature:** Added sound notifications for success/failure, controlled from the Options page.
 *   **Enhancement:** Improved sound system with programmatic beep generation and automatic detection of available sound files.
 
 ### v0.4.13 (2025-09-20)

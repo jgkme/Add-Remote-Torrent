@@ -53,7 +53,7 @@ Please give it a try and create some feedbacks or issues here.
     *   Manifest V3 compliant, adhering to the latest security standards.
     *   No data collection. All your settings are stored locally. See our [Privacy Policy](PRIVACY_POLICY.md).
 *   **Customization:**
-    *   Optional sound notifications for success/failure. (We've received feedback about providing shorter or custom sounds, which may be considered for a future release!)
+    *   Optional sound notifications for success/failure.
 
 ### Adding Torrents with a Single Click (On-Page Catching)
 
@@ -72,8 +72,8 @@ Some websites provide download links for `.torrent` files that don't have the `.
 
 To catch these links, you need to add a custom URL pattern:
 1.  Go to the extension's **Options** page -> **Other Global Settings**.
-2.  Find the **"Custom URL patterns for on-page link catching"** text box.
-3.  Enter a unique part of the URL for that website's torrent links. You can separate multiple patterns with a tilde (`~`).
+2.  Open the **"Custom Link Catching Patterns"** section under **Other Global Settings**.
+3.  Add a new regex pattern for that website's torrent links. Use one pattern per rule (no tilde separator needed anymore).
 
 **Example:** If a site's download links look like `https://www.example-tracker.com/torrent.php/12345/my-file.torrent`, a good pattern to add would be `example-tracker.com/torrent.php/`.
 
@@ -126,6 +126,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.18 (2025-11-16):**
+    *   **Fix:** Corrected Options page client version display where some clients appeared as `vv5.1.2`.
+    *   **Docs:** Updated README to reflect the new Custom Link Catching Patterns UI and clarified sound notification behavior.
 *   **v0.4.17 (2025-11-15):**
     *   **Fix:** Resolved a critical bug where custom link catching patterns were not being included in exported settings files. This ensures that custom URL patterns for torrent link detection are properly backed up and restored.
 *   **v0.4.16 (2025-11-14):**
@@ -136,7 +139,7 @@ We are working on a feature to make this process easier by allowing you to repor
     *   **Chore:** Replaced deprecated `crx` package with `crx3` for CRX file generation, ensuring continued compatibility with Chrome Web Store requirements.
     *   **Security:** Updated all dependencies to address security vulnerabilities, including the moderate severity issue in the `tar` package.
 *   **v0.4.14 (2025-09-20):**
-    *   **Feature:** Added customizable sound notifications. Users can now choose different sounds for success/failure notifications from the Options page (browser beeps, existing sounds, or custom .mp3 files in the audio/ folder).
+    *   **Feature:** Added sound notifications for success/failure, controlled from the Options page.
     *   **Enhancement:** Improved sound system with programmatic beep generation and automatic detection of available sound files.
 *   **v0.4.13 (2025-09-20):**
     *   **Fix (Critical):** Overhauled session management for qBittorrent and Deluge clients to be per-server, fixing major stability issues and race conditions in multi-server environments.
