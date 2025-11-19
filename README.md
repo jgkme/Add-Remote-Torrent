@@ -126,6 +126,8 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.19 (2025-11-19):**
+    *   **Security:** Updated zip-a-folder and glob dependencies to address CVE-2025-64756 (command injection via -c/--cmd with shell:true in glob CLI).
 *   **v0.4.18 (2025-11-16):**
     *   **Fix:** Corrected Options page client version display where some clients appeared as `vv5.1.2`.
     *   **Docs:** Updated README to reflect the new Custom Link Catching Patterns UI and clarified sound notification behavior.
