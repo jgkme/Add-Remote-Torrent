@@ -26,6 +26,8 @@
 -   **General Refactoring & Improvements:**
     -   **`LinkMonitor.js`:** The `MutationObserver` logic was improved to consistently detect `<a>`, `<input>`, and `<button>` elements, aligning it with the initial page scan logic.
     -   **`confirmAdd/confirmAdd.js`:** The data sent from the "Advanced Add" dialog to the background script was optimized to only send the necessary `serverId`, making the process more efficient and less prone to stale data issues.
+    -   **rTorrent Label Bug Fix:** Improved `getLatestTorrentHash` XML parsing to reliably extract the newly added torrent hash, enabling post-add label setting via `d.custom1.set`. Labels now work correctly for rTorrent from server defaults or Confirm Add dialog.
+
 
 ## 3. Next Steps (High-Level Plan)
 

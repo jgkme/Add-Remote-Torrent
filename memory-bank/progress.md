@@ -46,6 +46,9 @@
     -   [X] **Refactor:** Improved consistency of dynamic link detection in `LinkMonitor.js`.
     -   [X] **Refactor:** Optimized data transfer from the "Advanced Add" dialog to the background script.
 
+-   **rTorrent Label Bug Fix (v0.4.20):**
+    -   [X] **Fix:** Improved `getLatestTorrentHash` XML parsing to reliably extract the newly added torrent hash, enabling post-add label setting via `d.custom1.set`. Labels from server defaults or Confirm Add dialog now work correctly.
+
 ---
 ### **Phase 5: Advanced Features & Polish (Future)**
 *Objective: Introduce advanced client-specific options and further polish the overall extension.*

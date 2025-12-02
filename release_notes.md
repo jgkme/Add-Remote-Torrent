@@ -1,3 +1,7 @@
+### v0.4.20 (2025-12-03)
+
+*   **Fix (rTorrent):** Improved XML-RPC hash list parsing in `getLatestTorrentHash`, fixing the bug where labels were not applied after adding torrents. Labels from server defaults or Confirm Add dialog are now reliably set via `d.custom1.set`.
+
 ### v0.4.18 (2025-11-16)
 
 *   **Fix:** Corrected Options page client version display where some clients appeared as `vv5.1.2`.

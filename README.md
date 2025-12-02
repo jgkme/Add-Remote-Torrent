@@ -126,6 +126,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.20 (2025-12-03):**
+    *   **Fix (rTorrent):** Fixed labels not being applied when adding torrents. Improved XML-RPC hash list parsing in `getLatestTorrentHash` to reliably identify the newly added torrent for post-add operations like `d.custom1.set` (label).
+
 *   **v0.4.19 (2025-11-19):**
     *   **Security:** Updated zip-a-folder and glob dependencies to address CVE-2025-64756 (command injection via -c/--cmd with shell:true in glob CLI).
 *   **v0.4.18 (2025-11-16):**

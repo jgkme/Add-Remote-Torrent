@@ -133,12 +133,29 @@ async function makeXmlRpcRequest(serverConfig, methodName, params = []) {
 	}
 }
 
+function parseHashListFromXmlRpcResponse(xmlResponseText) {
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlResponseText, "text/xml");
+    const strings = xmlDoc.querySelectorAll('methodResponse params param value string');
+    const hashes = Array.from(strings)
+      .map(str => str.textContent.trim())
+      .filter(h => h.length === 40 && /^[0-9a-fA-F]+$/.test(h));
+    return hashes;
+  } catch(e) {
+    debug.error('Error parsing hash list from XML-RPC response:', e);
+    return [];
+  }
+}
+
 // Helper: Get torrent hash by name (since rTorrent returns no hash on add)
 async function getLatestTorrentHash(serverConfig) {
 	const result = await makeXmlRpcRequest(serverConfig, 'download_list', []);
 	if (result.success && typeof result.data === 'string') {
-		const hashList = result.data.split('\n').filter(Boolean);
-		return hashList[hashList.length - 1]; // Last added
+		const hashes = parseHashListFromXmlRpcResponse(result.data);
+		if (hashes.length > 0) {
+			return hashes[hashes.length - 1]; // Assume last is most recent
+		}
 	}
 	return null;
 }
