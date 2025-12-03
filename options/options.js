@@ -771,6 +771,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             displayFormStatus('Invalid Server URL format.', 'error');
             return;
         }
+        if (clientType === 'rutorrent' && (!username || !password)) {
+            if (!confirm('ruTorrent typically requires a username and password. Proceed without credentials?')) {
+                return;
+            }
+        }
         
         const serverData = {
             name,

@@ -126,6 +126,9 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.21 (2025-12-04):**
+    *   **Feat (Options):** Added credential validation warning for ruTorrent on save. Warns if username/password empty (common cause of Unauthorized errors).
+
 *   **v0.4.20 (2025-12-03):**
     *   **Fix (rTorrent):** Fixed labels not being applied when adding torrents. Improved XML-RPC hash list parsing in `getLatestTorrentHash` to reliably identify the newly added torrent for post-add operations like `d.custom1.set` (label).
 

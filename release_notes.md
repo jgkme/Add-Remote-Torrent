@@ -1,3 +1,7 @@
+### v0.4.21 (2025-12-04)
+
+*   **Feat (Options):** Added credential validation warning for ruTorrent on save. Warns if username/password empty (common cause of Unauthorized errors).
+
 ### v0.4.20 (2025-12-03)
 
 *   **Fix (rTorrent):** Improved XML-RPC hash list parsing in `getLatestTorrentHash`, fixing the bug where labels were not applied after adding torrents. Labels from server defaults or Confirm Add dialog are now reliably set via `d.custom1.set`.
