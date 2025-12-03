@@ -253,12 +253,16 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 export async function testConnection(serverConfig) {
     try {
         const versionResult = await makeXmlRpcRequest(serverConfig, 'system.client_version', []);
-        const freeSpaceResult = await makeXmlRpcRequest(serverConfig, 'get_free_disk_space', ['']); // Empty string for default path
         
         if (versionResult.success) {
             let freeSpace = -1;
-            if (freeSpaceResult.success && freeSpaceResult.data) {
-                freeSpace = parseInt(freeSpaceResult.data, 10);
+            try {
+                const freeSpaceResult = await makeXmlRpcRequest(serverConfig, 'get_free_disk_space', ['']);
+                if (freeSpaceResult.success && freeSpaceResult.data) {
+                    freeSpace = parseInt(freeSpaceResult.data, 10);
+                }
+            } catch (fsError) {
+                debug.log('rTorrent free space not available, skipping:', fsError.message);
             }
             return { 
                 success: true, 

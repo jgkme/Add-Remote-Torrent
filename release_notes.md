@@ -1,3 +1,7 @@
+### v0.4.22 (2025-12-04)
+
+*   **Fix (rTorrent):** Suppressed 'get_free_disk_space' XML fault (-506) in testConnection; now optional with try-catch, logs warning, sets freeSpace=-1.
+
 ### v0.4.21 (2025-12-04)
 
 *   **Feat (Options):** Added credential validation warning for ruTorrent on save. Warns if username/password empty (common cause of Unauthorized errors).
