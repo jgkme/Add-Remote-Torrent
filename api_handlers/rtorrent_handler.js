@@ -148,6 +148,18 @@ function parseHashListFromXmlRpcResponse(xmlResponseText) {
   }
 }
 
+function parseNumberFromXmlRpcResponse(xmlResponseText) {
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlResponseText, "text/xml");
+    const numEl = xmlDoc.querySelector('methodResponse params param value i4') || xmlDoc.querySelector('methodResponse params param value int');
+    return numEl ? parseInt(numEl.textContent.trim(), 10) : null;
+  } catch(e) {
+    debug.error('Error parsing number from XML-RPC response:', e);
+    return null;
+  }
+}
+
 // Helper: Get torrent hash by name (since rTorrent returns no hash on add)
 async function getLatestTorrentHash(serverConfig) {
 	const result = await makeXmlRpcRequest(serverConfig, 'download_list', []);
@@ -253,33 +265,41 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 export async function testConnection(serverConfig) {
     try {
         const versionResult = await makeXmlRpcRequest(serverConfig, 'system.client_version', []);
-        
-        if (versionResult.success) {
-            let freeSpace = -1;
-            try {
-                const freeSpaceResult = await makeXmlRpcRequest(serverConfig, 'get_free_disk_space', ['']);
-                if (freeSpaceResult.success && freeSpaceResult.data) {
-                    freeSpace = parseInt(freeSpaceResult.data, 10);
+        if (!versionResult.success) {
+            return {
+                success: false,
+                error: versionResult.error || {
+                    userMessage: "Failed to connect or get rTorrent version.",
+                    errorCode: "TEST_CONN_FAILED"
                 }
-            } catch (fsError) {
-                debug.log('rTorrent free space not available, skipping:', fsError.message);
-            }
-            return { 
-                success: true, 
-                data: { 
-                    version: versionResult.data,
-                    freeSpace: freeSpace,
-                    message: "Successfully connected to rTorrent."
-                } 
             };
         }
-        
-        return {
-            success: false,
-            error: versionResult.error || {
-                userMessage: "Failed to connect or get rTorrent version.",
-                errorCode: "TEST_CONN_FAILED"
-            }
+
+        const listResult = await makeXmlRpcRequest(serverConfig, 'download_list', []);
+        let totalTorrents = 0;
+        if (listResult.success && listResult.data) {
+            const hashes = parseHashListFromXmlRpcResponse(listResult.data);
+            totalTorrents = hashes.length;
+        }
+
+        const downRateResult = await makeXmlRpcRequest(serverConfig, 'get_down_rate', []);
+        const downloadSpeed = downRateResult.success && downRateResult.data ? parseNumberFromXmlRpcResponse(downRateResult.data) || 0 : 0;
+
+        const upRateResult = await makeXmlRpcRequest(serverConfig, 'get_up_rate', []);
+        const uploadSpeed = upRateResult.success && upRateResult.data ? parseNumberFromXmlRpcResponse(upRateResult.data) || 0 : 0;
+
+        return { 
+            success: true, 
+            data: { 
+                version: versionResult.data,
+                freeSpace: -1,
+                torrentsInfo: {
+                    total: totalTorrents,
+                    downloadSpeed,
+                    uploadSpeed
+                },
+                message: "Successfully connected to rTorrent."
+            } 
         };
     } catch (error) {
         return {
@@ -292,6 +312,21 @@ export async function testConnection(serverConfig) {
         };
     }
 }
+
+export async function getTorrentsInfo(serverConfig, hashes) {
+    const results = [];
+    for (const hash of hashes) {
+        const result = await makeXmlRpcRequest(serverConfig, 'd.complete', [hash]);
+        let isCompleted = false;
+        if (result.success && result.data) {
+            const completeNum = parseNumberFromXmlRpcResponse(result.data);
+            isCompleted = completeNum === 1;
+        }
+        results.push({ hash, isCompleted });
+    }
+    return results;
+}
+
 
 export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
     const result = await makeXmlRpcRequest(serverConfig, 'd.multicall2', ['', 'main', 'd.hash=', 'd.name=', 'd.complete=']);

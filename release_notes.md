@@ -1,6 +1,14 @@
+### v0.4.23 (2025-12-04)
+
+*   **Fix (Critical, rTorrent):** Fully resolved XML-RPC fault -506 ("Method 'get_free_disk_space' not defined") during server status checks and "Test Connection". Removed faulty call entirely.
+*   **Feat (rTorrent):** Implemented complete `testConnection` stats compatibility: client version, torrent count (`download_list`), global download/upload speeds (`get_down_rate`/`get_up_rate`), `torrentsInfo` object for dashboard/popup display.
+*   **Feat (rTorrent):** Added `getTorrentsInfo(serverConfig, hashes)` using per-hash `d.complete` RPC calls, enabling targeted download completion notifications.
+*   **Refactor (rTorrent):** Added `parseNumberFromXmlRpcResponse` helper with robust DOMParser-based XML parsing for `<i4>`/`int` values.
+
 ### v0.4.22 (2025-12-04)
 
 *   **Fix (rTorrent):** Suppressed 'get_free_disk_space' XML fault (-506) in testConnection; now optional with try-catch, logs warning, sets freeSpace=-1.
+
 
 ### v0.4.21 (2025-12-04)
 

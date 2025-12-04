@@ -26,7 +26,21 @@
 -   **General Refactoring & Improvements:**
     -   **`LinkMonitor.js`:** The `MutationObserver` logic was improved to consistently detect `<a>`, `<input>`, and `<button>` elements, aligning it with the initial page scan logic.
     -   **`confirmAdd/confirmAdd.js`:** The data sent from the "Advanced Add" dialog to the background script was optimized to only send the necessary `serverId`, making the process more efficient and less prone to stale data issues.
-    -   **rTorrent Label Bug Fix:** Improved `getLatestTorrentHash` XML parsing to reliably extract the newly added torrent hash, enabling post-add label setting via `d.custom1.set`. Labels now work correctly for rTorrent from server defaults or Confirm Add dialog.
+    -   **rTorrent Label Bug Fix (v0.4.20):** Improved `getLatestTorrentHash` XML parsing to reliably extract the newly added torrent hash, enabling post-add label setting via `d.custom1.set`. Labels now work correctly for rTorrent from server defaults or Confirm Add dialog.
+    -   **rTorrent testConnection Hotfix (v0.4.23):** Fixed critical XML-RPC fault -506 ("Method 'get_free_disk_space' not defined") during server status checks. Implemented full `testConnection` with torrent count (`download_list`), speeds (`get_down_rate`/`get_up_rate`), `torrentsInfo` for dashboard/popup. Added `getTorrentsInfo(serverConfig, hashes)` using `d.complete` for targeted notifications. Added `parseNumberFromXmlRpcResponse` helper with robust XML parsing.
+
+## 3. Next Steps (High-Level Plan)
+
+1.  **Prepare v0.4.23 Release:**
+    -   Update release notes, increment versions, build/package artifacts.
+    -   Update .clinerules with rTorrent handler patterns.
+2.  **Documentation Finalization:**
+    -   Update `systemPatterns.md` to document API handler standards.
+    -   Update main `README.md` with release summary.
+3.  **Commit & Release:**
+    -   Git commit all changes.
+    -   Create GitHub release v0.4.23.
+
 
 
 ## 3. Next Steps (High-Level Plan)

@@ -58,7 +58,8 @@
 ## 3. Known Issues & Blockers
 -   **Low Priority:** The new `trackedTorrents` list does not currently handle cases where a torrent is deleted from the client before completing. This is a minor edge case and can be addressed later.
 -   **Placeholder Handler Functionality:** Many existing handlers (e.g., Buffalo, tTorrent) are still very basic and require significant work to become fully functional.
--   **rTorrent Handler XML Complexity:** The rTorrent handler could be made more robust.
+-------
+
 
 ## 4. Milestones (New Phased Approach)
 
