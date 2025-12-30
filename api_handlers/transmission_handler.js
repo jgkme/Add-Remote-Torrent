@@ -46,10 +46,15 @@ async function fetchWithAuth(url, options, serverConfig) {
 	const finalOptions = { ...options, headers };
 	const response = await fetch(url, finalOptions);
 	if (response.status === 409 && !options.retryAttempted) {
-		transmissionSessionId = response.headers.get('X-Transmission-Session-Id');
-		if (transmissionSessionId) {
-			headers['X-Transmission-Session-Id'] = transmissionSessionId;
-			return fetch(url, { ...options, headers, retryAttempted: true });
+		const newSessionId = response.headers.get('X-Transmission-Session-Id');
+		if (newSessionId) {
+			debug.log(`Transmission: Got 409, retrying with session ID: ${newSessionId.substring(0, 8)}...`);
+			transmissionSessionId = newSessionId;
+			headers['X-Transmission-Session-Id'] = newSessionId;
+			const retryOptions = { ...options, headers, retryAttempted: true };
+			const retryResponse = await fetch(url, retryOptions);
+			debug.log(`Transmission: Retry response status: ${retryResponse.status}`);
+			return retryResponse;
 		}
 	}
 	return response;
@@ -74,7 +79,19 @@ async function makeRpcCall(rpcUrl, method, callArguments, serverConfig) {
 			errorCode: errorCode
 		};
 	}
-	const result = await response.json();
+
+	let result;
+	try {
+		result = await response.json();
+	} catch (jsonError) {
+		debug.error(`Transmission: Failed to parse JSON response for method ${method}:`, jsonError);
+		throw {
+			userMessage: `Transmission server returned an invalid response for '${method}'.`,
+			technicalDetail: `JSON parse error: ${jsonError.message}`,
+			errorCode: "INVALID_JSON_RESPONSE"
+		};
+	}
+
 	if (result.result !== 'success') {
 		debug.error(`Transmission RPC error for method ${method}:`, result);
 		throw {
