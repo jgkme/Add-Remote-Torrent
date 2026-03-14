@@ -105,17 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
             actionHistoryList.innerHTML = '<li class="text-gray-500 dark:text-gray-400">No recent activity to display.</li>';
             return;
         }
-
-        history.forEach(action => {
+        const items = history.map((action) => {
             const isError = action.message.toLowerCase().includes('error') || action.message.toLowerCase().includes('failed');
-            const item = `
+            return `
                 <li class="border-b border-gray-200 dark:border-gray-700 pb-3">
                     <p class="text-sm ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}">${escapeHtml(action.message)}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${escapeHtml(new Date(action.timestamp).toLocaleString())}</p>
                 </li>
             `;
-            actionHistoryList.innerHTML += item;
         });
+        actionHistoryList.innerHTML = items.join('');
     }
 
     function loadDashboardData() {

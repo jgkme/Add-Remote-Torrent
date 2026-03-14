@@ -235,21 +235,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
         }).join('');
-        document.querySelectorAll('.torrent-action-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                if (btn.dataset.action === 'delete' && !confirm('Delete this torrent from the client?')) {
-                    return;
-                }
-                const payload = { actionType: btn.dataset.action, hash: decodeDataAttr(btn.dataset.hash) };
-                chrome.runtime.sendMessage({ action: 'torrentAction', payload }, (response) => {
-                    if (response?.success) {
-                        refreshTorrentList();
-                    } else {
-                        lastActionStatusSpan.textContent = `Error: ${response?.error || 'Action failed.'}`;
-                    }
-                });
-            });
-        });
     }
 
     function refreshTorrentList() {
@@ -332,11 +317,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="search-add-btn mt-1 px-2.5 py-1 text-xs bg-blue-600 text-white rounded" style="min-height:44px" data-link="${encodeDataAttr(item.link)}">Add</button>
                 </div>
             `).join('');
-            document.querySelectorAll('.search-add-btn').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    chrome.runtime.sendMessage({ action: 'addTorrentManually', url: decodeDataAttr(btn.dataset.link) });
-                });
-            });
         });
     }
 
@@ -425,6 +405,21 @@ Add any other context about the problem here. Please double-check that you have 
         refreshPopupServerStats();
         refreshTorrentList();
     });
+    torrentListContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('.torrent-action-btn');
+        if (!button) return;
+        if (button.dataset.action === 'delete' && !confirm('Delete this torrent from the client?')) {
+            return;
+        }
+        const payload = { actionType: button.dataset.action, hash: decodeDataAttr(button.dataset.hash) };
+        chrome.runtime.sendMessage({ action: 'torrentAction', payload }, (response) => {
+            if (response?.success) {
+                refreshTorrentList();
+            } else {
+                lastActionStatusSpan.textContent = `Error: ${response?.error || 'Action failed.'}`;
+            }
+        });
+    });
 
     addClipboardButton.addEventListener('click', () => {
         if (latestClipboardValue.startsWith('magnet:') || /^https?:\/\//i.test(latestClipboardValue)) {
@@ -453,6 +448,11 @@ Add any other context about the problem here. Please double-check that you have 
     });
 
     searchButton.addEventListener('click', triggerSearch);
+    searchResultsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('.search-add-btn');
+        if (!button) return;
+        chrome.runtime.sendMessage({ action: 'addTorrentManually', url: decodeDataAttr(button.dataset.link) });
+    });
     searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') triggerSearch();
     });
