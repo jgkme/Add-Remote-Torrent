@@ -1,3 +1,8 @@
+### v0.4.31 (2026-03-14)
+
+*   **Chore (Release):** Minor release: roadmap hardening completion, multi-client torrent control support, UI/UX/accessibility improvements, and robustness fixes..
+*   **Build:** Generated release artifacts for `v0.4.31`.
+
 ### v0.4.3 (2026-03-14)
 
 *   **Feature (Shortcuts):** Added extension keyboard commands for quick add from clipboard, toggle on-page link catching, and open popup action.
