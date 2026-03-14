@@ -25,6 +25,7 @@ github.pub
 
 # IDE specific files
 .vscode/
+.cursor/
 
 # Environment files
 .envrc

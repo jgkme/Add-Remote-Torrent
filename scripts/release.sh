@@ -148,7 +148,8 @@ EOF
 )"
 git tag -a "v${TARGET_VERSION}" -m "Release v${TARGET_VERSION}"
 
-git push origin master
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+git push origin "$CURRENT_BRANCH"
 git push origin "v${TARGET_VERSION}"
 
 gh release create "v${TARGET_VERSION}" "$CRX_FILE" "$ZIP_FILE" "$SHA_FILE" \

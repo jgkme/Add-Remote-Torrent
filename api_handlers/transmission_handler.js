@@ -321,3 +321,53 @@ export async function testConnection(serverConfig) {
 		};
 	}
 }
+
+export async function getActiveTorrents(serverConfig) {
+	const path = serverConfig.rpcPath || '/transmission/rpc';
+	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+	const getArgs = {
+		fields: ["id", "hashString", "name", "percentDone", "status", "eta", "rateDownload", "rateUpload"]
+	};
+	const result = await makeRpcCall(rpcUrl, 'torrent-get', getArgs, serverConfig);
+	const torrents = (result.torrents || [])
+		.slice(0, 20)
+		.map((torrent) => ({
+			hash: torrent.hashString || String(torrent.id),
+			name: torrent.name || "Unknown",
+			progress: Number(torrent.percentDone || 0),
+			state: String(torrent.status ?? "unknown"),
+			eta: Number(torrent.eta || 0),
+			dlspeed: Number(torrent.rateDownload || 0),
+			upspeed: Number(torrent.rateUpload || 0),
+		}));
+	return torrents;
+}
+
+export async function torrentAction(serverConfig, actionType, hash) {
+	if (!hash) {
+		return { success: false, error: "Missing torrent hash." };
+	}
+	const path = serverConfig.rpcPath || '/transmission/rpc';
+	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+	const actionMap = {
+		pause: 'torrent-stop',
+		resume: 'torrent-start',
+		delete: 'torrent-remove',
+	};
+	const method = actionMap[actionType];
+	if (!method) {
+		return { success: false, error: `Unsupported action: ${actionType}` };
+	}
+	try {
+		const args = actionType === 'delete'
+			? { ids: [hash], "delete-local-data": false }
+			: { ids: [hash] };
+		await makeRpcCall(rpcUrl, method, args, serverConfig);
+		return { success: true };
+	} catch (error) {
+		return {
+			success: false,
+			error: error?.userMessage || error?.technicalDetail || error?.message || "Transmission action failed.",
+		};
+	}
+}

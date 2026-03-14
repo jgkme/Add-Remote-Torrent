@@ -118,6 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
     const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
     const enableCompletionNotificationsToggle = document.getElementById('enableCompletionNotificationsToggle');
+    const forceTorrentDownloadToggle = document.getElementById('forceTorrentDownloadToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
     const showDownloadDirInContextMenuToggle = document.getElementById('showDownloadDirInContextMenuToggle');
     const badgeModeInput = document.getElementById('badgeModeInput');
@@ -125,9 +126,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const autoAddClipboardOnOpenToggle = document.getElementById('autoAddClipboardOnOpenToggle');
     const rssAutoAddEnabledToggle = document.getElementById('rssAutoAddEnabledToggle');
     const rssFeedsInput = document.getElementById('rssFeedsInput');
+    const rssFeedsList = document.getElementById('rssFeedsList');
+    const rssFeedUrlInput = document.getElementById('rssFeedUrlInput');
+    const rssFeedPatternInput = document.getElementById('rssFeedPatternInput');
+    const rssFeedServerSelect = document.getElementById('rssFeedServerSelect');
+    const addRssFeedButton = document.getElementById('addRssFeedButton');
     const searchProviderInput = document.getElementById('searchProviderInput');
     const searchApiUrlInput = document.getElementById('searchApiUrlInput');
     const searchApiKeyInput = document.getElementById('searchApiKeyInput');
+    const testSearchProviderButton = document.getElementById('testSearchProviderButton');
+    const testSearchProviderStatus = document.getElementById('testSearchProviderStatus');
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -208,6 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         enableSoundNotifications: false,
         enableTextNotifications: false,
         enableCompletionNotifications: true, // Default to true
+        forceTorrentDownload: false,
         enableServerSpecificContextMenu: false,
         showDownloadDirInContextMenu: false,
         badgeMode: 'links',
@@ -224,6 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let urlToServerMappings = [];
     let trackerUrlRules = [];
     let linkCatchingPatterns = [];
+    let editingRssFeedId = null;
 
     // --- Utility Functions ---
     function generateId(prefix = 'server') {
@@ -244,6 +254,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Invalid URL, return original
         }
         return { cleanUrl: urlString };
+    }
+
+    function escapeHtml(unsafe) {
+        if (unsafe === null || typeof unsafe === 'undefined') return '';
+        const div = document.createElement('div');
+        div.textContent = String(unsafe);
+        return div.innerHTML;
+    }
+
+    function encodeDataAttr(value) {
+        return encodeURIComponent(String(value ?? ''));
+    }
+
+    function decodeDataAttr(value) {
+        try {
+            return decodeURIComponent(String(value ?? ''));
+        } catch {
+            return String(value ?? '');
+        }
     }
 
     function displayFormStatus(message, type) {
@@ -721,17 +750,87 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.export-profile-button').forEach(button => {
             button.addEventListener('click', handleExportServerProfile);
         });
+        populateRssFeedServerSelect();
+    }
+
+    function populateRssFeedServerSelect() {
+        if (!rssFeedServerSelect) return;
+        const selected = rssFeedServerSelect.value;
+        rssFeedServerSelect.innerHTML = '<option value="">Use active server</option>';
+        servers.forEach((server) => {
+            const option = document.createElement('option');
+            option.value = server.id;
+            option.textContent = server.name;
+            rssFeedServerSelect.appendChild(option);
+        });
+        if (selected) rssFeedServerSelect.value = selected;
+    }
+
+    function renderRssFeedsList() {
+        if (!rssFeedsList) return;
+        const feeds = Array.isArray(globalSettings.rssFeeds) ? globalSettings.rssFeeds : [];
+        rssFeedsInput.value = JSON.stringify(feeds, null, 2);
+        rssFeedsList.innerHTML = '';
+        if (feeds.length === 0) {
+            rssFeedsList.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No RSS feeds configured.</p>';
+            return;
+        }
+        feeds.forEach((feed) => {
+            const serverName = feed.serverId ? (servers.find((s) => s.id === feed.serverId)?.name || 'Unknown server') : 'Active server';
+            const item = document.createElement('div');
+            item.className = 'rounded border border-gray-200 dark:border-gray-600 p-2 text-xs';
+            item.innerHTML = `
+                <p class="font-medium text-gray-800 dark:text-gray-200 break-all">${escapeHtml(feed.url)}</p>
+                <p class="text-gray-600 dark:text-gray-300">Pattern: ${escapeHtml(feed.pattern || '(none)')}</p>
+                <p class="text-gray-600 dark:text-gray-300">Target: ${escapeHtml(serverName)}</p>
+                <button type="button" class="rss-feed-edit mt-1 mr-1 px-2 py-1 bg-blue-600 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Edit</button>
+                <button type="button" class="rss-feed-delete mt-1 px-2 py-1 bg-red-600 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Delete</button>
+            `;
+            rssFeedsList.appendChild(item);
+        });
+        rssFeedsList.querySelectorAll('.rss-feed-edit').forEach((button) => {
+            button.addEventListener('click', () => {
+                const id = decodeDataAttr(button.dataset.id);
+                const feed = (globalSettings.rssFeeds || []).find((entry) => entry.id === id);
+                if (!feed) return;
+                editingRssFeedId = feed.id;
+                rssFeedUrlInput.value = feed.url || '';
+                rssFeedPatternInput.value = feed.pattern || '';
+                rssFeedServerSelect.value = feed.serverId || '';
+                addRssFeedButton.textContent = 'Save RSS Feed';
+            });
+        });
+        rssFeedsList.querySelectorAll('.rss-feed-delete').forEach((button) => {
+            button.addEventListener('click', () => {
+                const id = decodeDataAttr(button.dataset.id);
+                globalSettings.rssFeeds = (globalSettings.rssFeeds || []).filter((feed) => feed.id !== id);
+                chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
+                    renderRssFeedsList();
+                    if (editingRssFeedId === id) {
+                        editingRssFeedId = null;
+                        addRssFeedButton.textContent = 'Add RSS Feed';
+                        rssFeedUrlInput.value = '';
+                        rssFeedPatternInput.value = '';
+                        rssFeedServerSelect.value = '';
+                    }
+                    displayFormStatus('RSS feed removed.', 'success');
+                });
+            });
+        });
     }
 
     // --- Event Handlers ---
-    clientTypeHelpIcon.addEventListener('click', () => {
-        const clientHintDiv = document.getElementById('clientSpecificHint');
-        if (clientHintDiv.style.display === 'none') {
-            clientHintDiv.style.display = 'block';
-        } else {
-            clientHintDiv.style.display = 'none';
-        }
-    });
+    const clientHintDiv = document.getElementById('clientSpecificHint');
+    if (clientTypeHelpIcon && clientHintDiv) {
+        clientTypeHelpIcon.setAttribute('aria-expanded', 'false');
+        clientHintDiv.setAttribute('aria-hidden', 'true');
+        clientTypeHelpIcon.addEventListener('click', () => {
+            const isHidden = clientHintDiv.style.display === 'none';
+            clientHintDiv.style.display = isHidden ? 'block' : 'none';
+            clientTypeHelpIcon.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            clientHintDiv.setAttribute('aria-hidden', isHidden ? 'false' : 'true');
+        });
+    }
 
     useBasicAuthInput.addEventListener('change', () => {
         basicAuthGroup.style.display = useBasicAuthInput.checked ? 'block' : 'none';
@@ -1096,6 +1195,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.showDownloadDirInContextMenu = showDownloadDirInContextMenuToggle.checked;
         chrome.storage.local.set({ showDownloadDirInContextMenu: globalSettings.showDownloadDirInContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    forceTorrentDownloadToggle.addEventListener('change', () => {
+        globalSettings.forceTorrentDownload = forceTorrentDownloadToggle.checked;
+        chrome.storage.local.set({ forceTorrentDownload: globalSettings.forceTorrentDownload }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
     badgeModeInput.addEventListener('change', () => {
         globalSettings.badgeMode = badgeModeInput.value || 'links';
         chrome.storage.local.set({ badgeMode: globalSettings.badgeMode }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -1118,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!Array.isArray(feeds)) throw new Error('RSS feeds must be a JSON array.');
             globalSettings.rssFeeds = feeds;
             chrome.storage.local.set({ rssFeeds: feeds }, () => { displayFormStatus('Global settings updated.', 'success'); });
+            renderRssFeedsList();
         } catch (error) {
             displayFormStatus(`Invalid RSS feed JSON: ${error.message}`, 'error');
         }
@@ -1133,6 +1237,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchApiKeyInput.addEventListener('change', () => {
         globalSettings.searchApiKey = searchApiKeyInput.value;
         chrome.storage.local.set({ searchApiKey: globalSettings.searchApiKey }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    addRssFeedButton.addEventListener('click', () => {
+        const url = rssFeedUrlInput.value.trim();
+        const pattern = rssFeedPatternInput.value.trim();
+        const serverId = rssFeedServerSelect.value || '';
+        if (!url) {
+            displayFormStatus('RSS feed URL is required.', 'error');
+            return;
+        }
+        try {
+            new URL(url);
+        } catch (error) {
+            displayFormStatus('RSS feed URL is invalid.', 'error');
+            return;
+        }
+        const newFeed = {
+            id: editingRssFeedId || `feed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            url,
+            pattern,
+            serverId: serverId || undefined
+        };
+        const withoutExisting = (globalSettings.rssFeeds || []).filter((feed) => feed.id !== newFeed.id);
+        globalSettings.rssFeeds = [...withoutExisting, newFeed];
+        chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
+            rssFeedUrlInput.value = '';
+            rssFeedPatternInput.value = '';
+            rssFeedServerSelect.value = '';
+            editingRssFeedId = null;
+            addRssFeedButton.textContent = 'Add RSS Feed';
+            renderRssFeedsList();
+            displayFormStatus('RSS feed saved.', 'success');
+        });
+    });
+    testSearchProviderButton.addEventListener('click', () => {
+        const provider = searchProviderInput.value;
+        if (provider === 'none') {
+            testSearchProviderStatus.textContent = 'Provider disabled.';
+            return;
+        }
+        testSearchProviderStatus.textContent = 'Testing...';
+        chrome.runtime.sendMessage({ action: 'searchTorrents', query: 'ubuntu', limit: 3 }, (response) => {
+            if (chrome.runtime.lastError) {
+                testSearchProviderStatus.textContent = `Error: ${chrome.runtime.lastError.message}`;
+                return;
+            }
+            if (!response?.success) {
+                testSearchProviderStatus.textContent = `Failed: ${response?.error || 'No response'}`;
+                return;
+            }
+            testSearchProviderStatus.textContent = `OK: ${response.results?.length || 0} results`;
+        });
     });
 
     // --- Event Handlers for Backup/Restore ---
@@ -1175,6 +1330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         linkmatches: importedSettings.linkmatches || '', 
                         registerDelay: importedSettings.registerDelay || 0,
                         enableSoundNotifications: importedSettings.enableSoundNotifications || false,
+                        forceTorrentDownload: importedSettings.forceTorrentDownload || false,
                         enableServerSpecificContextMenu: importedSettings.enableServerSpecificContextMenu || false,
                         showDownloadDirInContextMenu: importedSettings.showDownloadDirInContextMenu || false,
                         badgeMode: importedSettings.badgeMode || 'links',
@@ -1243,7 +1399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
-            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
             'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
@@ -1262,7 +1418,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Load link catching patterns, with migration from old format
             const defaultPatterns = [
                 { id: 'default-1', pattern: '([\\\\\\]\\\\[]|\\b|\\.)\\.torrent\\b([^\\-]|$$)' },
-                { id: 'default-2', pattern: 'torrents\\.php\\?action=download' }
+                { id: 'default-2', pattern: 'torrents\\.php\\?action=download' },
+                { id: 'default-3', pattern: 'download_torrent\\?id=\\d+' }
             ];
 
             if (result.linkCatchingPatterns && Array.isArray(result.linkCatchingPatterns)) {
@@ -1296,6 +1453,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             enableTextNotificationsToggle.checked = globalSettings.enableTextNotifications;
             globalSettings.enableCompletionNotifications = result.enableCompletionNotifications !== false; // Default to true if undefined
             enableCompletionNotificationsToggle.checked = globalSettings.enableCompletionNotifications;
+            globalSettings.forceTorrentDownload = result.forceTorrentDownload || false;
+            forceTorrentDownloadToggle.checked = globalSettings.forceTorrentDownload;
             globalSettings.enableServerSpecificContextMenu = result.enableServerSpecificContextMenu || false; 
             enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
             globalSettings.showDownloadDirInContextMenu = result.showDownloadDirInContextMenu || false;
@@ -1309,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             globalSettings.rssAutoAddEnabled = result.rssAutoAddEnabled || false;
             rssAutoAddEnabledToggle.checked = globalSettings.rssAutoAddEnabled;
             globalSettings.rssFeeds = Array.isArray(result.rssFeeds) ? result.rssFeeds : [];
-            rssFeedsInput.value = JSON.stringify(globalSettings.rssFeeds, null, 2);
+            renderRssFeedsList();
             globalSettings.searchProvider = result.searchProvider || 'none';
             searchProviderInput.value = globalSettings.searchProvider;
             globalSettings.searchApiUrl = result.searchApiUrl || '';
@@ -1327,6 +1486,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             populateMapToServerSelect();
             renderTrackerUrlRulesList();
             renderLinkCatchingPatternsList();
+            populateRssFeedServerSelect();
+            renderRssFeedsList();
         });
     }
     

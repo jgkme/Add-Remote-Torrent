@@ -160,6 +160,18 @@ function parseNumberFromXmlRpcResponse(xmlResponseText) {
   }
 }
 
+function parseStringFromXmlRpcResponse(xmlResponseText) {
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlResponseText, "text/xml");
+    const stringEl = xmlDoc.querySelector('methodResponse params param value string');
+    return stringEl ? String(stringEl.textContent || "") : "";
+  } catch (e) {
+    debug.error('Error parsing string from XML-RPC response:', e);
+    return "";
+  }
+}
+
 // Helper: Get torrent hash by name (since rTorrent returns no hash on add)
 async function getLatestTorrentHash(serverConfig) {
 	const result = await makeXmlRpcRequest(serverConfig, 'download_list', []);
@@ -355,4 +367,53 @@ export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
         }
     }
     return [];
+}
+
+export async function getActiveTorrents(serverConfig) {
+    const listResult = await makeXmlRpcRequest(serverConfig, 'download_list', []);
+    if (!listResult.success || !listResult.data) {
+        return [];
+    }
+    const hashes = parseHashListFromXmlRpcResponse(listResult.data).slice(0, 20);
+    const torrents = [];
+    for (const hash of hashes) {
+        const [nameResult, completeResult] = await Promise.all([
+            makeXmlRpcRequest(serverConfig, 'd.name', [hash]),
+            makeXmlRpcRequest(serverConfig, 'd.complete', [hash]),
+        ]);
+        const isComplete = completeResult.success ? parseNumberFromXmlRpcResponse(completeResult.data) === 1 : false;
+        torrents.push({
+            hash,
+            name: nameResult.success ? parseStringFromXmlRpcResponse(nameResult.data) || hash : hash,
+            progress: isComplete ? 1 : 0,
+            state: isComplete ? "Seeding" : "Downloading",
+            eta: 0,
+            dlspeed: 0,
+            upspeed: 0,
+        });
+    }
+    return torrents;
+}
+
+export async function torrentAction(serverConfig, actionType, hash) {
+    if (!hash) {
+        return { success: false, error: "Missing torrent hash." };
+    }
+    const actionMap = {
+        pause: 'd.stop',
+        resume: 'd.start',
+        delete: 'd.erase',
+    };
+    const method = actionMap[actionType];
+    if (!method) {
+        return { success: false, error: `Unsupported action: ${actionType}` };
+    }
+    const result = await makeXmlRpcRequest(serverConfig, method, [hash]);
+    if (!result.success) {
+        return {
+            success: false,
+            error: result.error?.userMessage || result.error?.technicalDetail || "rTorrent action failed.",
+        };
+    }
+    return { success: true };
 }

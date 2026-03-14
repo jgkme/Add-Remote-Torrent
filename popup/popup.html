@@ -9,7 +9,8 @@
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      width: 350px; 
+      width: min(420px, calc(100vw - 1rem));
+      min-width: 320px;
       /* Add any other global popup styles here if needed */
     }
   </style>
@@ -28,7 +29,7 @@
       </select>
     </section>
 
-    <section id="activeServerDetails" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600" style="display:none;">
+    <section id="activeServerDetails" role="button" tabindex="0" aria-label="Open active server Web UI" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" style="display:none;">
       <h4 class="font-semibold mb-1 text-gray-700 dark:text-gray-200">Active Server Details (click to open WebUI):</h4>
       <p><strong>Client:</strong> <span id="activeServerClientType" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
       <p><strong>URL:</strong> <span id="activeServerUrl" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
@@ -40,7 +41,7 @@
     </section>
 
     <section class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
-      <p><strong>Last Action:</strong> <span id="lastActionStatus" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
+      <p><strong>Last Action:</strong> <span id="lastActionStatus" role="status" aria-live="polite" class="font-normal text-gray-700 dark:text-gray-200">N/A</span></p>
       <div class="flex space-x-2 mt-2">
         <button id="clearLastActionStatusButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md" title="Clear last action status">Clear Status</button>
         <button id="reportIssueButton" class="px-2 py-1 text-xs bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-200 rounded-md" title="Report an issue on GitHub">Report Issue</button>
@@ -64,7 +65,7 @@
     </section>
 
     <section id="clipboardSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
-      <p><strong>Clipboard:</strong> <span id="clipboardStatusText" class="font-normal text-gray-600 dark:text-gray-300">Not checked</span></p>
+      <p><strong>Clipboard:</strong> <span id="clipboardStatusText" role="status" aria-live="polite" class="font-normal text-gray-700 dark:text-gray-200">Not checked</span></p>
       <button id="addClipboardButton" class="mt-2 px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md">Add Clipboard Link</button>
     </section>
 
@@ -73,8 +74,8 @@
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Active Torrents</p>
         <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md">Refresh</button>
       </div>
-      <div id="torrentListContainer" class="space-y-2 max-h-40 overflow-y-auto">
-        <p class="text-gray-500 dark:text-gray-300">No data yet.</p>
+      <div id="torrentListContainer" aria-live="polite" class="space-y-2 max-h-40 overflow-y-auto">
+        <p class="text-gray-600 dark:text-gray-200">No data yet.</p>
       </div>
     </section>
 
@@ -84,7 +85,7 @@
         <input id="searchInput" type="text" placeholder="Search torrents..." class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
         <button id="searchButton" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm">Search</button>
       </div>
-      <div id="searchResultsContainer" class="space-y-2 max-h-40 overflow-y-auto mt-2"></div>
+      <div id="searchResultsContainer" aria-live="polite" class="space-y-2 max-h-40 overflow-y-auto mt-2"></div>
     </section>
 
     <div class="grid grid-cols-2 gap-2 mt-2">

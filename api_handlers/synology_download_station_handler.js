@@ -2,16 +2,29 @@ import { debug } from '../debug';
 
 // Synology Download Station API Handler
 
-// Session ID (SID) for Synology. This is cached in memory for the service worker's lifetime.
-let synologySid = null;
-let lastSynologyLoginTime = 0;
-// Cache SID for 30 minutes. Synology SIDs are typically valid for a while.
-const SYNOLOGY_SID_CACHE_DURATION = 30 * 60 * 1000; 
+// Session cache per server to avoid cross-server leakage.
+const synologySessionCache = new Map(); // key: server url -> { sid, synotoken, lastLoginTime }
+const SYNOLOGY_SESSION_CACHE_DURATION = 30 * 60 * 1000;
 
-async function getSynologySid(serverConfig) {
+function getServerCacheKey(serverConfig) {
+    return String(serverConfig.url || '').replace(/\/$/, '');
+}
+
+function getAuthHeaders(serverConfig) {
+    const headers = {};
+    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
+        headers['Authorization'] = `Basic ${authString}`;
+    }
+    return headers;
+}
+
+async function getSynologySession(serverConfig) {
+    const key = getServerCacheKey(serverConfig);
     const now = Date.now();
-    if (synologySid && (now - lastSynologyLoginTime < SYNOLOGY_SID_CACHE_DURATION)) {
-        return synologySid;
+    const existing = synologySessionCache.get(key);
+    if (existing && (now - existing.lastLoginTime < SYNOLOGY_SESSION_CACHE_DURATION)) {
+        return existing;
     }
 
     // API: SYNO.API.Auth
@@ -20,7 +33,7 @@ async function getSynologySid(serverConfig) {
     // Consider making version configurable or checking API.Info if issues arise.
     // User log indicates SYNO.API.Auth path is entry.cgi and maxVersion is 7.
     // Using version 6 for SYNO.API.Auth as it's often cited as stable.
-    const authUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/entry.cgi`; // Changed path
+    const authUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/entry.cgi`;
     const params = new URLSearchParams({
         api: 'SYNO.API.Auth',
         version: serverConfig.authApiVersion || '6', // Changed version
@@ -28,16 +41,11 @@ async function getSynologySid(serverConfig) {
         account: serverConfig.username,
         passwd: serverConfig.password, // This should be passwd
         session: 'DownloadStation', // Session name
-        format: 'sid'
+        format: 'sid',
+        enable_syno_token: 'yes',
     });
 
-    const authHeaders = {};
-
-    // Add basic auth header if enabled (for reverse proxy setups)
-    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
-        const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
-        authHeaders['Authorization'] = `Basic ${authString}`;
-    }
+    const authHeaders = getAuthHeaders(serverConfig);
 
     try {
         const response = await fetch(`${authUrl}?${params.toString()}`, {
@@ -50,16 +58,20 @@ async function getSynologySid(serverConfig) {
         }
         const data = await response.json();
         if (data.success && data.data && data.data.sid) {
-            synologySid = data.data.sid;
-            lastSynologyLoginTime = now;
-            return synologySid; // Success
+            const session = {
+                sid: data.data.sid,
+                synotoken: data.data.synotoken || null,
+                lastLoginTime: now,
+            };
+            synologySessionCache.set(key, session);
+            return session;
         } else {
             // This error will be caught by the catch block below
             throw new Error(data.error ? `Synology login API error: ${data.error.code}` : 'Synology login failed, SID not found in response.');
         }
     } catch (error) { // Catches fetch errors or errors thrown above
         debug.error('Error fetching Synology SID:', error);
-        synologySid = null;
+        synologySessionCache.delete(key);
         // This error is thrown and expected to be caught by the caller (makeSynologyApiRequest)
         // which will then return a structured error.
         throw new Error(`SIDFetchError: ${error.message}`); 
@@ -67,9 +79,9 @@ async function getSynologySid(serverConfig) {
 }
 
 async function makeSynologyApiRequest(serverConfig, apiName, version, methodName, params = {}, httpMethod = 'GET') {
-    let sid;
+    let session;
     try {
-        sid = await getSynologySid(serverConfig);
+        session = await getSynologySession(serverConfig);
     } catch (sidError) {
         return {
             success: false,
@@ -80,7 +92,7 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
             }
         };
     }
-    if (!sid) { // Should be caught by try/catch, but as a safeguard
+    if (!session?.sid) { // Should be caught by try/catch, but as a safeguard
         return {
             success: false,
             error: {
@@ -119,47 +131,35 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
     const baseUrl = serverConfig.url.replace(/\/$/, '');
     const apiUrl = `${baseUrl}/webapi/${cgiPath}`;
     
-    const queryParams = new URLSearchParams(params);
+    const requestParams = { ...params };
+    delete requestParams.retriedWithNewSid;
+    const queryParams = new URLSearchParams(requestParams);
     // For entry.cgi, api, version, method are part of query.
     // For specific cgi paths, they might be implicit or still needed.
     // The Synology PDF shows them in query even for specific CGIs.
     queryParams.set('api', apiName);
     queryParams.set('version', version);
     queryParams.set('method', methodName);
-    queryParams.set('_sid', sid);
+    queryParams.set('_sid', session.sid);
+    if (session.synotoken) {
+        queryParams.set('SynoToken', session.synotoken);
+    }
 
     let requestOptions = { method: httpMethod };
     let fullUrl = apiUrl;
+    const requestHeaders = getAuthHeaders(serverConfig);
 
     if (httpMethod === 'GET') {
         fullUrl = `${apiUrl}?${queryParams.toString()}`;
     } else { // POST
         requestOptions.body = queryParams; // Send as x-www-form-urlencoded
-        requestOptions.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
     }
+    requestOptions.headers = requestHeaders;
     
     try {
         const response = await fetch(fullUrl, requestOptions);
         if (!response.ok) {
-            // Check for session timeout (error code 119 in Synology means "SID not found" or expired)
-            if (response.status === 200) { // Synology sometimes returns 200 OK with success:false
-                const errorData = await response.json();
-                if (errorData && !errorData.success && errorData.error && errorData.error.code === 119 && !params.retriedWithNewSid) { // SID invalid or expired
-                    debug.log('Synology request failed due to invalid/expired SID (Code 119). Refetching SID and retrying.');
-                    synologySid = null; 
-                    params.retriedWithNewSid = true;
-                    return makeSynologyApiRequest(serverConfig, apiName, version, methodName, params, httpMethod); // Retry
-                }
-                return { 
-                    success: false, 
-                    error: {
-                        userMessage: "Synology API request failed (returned 200 OK but error in body).",
-                        technicalDetail: `API Error Code: ${errorData.error ? errorData.error.code : 'Unknown'}. Message: ${errorData.error ? errorData.error.errors?.[0]?.message || JSON.stringify(errorData.error) : 'Unknown API error after 200 OK'}`,
-                        errorCode: "API_ERROR_IN_200_OK"
-                    }
-                };
-            }
-            // For non-200 OK responses
             return { 
                 success: false, 
                 error: {
@@ -171,6 +171,12 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
         }
 
         const data = await response.json();
+        if (data && !data.success && data.error && data.error.code === 119 && !params.retriedWithNewSid) {
+            debug.log('Synology request failed due to invalid/expired SID/SynoToken (Code 119). Refetching session and retrying.');
+            synologySessionCache.delete(getServerCacheKey(serverConfig));
+            const retryParams = { ...params, retriedWithNewSid: true };
+            return makeSynologyApiRequest(serverConfig, apiName, version, methodName, retryParams, httpMethod);
+        }
         if (data.success) {
             return { success: true, data: data.data };
         } else {

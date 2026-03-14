@@ -56,6 +56,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         return div.innerHTML;
     }
 
+    function encodeDataAttr(value) {
+        return encodeURIComponent(String(value ?? ''));
+    }
+
+    function decodeDataAttr(value) {
+        try {
+            return decodeURIComponent(String(value ?? ''));
+        } catch {
+            return String(value ?? '');
+        }
+    }
+
     function displayActiveServerDetails(serverId) {
         const server = servers.find(s => s.id === serverId);
         if (server) {
@@ -216,16 +228,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <p class="text-[10px] text-gray-600 dark:text-gray-300">${progressPct}% | DL ${formatBytes(torrent.dlspeed)}/s | UL ${formatBytes(torrent.upspeed)}/s</p>
                     <div class="mt-1 space-x-1">
-                        <button data-action="pause" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded">Pause</button>
-                        <button data-action="resume" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-green-600 text-white rounded">Resume</button>
-                        <button data-action="delete" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-red-600 text-white rounded">Delete</button>
+                        <button data-action="pause" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-yellow-500 text-white rounded">Pause</button>
+                        <button data-action="resume" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-green-600 text-white rounded">Resume</button>
+                        <button data-action="delete" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-red-600 text-white rounded">Delete</button>
                     </div>
                 </div>
             `;
         }).join('');
         document.querySelectorAll('.torrent-action-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
-                const payload = { actionType: btn.dataset.action, hash: btn.dataset.hash };
+                if (btn.dataset.action === 'delete' && !confirm('Delete this torrent from the client?')) {
+                    return;
+                }
+                const payload = { actionType: btn.dataset.action, hash: decodeDataAttr(btn.dataset.hash) };
                 chrome.runtime.sendMessage({ action: 'torrentAction', payload }, (response) => {
                     if (response?.success) {
                         refreshTorrentList();
@@ -314,12 +329,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="border border-gray-200 dark:border-gray-600 rounded p-2">
                     <p class="font-medium truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
                     <p class="text-[10px] text-gray-600 dark:text-gray-300">Seeders: ${item.seeders ?? 'N/A'} | Size: ${item.size ? formatBytes(item.size) : 'N/A'}</p>
-                    <button class="search-add-btn mt-1 px-2 py-1 text-[10px] bg-blue-600 text-white rounded" data-link="${escapeHtml(item.link)}">Add</button>
+                    <button class="search-add-btn mt-1 px-2.5 py-1 text-xs bg-blue-600 text-white rounded" style="min-height:44px" data-link="${encodeDataAttr(item.link)}">Add</button>
                 </div>
             `).join('');
             document.querySelectorAll('.search-add-btn').forEach((btn) => {
                 btn.addEventListener('click', () => {
-                    chrome.runtime.sendMessage({ action: 'addTorrentManually', url: btn.dataset.link });
+                    chrome.runtime.sendMessage({ action: 'addTorrentManually', url: decodeDataAttr(btn.dataset.link) });
                 });
             });
         });
@@ -333,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get(['lastActionStatus', 'servers', 'activeServerId'], (result) => {
             const lastError = result.lastActionStatus;
             if (!lastError || !lastError.toLowerCase().startsWith('error:')) {
-                alert("No recent error to report. Please reproduce the error first, then click 'Report Issue'.");
+                lastActionStatusSpan.textContent = "No recent error found to report.";
                 return;
             }
 
@@ -389,6 +404,12 @@ Add any other context about the problem here. Please double-check that you have 
                 }
             }
             chrome.tabs.create({ url: webUiUrl });
+        }
+    });
+    activeServerDetailsDiv.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activeServerDetailsDiv.click();
         }
     });
 

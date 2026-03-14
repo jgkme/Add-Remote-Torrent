@@ -878,6 +878,12 @@ function parseLabelDirectoryMap(rawMapping) {
     }, {});
 }
 
+function looksLikeTorrentUrl(url) {
+  if (!url) return false;
+  const lower = String(url).toLowerCase();
+  return lower.includes(".torrent") || lower.includes("download_torrent") || lower.includes("action=download");
+}
+
 const OFFSCREEN_DOCUMENT_PATH = "offscreen_audio.html";
 
 async function hasOffscreenDocument() {
@@ -1269,6 +1275,11 @@ async function addTorrentToClient(
   let wasRuleApplied = false;
 
   if (!isMagnet && !directTorrentContentBase64) {
+    const { forceTorrentDownload = false } = await chrome.storage.local.get("forceTorrentDownload");
+    const shouldFetchTorrentContent = forceTorrentDownload || looksLikeTorrentUrl(torrentUrl);
+    if (!shouldFetchTorrentContent) {
+      debug.log("[ART Background] forceTorrentDownload disabled and URL not recognized as direct torrent; sending URL directly.");
+    } else {
     debug.log(
       `[ART Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`
     );
@@ -1327,6 +1338,7 @@ async function addTorrentToClient(
         ". Will send URL to client as is."
       );
       torrentOptions.torrentFileContentBase64 = null;
+    }
     }
   }
 
@@ -1646,9 +1658,10 @@ function parseRssItems(xmlText) {
   for (const itemText of itemMatches) {
     const titleMatch = itemText.match(/<title>([\s\S]*?)<\/title>/i);
     const linkMatch = itemText.match(/<link>([\s\S]*?)<\/link>/i);
+    const enclosureMatch = itemText.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
     const guidMatch = itemText.match(/<guid[^>]*>([\s\S]*?)<\/guid>/i);
     const title = titleMatch ? titleMatch[1].trim() : "";
-    const link = linkMatch ? linkMatch[1].trim() : "";
+    const link = enclosureMatch ? enclosureMatch[1].trim() : (linkMatch ? linkMatch[1].trim() : "");
     const guid = guidMatch ? guidMatch[1].trim() : link || title;
     if (link) {
       items.push({ title, link, guid });
@@ -1675,7 +1688,7 @@ async function processRssFeeds() {
     return;
   }
   const server = servers.find((s) => s.id === activeServerId);
-  if (!server) {
+  if (!server && !rssFeeds.some((feed) => feed?.serverId)) {
     return;
   }
   const seen = { ...rssSeenItems };
@@ -1687,14 +1700,19 @@ async function processRssFeeds() {
       const xmlText = await response.text();
       const items = parseRssItems(xmlText);
       const regex = feed.pattern ? new RegExp(feed.pattern, "i") : null;
+      const feedId = feed.id || feed.url;
       for (const item of items) {
-        const key = `${feed.id}:${item.guid}`;
+        const key = `${feedId}:${item.guid}`;
         if (seen[key]) continue;
         seen[key] = Date.now();
         if (regex && !regex.test(`${item.title} ${item.link}`)) {
           continue;
         }
-        await addTorrentToClient(item.link, server);
+        const feedServer = feed.serverId
+          ? servers.find((s) => s.id === feed.serverId)
+          : server;
+        if (!feedServer) continue;
+        await addTorrentToClient(item.link, feedServer);
       }
     } catch (error) {
       debug.warn("[ART Background] RSS processing error:", error);

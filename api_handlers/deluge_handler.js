@@ -270,3 +270,53 @@ export async function getTorrentsInfo(serverConfig, hashes) {
         isCompleted: details.state === 'Seeding' || details.progress === 100,
     }));
 }
+
+export async function getActiveTorrents(serverConfig) {
+    const fields = ['name', 'progress', 'state', 'eta', 'download_payload_rate', 'upload_payload_rate'];
+    const getTorrentsResult = await makeAuthenticatedRpcCall(serverConfig, 'core.get_torrents_status', [{}, fields]);
+    if (!getTorrentsResult.success || !getTorrentsResult.data) {
+        return [];
+    }
+    return Object.entries(getTorrentsResult.data)
+        .slice(0, 20)
+        .map(([hash, details]) => ({
+            hash: String(hash),
+            name: details.name || "Unknown",
+            progress: Number(details.progress || 0) / 100,
+            state: details.state || "Unknown",
+            eta: Number(details.eta || 0),
+            dlspeed: Number(details.download_payload_rate || 0),
+            upspeed: Number(details.upload_payload_rate || 0),
+        }));
+}
+
+export async function torrentAction(serverConfig, actionType, hash) {
+    if (!hash) {
+        return { success: false, error: "Missing torrent hash." };
+    }
+    const actionMap = {
+        pause: 'core.pause_torrent',
+        resume: 'core.resume_torrent',
+        delete: 'core.remove_torrent',
+    };
+    const method = actionMap[actionType];
+    if (!method) {
+        return { success: false, error: `Unsupported action: ${actionType}` };
+    }
+
+    let params;
+    if (actionType === 'delete') {
+        params = [[hash], false];
+    } else {
+        params = [[hash]];
+    }
+
+    const result = await makeAuthenticatedRpcCall(serverConfig, method, params);
+    if (!result.success) {
+        return {
+            success: false,
+            error: result.error?.userMessage || result.error?.technicalDetail || "Deluge action failed.",
+        };
+    }
+    return { success: true };
+}

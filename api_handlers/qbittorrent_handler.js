@@ -199,6 +199,18 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     return response.ok;
   }
 
+  async function _setForceStart(hash, value) {
+    const forceStartUrl = getApiUrl(url, 'torrents/setForceStart');
+    const formData = new FormData();
+    formData.append('hashes', hash);
+    formData.append('value', value ? 'true' : 'false');
+    const response = await qbitSession.fetch(forceStartUrl, { method: 'POST', body: formData }, serverConfig);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to set force start for ${hash}: ${response.status} ${errorText}`);
+    }
+  }
+
   try {
     const isMagnet = torrentUrl.startsWith('magnet:'); 
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
@@ -238,7 +250,10 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addTorrentFormData.append('autoTMM', 'true');
     }
     if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir);
-    if (forceStart) addTorrentFormData.append('forced', 'true');
+    if (forceStart) {
+        addTorrentFormData.append('forced', 'true');
+        addTorrentFormData.append('forceStart', 'true');
+    }
 
     if (torrentOptions.contentLayout && torrentOptions.contentLayout !== 'Original') {
         addTorrentFormData.append('contentLayout', torrentOptions.contentLayout);
@@ -306,6 +321,13 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                 } catch (resumeError) {
                     debug.warn(`qBittorrent: Failed to resume torrent ${newHash}, but torrent was added successfully. Error: ${resumeError.message}`);
                     // Don't throw here - just log the warning and continue
+                }
+            }
+            if (forceStart) {
+                try {
+                    await _setForceStart(newHash, true);
+                } catch (forceError) {
+                    debug.warn(`qBittorrent: Failed to set force start for ${newHash}: ${forceError.message}`);
                 }
             }
             // Return success with the identified hash

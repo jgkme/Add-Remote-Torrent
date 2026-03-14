@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionHistoryList = document.getElementById('actionHistoryList');
     const refreshAllButton = document.getElementById('refreshAllButton');
     const clearHistoryButton = document.getElementById('clearHistoryButton');
+    let clearHistoryConfirmUntil = 0;
+    let clearHistoryResetTimer = null;
 
     function escapeHtml(unsafe) {
         if (unsafe === null || typeof unsafe === 'undefined') return '';
@@ -68,8 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 </div>
                 <div class="mt-4">
-                    <button class="text-blue-500 hover:underline text-sm show-more-btn">Show More</button>
-                    <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                    <button class="text-blue-500 hover:underline text-sm show-more-btn" aria-expanded="false">Show More</button>
+                    <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded" aria-hidden="true">
                         <pre class="text-xs whitespace-pre-wrap break-all">${escapeHtml(JSON.stringify(server, null, 2))}</pre>
                     </div>
                 </div>
@@ -85,9 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isHidden) {
                     rawData.classList.remove('hidden');
                     e.target.textContent = 'Show Less';
+                    e.target.setAttribute('aria-expanded', 'true');
+                    rawData.setAttribute('aria-hidden', 'false');
                 } else {
                     rawData.classList.add('hidden');
                     e.target.textContent = 'Show More';
+                    e.target.setAttribute('aria-expanded', 'false');
+                    rawData.setAttribute('aria-hidden', 'true');
                 }
             });
         });
@@ -96,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderActionHistory(history) {
         actionHistoryList.innerHTML = '';
         if (!history || history.length === 0) {
-            actionHistoryList.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No recent activity to display.</p>';
+            actionHistoryList.innerHTML = '<li class="text-gray-500 dark:text-gray-400">No recent activity to display.</li>';
             return;
         }
 
@@ -148,10 +154,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     clearHistoryButton.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear all recent activity?')) {
-            chrome.storage.local.set({ actionHistory: [] }, () => {
-                renderActionHistory([]);
-            });
+        const now = Date.now();
+        if (now > clearHistoryConfirmUntil) {
+            clearHistoryConfirmUntil = now + 5000;
+            clearHistoryButton.textContent = 'Confirm Clear';
+            if (clearHistoryResetTimer) {
+                clearTimeout(clearHistoryResetTimer);
+            }
+            clearHistoryResetTimer = setTimeout(() => {
+                clearHistoryButton.textContent = 'Clear History';
+                clearHistoryConfirmUntil = 0;
+            }, 5000);
+            return;
         }
+        clearHistoryConfirmUntil = 0;
+        clearHistoryButton.textContent = 'Clear History';
+        if (clearHistoryResetTimer) {
+            clearTimeout(clearHistoryResetTimer);
+            clearHistoryResetTimer = null;
+        }
+        chrome.storage.local.set({ actionHistory: [] }, () => {
+            renderActionHistory([]);
+        });
     });
 });
