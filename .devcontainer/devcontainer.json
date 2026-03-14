@@ -42,9 +42,13 @@
   },
   "remoteUser": "node",
   "containerEnv": {
-    "SHELL": "/bin/bash"
+    "SHELL": "/bin/bash",
+    "BUN_INSTALL": "/home/node/.bun"
   },
-  "postCreateCommand": "bash -c 'curl -fsSL https://bun.sh/install | bash && export PATH=\"$HOME/.bun/bin:$PATH\" && bun install'",
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/node/.bun/bin"
+  },
+  "postCreateCommand": "bash -lc 'set -euo pipefail; curl -fsSL https://bun.sh/install | bash; export BUN_INSTALL=\"${BUN_INSTALL:-$HOME/.bun}\"; export PATH=\"$BUN_INSTALL/bin:$PATH\"; if ! command -v bun >/dev/null 2>&1; then echo \"Bun installation failed: bun not found in PATH\" >&2; exit 1; fi; bun --version; bun install'",
   "mounts": [
     "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.envrc,target=/home/node/.envrc,type=bind,consistency=cached",
