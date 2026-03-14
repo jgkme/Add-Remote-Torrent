@@ -153,6 +153,9 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.32 (2026-03-14):**
+  - **Chore (Release):** Minor release: optimize and polish pass with popup interaction performance improvements and dashboard rendering cleanup..
+  - **Build:** Generated release artifacts for `v0.4.32`.
 - **v0.4.31 (2026-03-14):**
   - **Chore (Release):** Minor release: roadmap hardening completion, multi-client torrent control support, UI/UX/accessibility improvements, and robustness fixes..
   - **Build:** Generated release artifacts for `v0.4.31`.
