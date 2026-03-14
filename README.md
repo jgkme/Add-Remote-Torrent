@@ -142,6 +142,15 @@ To get started:
 3. Build the project: `bun run build`
 4. Load the `dist` folder as an unpacked extension in Chrome
 
+### Release Command
+
+Use the release script for full automation (version bump, changelog updates, build, commit, tag, push, GitHub release):
+
+- `./scripts/release.sh patch -m "Release summary"`
+- `./scripts/release.sh minor -m "Release summary"`
+- `./scripts/release.sh major -m "Release summary"`
+- `./scripts/release.sh 1.2.3 -m "Release summary"` (explicit version)
+
 ## Changelog
 
 - **v0.4.3 (2026-03-14):**
