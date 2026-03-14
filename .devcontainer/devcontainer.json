@@ -2,8 +2,7 @@
   "name": "TorrentAdder Development",
   "image": "node:22",
   "features": {
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers-extra/features/pnpm": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "customizations": {
     "vscode": {
@@ -15,7 +14,8 @@
         "christian-kohler.path-intellisense",
         "ms-vscode.vscode-css-peek",
         "bradlc.vscode-tailwindcss",
-        "ms-vscode.vscode-eslint"
+        "ms-vscode.vscode-eslint",
+        "saoudrizwan.claude-dev"
       ],
       "settings": {
         "editor.formatOnSave": true,
@@ -23,13 +23,30 @@
         "tailwindCSS.includeLanguages": {
           "javascript": "javascript",
           "html": "HTML"
+        },
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "terminal.integrated.shellArgs.linux": ["-l"],
+        "terminal.integrated.persistentSessionReviveProcess": "never",
+        "terminal.integrated.enablePersistentSessions": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": ["-l"],
+            "overrideName": true
+          },
+          "zsh": null
         }
       }
     }
   },
   "remoteUser": "node",
-  "postCreateCommand": "pnpm install",
+  "containerEnv": {
+    "SHELL": "/bin/bash"
+  },
+  "postCreateCommand": "bash -c 'curl -fsSL https://bun.sh/install | bash && export PATH=\"$HOME/.bun/bin:$PATH\" && bun install'",
   "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.envrc,target=/home/node/.envrc,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/private.pem,target=/home/node/private.pem,type=bind,consistency=cached"
   ]
