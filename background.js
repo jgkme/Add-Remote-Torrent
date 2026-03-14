@@ -204,6 +204,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       bandwidthPriority,
       moveCompleted,
       moveCompletedPath,
+      forceStart,
     } = request.params;
     // Asynchronously find the server config from the ID
     (async () => {
@@ -223,7 +224,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           contentLayout,
           bandwidthPriority,
           moveCompleted,
-          moveCompletedPath
+          moveCompletedPath,
+          forceStart
         );
       } else {
         debug.error(
@@ -239,6 +241,109 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     })();
     return false;
+  } else if (request.action === "addTorrentWithContent" && request.payload) {
+    (async () => {
+      const { payload } = request;
+      const {
+        contentBase64,
+        fileName,
+        serverId,
+        tags,
+        category,
+        downloadDir,
+        addPaused,
+      } = payload;
+      const { servers = [] } = await chrome.storage.local.get("servers");
+      const server = servers.find((s) => s.id === serverId) || null;
+      await addTorrentToClient(
+        `local-file://${fileName || "file.torrent"}`,
+        server,
+        tags ?? null,
+        category ?? null,
+        typeof addPaused === "boolean" ? addPaused : null,
+        null,
+        downloadDir ?? null,
+        undefined,
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        null,
+        contentBase64 || null,
+        fileName || null
+      );
+      sendResponse({ status: "queued" });
+    })();
+    return true;
+  } else if (request.action === "addTorrentBatch" && Array.isArray(request.urls)) {
+    (async () => {
+      const urls = request.urls
+        .map((u) => String(u || "").trim())
+        .filter((u) => u.length > 0);
+      for (const url of urls) {
+        await addTorrentToClient(url);
+      }
+      sendResponse({ status: `Queued ${urls.length} torrent(s).` });
+    })();
+    return true;
+  } else if (request.action === "getPopupServerStats") {
+    (async () => {
+      const { servers = [], activeServerId } = await chrome.storage.local.get([
+        "servers",
+        "activeServerId",
+      ]);
+      const activeServer = servers.find((s) => s.id === activeServerId) || null;
+      sendResponse({ server: activeServer });
+    })();
+    return true;
+  } else if (request.action === "getPopupTorrents") {
+    (async () => {
+      const { servers = [], activeServerId } = await chrome.storage.local.get([
+        "servers",
+        "activeServerId",
+      ]);
+      const server = servers.find((s) => s.id === activeServerId);
+      if (!server) {
+        sendResponse({ torrents: [], error: "No active server configured." });
+        return;
+      }
+      const apiClient = getClientApi(server.clientType);
+      if (!apiClient || typeof apiClient.getActiveTorrents !== "function") {
+        sendResponse({ torrents: [], error: "Client does not support torrent listing." });
+        return;
+      }
+      try {
+        const torrents = await apiClient.getActiveTorrents(server);
+        sendResponse({ torrents });
+      } catch (error) {
+        sendResponse({ torrents: [], error: error.message });
+      }
+    })();
+    return true;
+  } else if (request.action === "torrentAction" && request.payload) {
+    (async () => {
+      const { actionType, hash } = request.payload;
+      const { servers = [], activeServerId } = await chrome.storage.local.get([
+        "servers",
+        "activeServerId",
+      ]);
+      const server = servers.find((s) => s.id === activeServerId);
+      const apiClient = getClientApi(server?.clientType);
+      if (!server || !apiClient || typeof apiClient.torrentAction !== "function") {
+        sendResponse({ success: false, error: "Torrent actions unsupported for active server." });
+        return;
+      }
+      const result = await apiClient.torrentAction(server, actionType, hash);
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "searchTorrents" && request.query) {
+    (async () => {
+      const result = await searchTorrents(request.query, request.limit || 20);
+      sendResponse(result);
+    })();
+    return true;
   } else if (request.action === "addTorrent" && request.url) {
     const { url, pageUrl } = request;
     (async () => {
@@ -327,6 +432,10 @@ chrome.runtime.onInstalled.addListener(async () => {
     delayInMinutes: 1, // Check 1 minute after startup
     periodInMinutes: 1, // Then check every 1 minute
   });
+  chrome.alarms.create("rssFeedCheck", {
+    delayInMinutes: 2,
+    periodInMinutes: 10,
+  });
 });
 
 async function onAlarm(alarm) {
@@ -360,6 +469,18 @@ async function onAlarm(alarm) {
       } else {
         try {
           const result = await apiClient.testConnection(server);
+          let activeTorrents = server.activeTorrents || [];
+          let activeTorrentsCount = server.activeTorrentsCount || 0;
+          if (typeof apiClient.getActiveTorrents === "function") {
+            try {
+              activeTorrents = await apiClient.getActiveTorrents(server);
+              activeTorrentsCount = activeTorrents.filter(
+                (torrent) => Number(torrent.progress || 0) < 1
+              ).length;
+            } catch (error) {
+              debug.warn("[ART Background] Failed to fetch active torrents:", error);
+            }
+          }
           updatedServer = {
             ...server,
             status: result.success ? "online" : "offline",
@@ -371,6 +492,8 @@ async function onAlarm(alarm) {
             torrents: result.data?.torrentsInfo?.total,
             uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
             downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
+            activeTorrents,
+            activeTorrentsCount,
           };
         } catch (e) {
           updatedServer = {
@@ -400,6 +523,7 @@ async function onAlarm(alarm) {
     );
 
     await chrome.storage.local.set({ servers: finalUpdatedServers });
+    await updateGlobalBadge();
     debug.log(
       "[ART Background] Server status check complete. Updated server statuses in storage."
     );
@@ -486,10 +610,29 @@ async function onAlarm(alarm) {
         completedHashes
       );
     }
+    await updateGlobalBadge();
+  } else if (alarm.name === "rssFeedCheck") {
+    await processRssFeeds();
   }
 }
 
 chrome.alarms.onAlarm.addListener(onAlarm);
+
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create("serverStatusCheck", {
+    delayInMinutes: 1,
+    periodInMinutes: 15,
+  });
+  chrome.alarms.create("torrentStatusCheck", {
+    delayInMinutes: 1,
+    periodInMinutes: 1,
+  });
+  chrome.alarms.create("rssFeedCheck", {
+    delayInMinutes: 2,
+    periodInMinutes: 10,
+  });
+  updateGlobalBadge();
+});
 
 // Listen for storage changes to update context menu when servers are modified
 chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -503,6 +646,15 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
       "[ART Background] Servers or context menu setting changed, updating context menu."
     );
     createContextMenus();
+  }
+  if (
+    namespace === "local" &&
+    (changes.servers ||
+      changes.badgeMode ||
+      changes.badgeShowServerHealth ||
+      changes.activeServerId)
+  ) {
+    updateGlobalBadge();
   }
 });
 
@@ -705,6 +857,25 @@ function arrayBufferToBase64(buffer) {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
+}
+
+function parseLabelDirectoryMap(rawMapping) {
+  if (!rawMapping || typeof rawMapping !== "string") {
+    return {};
+  }
+  return rawMapping
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && line.includes("="))
+    .reduce((acc, line) => {
+      const [label, ...rest] = line.split("=");
+      const key = (label || "").trim();
+      const value = rest.join("=").trim();
+      if (key && value) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
 }
 
 const OFFSCREEN_DOCUMENT_PATH = "offscreen_audio.html";
@@ -954,7 +1125,10 @@ async function addTorrentToClient(
   customContentLayout = null,
   customBandwidthPriority = null,
   customMoveCompleted = null,
-  customMoveCompletedPath = null
+  customMoveCompletedPath = null,
+  customForceStart = null,
+  directTorrentContentBase64 = null,
+  localFileName = null
 ) {
   let serverToUse = null;
   let serverDeterminedByRule = false;
@@ -1058,6 +1232,15 @@ async function addTorrentToClient(
         .filter((t) => t)
     );
 
+  const labelDirectoryMap = parseLabelDirectoryMap(serverToUse.labelDirectoryMap);
+  const mappedDir =
+    categoryToUse && labelDirectoryMap[categoryToUse]
+      ? labelDirectoryMap[categoryToUse]
+      : null;
+  if (!downloadDirToUse && mappedDir) {
+    downloadDirToUse = mappedDir;
+  }
+
   let torrentOptions = {
     downloadDir: downloadDirToUse,
     paused:
@@ -1073,14 +1256,19 @@ async function addTorrentToClient(
     bandwidthPriority: customBandwidthPriority,
     moveCompleted: customMoveCompleted,
     moveCompletedPath: customMoveCompletedPath,
-    torrentFileContentBase64: null,
+    forceStart:
+      customForceStart !== null
+        ? customForceStart
+        : serverToUse.forceStart || false,
+    torrentFileContentBase64: directTorrentContentBase64 || null,
+    localFileName: localFileName || null,
     originalTorrentUrl: torrentUrl,
   };
 
   const isMagnet = torrentUrl.startsWith("magnet:");
   let wasRuleApplied = false;
 
-  if (!isMagnet) {
+  if (!isMagnet && !directTorrentContentBase64) {
     debug.log(
       `[ART Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`
     );
@@ -1401,6 +1589,193 @@ async function addTorrentToClient(
     updateActionHistory(notificationErrorMessage);
   }
 }
+
+async function getClipboardText() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab?.id) return "";
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async () => {
+        try {
+          return await navigator.clipboard.readText();
+        } catch (e) {
+          return "";
+        }
+      },
+    });
+    return String(result || "").trim();
+  } catch (error) {
+    debug.warn("[ART Background] Clipboard read failed:", error);
+    return "";
+  }
+}
+
+async function updateGlobalBadge() {
+  const {
+    badgeMode = "links",
+    badgeShowServerHealth = true,
+    activeServerId,
+    servers = [],
+  } = await chrome.storage.local.get([
+    "badgeMode",
+    "badgeShowServerHealth",
+    "activeServerId",
+    "servers",
+  ]);
+  const activeServer = servers.find((s) => s.id === activeServerId);
+  let text = "";
+  if (badgeMode === "speed") {
+    const speed = Number(activeServer?.downloadSpeed || 0);
+    text = speed > 0 ? `${Math.round(speed / 1024)}K` : "";
+  } else if (badgeMode === "active_count") {
+    const count = Number(activeServer?.activeTorrentsCount || 0);
+    text = count > 0 ? String(count) : "";
+  }
+  await chrome.action.setBadgeText({ text });
+  let color = "#4CAF50";
+  if (badgeShowServerHealth && activeServer) {
+    color = activeServer.status === "online" ? "#16a34a" : "#dc2626";
+  }
+  await chrome.action.setBadgeBackgroundColor({ color });
+}
+
+function parseRssItems(xmlText) {
+  const items = [];
+  const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
+  for (const itemText of itemMatches) {
+    const titleMatch = itemText.match(/<title>([\s\S]*?)<\/title>/i);
+    const linkMatch = itemText.match(/<link>([\s\S]*?)<\/link>/i);
+    const guidMatch = itemText.match(/<guid[^>]*>([\s\S]*?)<\/guid>/i);
+    const title = titleMatch ? titleMatch[1].trim() : "";
+    const link = linkMatch ? linkMatch[1].trim() : "";
+    const guid = guidMatch ? guidMatch[1].trim() : link || title;
+    if (link) {
+      items.push({ title, link, guid });
+    }
+  }
+  return items;
+}
+
+async function processRssFeeds() {
+  const {
+    rssFeeds = [],
+    rssSeenItems = {},
+    rssAutoAddEnabled = false,
+    activeServerId,
+    servers = [],
+  } = await chrome.storage.local.get([
+    "rssFeeds",
+    "rssSeenItems",
+    "rssAutoAddEnabled",
+    "activeServerId",
+    "servers",
+  ]);
+  if (!rssAutoAddEnabled || !rssFeeds.length) {
+    return;
+  }
+  const server = servers.find((s) => s.id === activeServerId);
+  if (!server) {
+    return;
+  }
+  const seen = { ...rssSeenItems };
+  for (const feed of rssFeeds) {
+    if (!feed?.url) continue;
+    try {
+      const response = await fetch(feed.url, { credentials: "omit" });
+      if (!response.ok) continue;
+      const xmlText = await response.text();
+      const items = parseRssItems(xmlText);
+      const regex = feed.pattern ? new RegExp(feed.pattern, "i") : null;
+      for (const item of items) {
+        const key = `${feed.id}:${item.guid}`;
+        if (seen[key]) continue;
+        seen[key] = Date.now();
+        if (regex && !regex.test(`${item.title} ${item.link}`)) {
+          continue;
+        }
+        await addTorrentToClient(item.link, server);
+      }
+    } catch (error) {
+      debug.warn("[ART Background] RSS processing error:", error);
+    }
+  }
+  await chrome.storage.local.set({ rssSeenItems: seen });
+}
+
+async function searchTorrents(query, limit = 20) {
+  const {
+    searchProvider = "none",
+    searchApiUrl = "",
+    searchApiKey = "",
+  } = await chrome.storage.local.get([
+    "searchProvider",
+    "searchApiUrl",
+    "searchApiKey",
+  ]);
+  if (searchProvider === "none" || !searchApiUrl) {
+    return { success: false, error: "Search provider is not configured." };
+  }
+  try {
+    if (searchProvider === "jackett") {
+      const params = new URLSearchParams({
+        apikey: searchApiKey || "",
+        Query: query,
+        Category: "2000",
+      });
+      const endpoint = `${searchApiUrl.replace(/\/$/, "")}/api/v2.0/indexers/all/results?${params.toString()}`;
+      const response = await fetch(endpoint);
+      if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+      const data = await response.json();
+      const results = (data.Results || []).slice(0, limit).map((result) => ({
+        title: result.Title || "Unknown",
+        link: result.MagnetUri || result.Link || "",
+        seeders: result.Seeders ?? null,
+        size: result.Size ?? null,
+      })).filter((r) => r.link);
+      return { success: true, results };
+    }
+    if (searchProvider === "prowlarr") {
+      const params = new URLSearchParams({ query, type: "search", limit: String(limit) });
+      const endpoint = `${searchApiUrl.replace(/\/$/, "")}/api/v1/search?${params.toString()}`;
+      const response = await fetch(endpoint, {
+        headers: searchApiKey ? { "X-Api-Key": searchApiKey } : {},
+      });
+      if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+      const data = await response.json();
+      const results = (data || []).slice(0, limit).map((result) => ({
+        title: result.title || "Unknown",
+        link: result.magnetUrl || result.downloadUrl || "",
+        seeders: result.seeders ?? null,
+        size: result.size ?? null,
+      })).filter((r) => r.link);
+      return { success: true, results };
+    }
+    return { success: false, error: "Unsupported search provider." };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === "quick_add_clipboard") {
+    const clipboardText = await getClipboardText();
+    if (
+      clipboardText.startsWith("magnet:") ||
+      /^https?:\/\//i.test(clipboardText)
+    ) {
+      await addTorrentToClient(clipboardText);
+    } else {
+      await updateActionHistory("Clipboard does not contain a supported torrent link.");
+    }
+  } else if (command === "toggle_link_catching") {
+    const { catchfrompage = false } = await chrome.storage.local.get("catchfrompage");
+    await chrome.storage.local.set({ catchfrompage: !catchfrompage });
+    await updateActionHistory(
+      `Link catching ${!catchfrompage ? "enabled" : "disabled"} via keyboard shortcut.`
+    );
+  }
+});
 
 chrome.action.onClicked.addListener((tab) => {
   chrome.windows.create({

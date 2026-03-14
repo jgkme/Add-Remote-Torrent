@@ -144,6 +144,21 @@ To get started:
 
 ## Changelog
 
+- **v0.4.3 (2026-03-14):**
+  - **Feature (Shortcuts):** Added extension keyboard commands for quick add from clipboard, toggle on-page link catching, and open popup action.
+  - **Feature (Popup UX):** Added live active-server DL/UL speed display, active torrents list, and quick refresh.
+  - **Feature (Popup Actions):** Added per-torrent pause/resume/delete controls (for clients with action support, currently implemented for qBittorrent).
+  - **Feature (Progress):** Added transfer progress bars in popup and dashboard.
+  - **Feature (Badge):** Added configurable badge modes (`links`, `speed`, `active_count`, `off`) and server-health color indicator.
+  - **Feature (Add Flows):** Added batch add from multiline input and local `.torrent` upload via drag-and-drop/file picker.
+  - **Feature (Clipboard):** Added clipboard inspection and optional auto-add on popup open.
+  - **Feature (qBittorrent):** Added `Force Start` toggle in Confirm Add and server defaults.
+  - **Feature (Rules):** Added label-to-directory mapping (`label=/path`) with confirm-dialog auto-fill and background fallback.
+  - **Feature (Search):** Added Jackett/Prowlarr search integration in popup with one-click add from results.
+  - **Feature (RSS):** Added RSS feed polling with regex filtering and auto-add support.
+  - **Feature (Profiles):** Added per-server profile export/import in options.
+  - **Compatibility:** Added Firefox build notes and Gecko manifest settings for easier cross-browser packaging.
+  - **Build:** Regenerated extension artifacts for this release.
 - **v0.4.26 (2026-03-14):**
   - **Chore (Release):** Bumped extension versions to `0.4.26` across `manifest.json` and `package.json` and generated fresh release artifacts.
   - **DevEx:** Added project Cursor skills for MV3 workflow, client handler consistency, issue triage, and release/version workflows.

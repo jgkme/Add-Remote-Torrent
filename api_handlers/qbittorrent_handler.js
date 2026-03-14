@@ -140,6 +140,8 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     totalFileCount,
     torrentFileContentBase64, 
     originalTorrentUrl,
+    localFileName,
+    forceStart,
     downloadDir: torrentOptionsDownloadDir // Use alias to avoid conflict
   } = torrentOptions;
 
@@ -210,7 +212,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         debug.log("qBittorrent: Adding torrent using file content.");
         try {
             const blob = base64ToBlob(torrentFileContentBase64);
-            let fileName = 'file.torrent';
+            let fileName = localFileName || 'file.torrent';
             if (originalTorrentUrl) {
                 try {
                     const urlPath = new URL(originalTorrentUrl).pathname;
@@ -236,6 +238,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         addTorrentFormData.append('autoTMM', 'true');
     }
     if (finalDownloadDir) addTorrentFormData.append('savepath', finalDownloadDir);
+    if (forceStart) addTorrentFormData.append('forced', 'true');
 
     if (torrentOptions.contentLayout && torrentOptions.contentLayout !== 'Original') {
         addTorrentFormData.append('contentLayout', torrentOptions.contentLayout);
@@ -357,6 +360,54 @@ export async function getTorrentsInfo(serverConfig, hashes) {
     progress: torrent.progress, // progress is 0-1 float
     isCompleted: torrent.progress >= 1 || torrent.state === 'uploading' || torrent.state === 'pausedUP' || torrent.state === 'checkingUP' || torrent.state === 'forcedUP'
   }));
+}
+
+export async function getActiveTorrents(serverConfig) {
+  const torrentsInfoUrl = getApiUrl(serverConfig.url, "torrents/info");
+  const response = await qbitSession.fetch(torrentsInfoUrl, {}, serverConfig);
+  if (!response.ok) {
+    throw new Error(`Failed to list torrents: ${response.status} ${response.statusText}`);
+  }
+  const torrents = await response.json();
+  return torrents.slice(0, 20).map((torrent) => ({
+    hash: torrent.hash,
+    name: torrent.name,
+    progress: Number(torrent.progress || 0),
+    state: torrent.state || "unknown",
+    eta: Number(torrent.eta || 0),
+    dlspeed: Number(torrent.dlspeed || 0),
+    upspeed: Number(torrent.upspeed || 0),
+  }));
+}
+
+export async function torrentAction(serverConfig, actionType, hash) {
+  if (!hash) {
+    return { success: false, error: "Missing torrent hash." };
+  }
+  const actionMap = {
+    pause: "torrents/pause",
+    resume: "torrents/resume",
+    delete: "torrents/delete",
+  };
+  const apiPath = actionMap[actionType];
+  if (!apiPath) {
+    return { success: false, error: `Unsupported action: ${actionType}` };
+  }
+  const apiUrl = getApiUrl(serverConfig.url, apiPath);
+  const formData = new FormData();
+  formData.append("hashes", hash);
+  if (actionType === "delete") {
+    formData.append("deleteFiles", "false");
+  }
+  const response = await qbitSession.fetch(
+    apiUrl,
+    { method: "POST", body: formData },
+    serverConfig
+  );
+  if (!response.ok) {
+    return { success: false, error: `Action failed: ${response.status} ${response.statusText}` };
+  }
+  return { success: true };
 }
 
 function base64ToBlob(base64, type = 'application/x-bittorrent') {

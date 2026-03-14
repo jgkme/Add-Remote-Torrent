@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalTorrents = (typeof server.torrents === 'number') ? server.torrents : 'N/A';
             const dlSpeed = (typeof server.downloadSpeed === 'number') ? `${formatBytes(server.downloadSpeed)}/s` : 'N/A';
             const ulSpeed = (typeof server.uploadSpeed === 'number') ? `${formatBytes(server.uploadSpeed)}/s` : 'N/A';
+            const activeTorrents = Array.isArray(server.activeTorrents) ? server.activeTorrents.slice(0, 5) : [];
 
             cardElement.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -48,6 +49,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${escapeHtml(totalTorrents)}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>DL Speed:</strong> ${escapeHtml(dlSpeed)}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>UL Speed:</strong> ${escapeHtml(ulSpeed)}</p>
+                <div class="mt-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Active Progress:</strong></p>
+                    ${
+                        activeTorrents.length > 0
+                            ? activeTorrents.map((torrent) => {
+                                const progressPct = Math.round((torrent.progress || 0) * 100);
+                                return `
+                                  <div class="mt-1">
+                                    <p class="text-xs text-gray-500 dark:text-gray-300 truncate" title="${escapeHtml(torrent.name)}">${escapeHtml(torrent.name)}</p>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded h-1.5">
+                                      <div class="bg-blue-500 h-1.5 rounded" style="width:${progressPct}%"></div>
+                                    </div>
+                                  </div>
+                                `;
+                            }).join('')
+                            : '<p class="text-xs text-gray-500 dark:text-gray-400">No active transfer details.</p>'
+                    }
+                </div>
                 <div class="mt-4">
                     <button class="text-blue-500 hover:underline text-sm show-more-btn">Show More</button>
                     <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">

@@ -35,6 +35,8 @@
       <p><strong>Tags:</strong> <span id="activeServerTags" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
       <p><strong>Category:</strong> <span id="activeServerCategory" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
       <p><strong>Paused:</strong> <span id="activeServerPaused" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
+      <p><strong>DL Speed:</strong> <span id="activeServerDlSpeed" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
+      <p><strong>UL Speed:</strong> <span id="activeServerUlSpeed" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
     </section>
 
     <section class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
@@ -46,11 +48,43 @@
     </section>
     
     <section id="manualAddSection" class="mb-4">
-        <label for="manualUrlInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Add (URL):</label>
+        <label for="manualUrlInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Add (URL or multiple lines):</label>
         <div class="flex space-x-2">
-            <input type="text" id="manualUrlInput" placeholder="Magnet or .torrent URL" class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+            <textarea id="manualUrlInput" rows="2" placeholder="Magnet or .torrent URL (one per line)" class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"></textarea>
             <button id="manualAddButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm">Add</button>
         </div>
+    </section>
+
+    <section id="dropZoneSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Drag & Drop .torrent File</label>
+      <div id="torrentDropZone" class="border-2 border-dashed border-gray-300 dark:border-gray-500 rounded-md p-3 text-center text-gray-500 dark:text-gray-300">
+        Drop .torrent file here
+      </div>
+      <input id="torrentFileInput" type="file" accept=".torrent,application/x-bittorrent" class="mt-2 w-full text-xs">
+    </section>
+
+    <section id="clipboardSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
+      <p><strong>Clipboard:</strong> <span id="clipboardStatusText" class="font-normal text-gray-600 dark:text-gray-300">Not checked</span></p>
+      <button id="addClipboardButton" class="mt-2 px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md">Add Clipboard Link</button>
+    </section>
+
+    <section id="torrentListSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Active Torrents</p>
+        <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md">Refresh</button>
+      </div>
+      <div id="torrentListContainer" class="space-y-2 max-h-40 overflow-y-auto">
+        <p class="text-gray-500 dark:text-gray-300">No data yet.</p>
+      </div>
+    </section>
+
+    <section id="searchSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
+      <label for="searchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search (Jackett/Prowlarr)</label>
+      <div class="flex space-x-2">
+        <input id="searchInput" type="text" placeholder="Search torrents..." class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+        <button id="searchButton" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm">Search</button>
+      </div>
+      <div id="searchResultsContainer" class="space-y-2 max-h-40 overflow-y-auto mt-2"></div>
     </section>
 
     <div class="grid grid-cols-2 gap-2 mt-2">

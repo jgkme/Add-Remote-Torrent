@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cancelButton = document.getElementById('cancelButton');
     const qbittorrentOptions = document.getElementById('qbittorrentOptions');
     const contentLayoutInput = document.getElementById('contentLayoutInput');
+    const forceStartInput = document.getElementById('forceStartInput');
     const transmissionOptions = document.getElementById('transmissionOptions');
     const bandwidthPriorityInput = document.getElementById('bandwidthPriorityInput');
     const delugeOptions = document.getElementById('delugeOptions');
@@ -36,6 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     let torrentUrl = '';
     let activeServerId = '';
     let activeServer = null;
+    let labelDirectoryMap = {};
+
+    function parseLabelDirectoryMap(rawMapping) {
+        if (!rawMapping || typeof rawMapping !== 'string') return {};
+        return rawMapping
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line && line.includes('='))
+            .reduce((acc, line) => {
+                const [label, ...rest] = line.split('=');
+                const key = (label || '').trim();
+                const value = rest.join('=').trim();
+                if (key && value) acc[key] = value;
+                return acc;
+            }, {});
+    }
 
     debug.log("[ART ConfirmAdd] window.location.search:", window.location.search);
     const urlParams = new URLSearchParams(window.location.search);
@@ -69,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeServer = servers.find(s => s.id === activeServerId);
 
         if (activeServer) {
+            labelDirectoryMap = parseLabelDirectoryMap(activeServer.labelDirectoryMap);
             serverNameDisplay.textContent = activeServer.name;
             
             // Handle tags input - use defaultTags from the server config
@@ -117,6 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (activeServer.clientType === 'qbittorrent') {
                 qbittorrentOptions.style.display = 'block';
+                forceStartInput.checked = !!activeServer.forceStart;
             } else if (activeServer.clientType === 'transmission') {
                 transmissionOptions.style.display = 'block';
                 // Set default value from server config if it exists
@@ -140,6 +159,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorPara.textContent = `Error: Could not find server with ID ${activeServerId}. Please close this window.`;
       document.body.innerHTML = '';
       document.body.appendChild(errorPara);
+        }
+    });
+
+    categoryInput.addEventListener('change', () => {
+        const selectedCategory = categoryInput.value;
+        if (selectedCategory && labelDirectoryMap[selectedCategory]) {
+            directoryInput.value = labelDirectoryMap[selectedCategory];
         }
     });
 
@@ -296,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             bandwidthPriority: bandwidthPriorityInput.value,
             moveCompleted: moveCompletedInput.checked,
             moveCompletedPath: moveCompletedPathInput.value,
+            forceStart: forceStartInput.checked,
         };
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {

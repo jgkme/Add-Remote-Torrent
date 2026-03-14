@@ -1,3 +1,20 @@
+### v0.4.3 (2026-03-14)
+
+*   **Feature (Shortcuts):** Added extension keyboard commands for quick add from clipboard, toggle on-page link catching, and open popup action.
+*   **Feature (Popup UX):** Added live active-server DL/UL speed display, active torrents list, and quick refresh.
+*   **Feature (Popup Actions):** Added per-torrent pause/resume/delete controls (currently implemented for qBittorrent action endpoints).
+*   **Feature (Progress):** Added transfer progress bars in popup and dashboard.
+*   **Feature (Badge):** Added configurable badge modes (`links`, `speed`, `active_count`, `off`) and active-server health color indicator.
+*   **Feature (Add Flows):** Added batch add from multiline input and local `.torrent` upload via drag-and-drop/file picker.
+*   **Feature (Clipboard):** Added clipboard inspection with optional auto-add on popup open.
+*   **Feature (qBittorrent):** Added `Force Start` support in confirm dialog and per-server defaults.
+*   **Feature (Rules):** Added label-to-directory mapping (`label=/path`) with confirm-dialog auto-fill and background fallback mapping.
+*   **Feature (Search):** Added Jackett/Prowlarr search integration in popup with one-click add.
+*   **Feature (RSS):** Added RSS feed polling with regex filtering and auto-add support.
+*   **Feature (Profiles):** Added per-server profile export/import actions in options.
+*   **Compatibility:** Added Firefox build notes and Gecko manifest settings for cross-browser packaging.
+*   **Build:** Regenerated release artifacts for version `0.4.3`.
+
 ### v0.4.26 (2026-03-14)
 
 *   **Chore (Release):** Bumped extension versions to `0.4.26` in `manifest.json` and `package.json`, and regenerated signed release artifacts.

@@ -94,6 +94,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categoriesInput = document.getElementById('categories');
     const downloadDirectoriesInput = document.getElementById('downloadDirectories');
     const addPausedInput = document.getElementById('addPaused');
+    const forceStartInput = document.getElementById('forceStart');
+    const labelDirectoryMapInput = document.getElementById('labelDirectoryMap');
     const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); 
     const saveServerButton = document.getElementById('saveServerButton');
     const testConnectionButton = document.getElementById('testConnectionButton');
@@ -104,6 +106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const serverListSection = document.getElementById('serverListSection');
     const serverListUl = document.getElementById('serverList');
     const showAddServerFormButton = document.getElementById('showAddServerFormButton');
+    const importServerProfileFile = document.getElementById('importServerProfileFile');
+    const importServerProfileButton = document.getElementById('importServerProfileButton');
 
     // Global settings elements
     const advancedAddDialogInput = document.getElementById('advancedAddDialogInput');
@@ -116,6 +120,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const enableCompletionNotificationsToggle = document.getElementById('enableCompletionNotificationsToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
     const showDownloadDirInContextMenuToggle = document.getElementById('showDownloadDirInContextMenuToggle');
+    const badgeModeInput = document.getElementById('badgeModeInput');
+    const badgeShowServerHealthToggle = document.getElementById('badgeShowServerHealthToggle');
+    const autoAddClipboardOnOpenToggle = document.getElementById('autoAddClipboardOnOpenToggle');
+    const rssAutoAddEnabledToggle = document.getElementById('rssAutoAddEnabledToggle');
+    const rssFeedsInput = document.getElementById('rssFeedsInput');
+    const searchProviderInput = document.getElementById('searchProviderInput');
+    const searchApiUrlInput = document.getElementById('searchApiUrlInput');
+    const searchApiKeyInput = document.getElementById('searchApiKeyInput');
 
     // URL Mapping elements
     const urlMappingSection = document.getElementById('urlMappingSection'); 
@@ -198,6 +210,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         enableCompletionNotifications: true, // Default to true
         enableServerSpecificContextMenu: false,
         showDownloadDirInContextMenu: false,
+        badgeMode: 'links',
+        badgeShowServerHealth: true,
+        autoAddClipboardOnOpen: false,
+        rssAutoAddEnabled: false,
+        rssFeeds: [],
+        searchProvider: 'none',
+        searchApiUrl: '',
+        searchApiKey: '',
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
@@ -503,6 +523,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             categoriesInput.value = server.categories || '';
             downloadDirectoriesInput.value = server.downloadDirectories || '';
             addPausedInput.checked = server.addPaused || false;
+            forceStartInput.checked = server.forceStart || false;
+            labelDirectoryMapInput.value = server.labelDirectoryMap || '';
             askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false;
         } else {
             serverIdInput.value = '';
@@ -552,6 +574,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             categoriesInput.value = '';
             downloadDirectoriesInput.value = '';
             addPausedInput.checked = false;
+            forceStartInput.checked = false;
+            labelDirectoryMapInput.value = '';
             askForLabelDirOnPageInput.checked = false;
         }
         // Update basic auth visibility
@@ -582,6 +606,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         categoriesInput.value = '';
         downloadDirectoriesInput.value = '';
         addPausedInput.checked = false;
+        forceStartInput.checked = false;
+        labelDirectoryMapInput.value = '';
         askForLabelDirOnPageInput.checked = false; 
         formStatusMessageDiv.textContent = '';
         formStatusMessageDiv.className = 'status-message';
@@ -674,6 +700,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             openWebUiButton.textContent = 'WebUI';
             actionsDiv.appendChild(openWebUiButton);
 
+            const exportProfileButton = document.createElement('button');
+            exportProfileButton.className = 'export-profile-button px-3 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:bg-purple-500 dark:hover:bg-purple-600';
+            exportProfileButton.dataset.id = server.id;
+            exportProfileButton.textContent = 'Export';
+            actionsDiv.appendChild(exportProfileButton);
+
             li.appendChild(actionsDiv);
             serverListUl.appendChild(li);
         });
@@ -685,6 +717,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         document.querySelectorAll('.open-webui-button').forEach(button => {
             button.addEventListener('click', handleOpenWebUi);
+        });
+        document.querySelectorAll('.export-profile-button').forEach(button => {
+            button.addEventListener('click', handleExportServerProfile);
         });
     }
 
@@ -704,6 +739,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     showAddServerFormButton.addEventListener('click', () => {
         showServerForm(false);
+    });
+    importServerProfileButton.addEventListener('click', () => {
+        importServerProfileFile.click();
+    });
+    importServerProfileFile.addEventListener('change', () => {
+        const file = importServerProfileFile.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const parsed = JSON.parse(event.target.result);
+                const importedServer = parsed.server || parsed;
+                if (!importedServer || !importedServer.name || !importedServer.url) {
+                    throw new Error('Invalid server profile file.');
+                }
+                importedServer.id = generateId();
+                servers.push(importedServer);
+                if (!activeServerId) activeServerId = importedServer.id;
+                chrome.storage.local.set({ servers, activeServerId }, () => {
+                    displayFormStatus(`Imported server profile "${importedServer.name}".`, 'success');
+                    loadSettings();
+                });
+            } catch (error) {
+                displayFormStatus(`Import failed: ${error.message}`, 'error');
+            } finally {
+                importServerProfileFile.value = '';
+            }
+        };
+        reader.readAsText(file);
     });
     cancelEditButton.addEventListener('click', () => {
         hideServerForm();
@@ -761,6 +825,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const categories = document.getElementById('categories').value.trim();
         const downloadDirectories = downloadDirectoriesInput.value.trim();
         const addPaused = addPausedInput.checked;
+        const forceStart = forceStartInput.checked;
+        const labelDirectoryMap = labelDirectoryMapInput.value.trim();
         const askForLabelDirOnPage = askForLabelDirOnPageInput.checked; 
         
         if (!name || !url) {
@@ -791,6 +857,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             categories,
             downloadDirectories,
             addPaused,
+            forceStart,
+            labelDirectoryMap,
             askForLabelDirOnPage,
             ruTorrentrelativepath,
             utorrentrelativepath,
@@ -902,6 +970,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     }
+
+    function handleExportServerProfile(event) {
+        const serverIdToExport = event.target.dataset.id;
+        const server = servers.find((s) => s.id === serverIdToExport);
+        if (!server) return;
+        const payload = {
+            exportedAt: new Date().toISOString(),
+            server,
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${server.name.replace(/[^a-z0-9-_]+/gi, '_')}_profile.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        displayFormStatus(`Exported profile for "${server.name}".`, 'success');
+    }
     testConnectionButton.addEventListener('click', () => {
         const serverConfig = {
             id: serverIdInput.value,
@@ -1008,6 +1096,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.showDownloadDirInContextMenu = showDownloadDirInContextMenuToggle.checked;
         chrome.storage.local.set({ showDownloadDirInContextMenu: globalSettings.showDownloadDirInContextMenu }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    badgeModeInput.addEventListener('change', () => {
+        globalSettings.badgeMode = badgeModeInput.value || 'links';
+        chrome.storage.local.set({ badgeMode: globalSettings.badgeMode }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    badgeShowServerHealthToggle.addEventListener('change', () => {
+        globalSettings.badgeShowServerHealth = badgeShowServerHealthToggle.checked;
+        chrome.storage.local.set({ badgeShowServerHealth: globalSettings.badgeShowServerHealth }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    autoAddClipboardOnOpenToggle.addEventListener('change', () => {
+        globalSettings.autoAddClipboardOnOpen = autoAddClipboardOnOpenToggle.checked;
+        chrome.storage.local.set({ autoAddClipboardOnOpen: globalSettings.autoAddClipboardOnOpen }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    rssAutoAddEnabledToggle.addEventListener('change', () => {
+        globalSettings.rssAutoAddEnabled = rssAutoAddEnabledToggle.checked;
+        chrome.storage.local.set({ rssAutoAddEnabled: globalSettings.rssAutoAddEnabled }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    rssFeedsInput.addEventListener('change', () => {
+        try {
+            const feeds = JSON.parse(rssFeedsInput.value || '[]');
+            if (!Array.isArray(feeds)) throw new Error('RSS feeds must be a JSON array.');
+            globalSettings.rssFeeds = feeds;
+            chrome.storage.local.set({ rssFeeds: feeds }, () => { displayFormStatus('Global settings updated.', 'success'); });
+        } catch (error) {
+            displayFormStatus(`Invalid RSS feed JSON: ${error.message}`, 'error');
+        }
+    });
+    searchProviderInput.addEventListener('change', () => {
+        globalSettings.searchProvider = searchProviderInput.value || 'none';
+        chrome.storage.local.set({ searchProvider: globalSettings.searchProvider }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    searchApiUrlInput.addEventListener('change', () => {
+        globalSettings.searchApiUrl = searchApiUrlInput.value.trim();
+        chrome.storage.local.set({ searchApiUrl: globalSettings.searchApiUrl }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
+    searchApiKeyInput.addEventListener('change', () => {
+        globalSettings.searchApiKey = searchApiKeyInput.value;
+        chrome.storage.local.set({ searchApiKey: globalSettings.searchApiKey }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
 
     // --- Event Handlers for Backup/Restore ---
     exportSettingsButton.addEventListener('click', () => {
@@ -1035,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const importedSettings = JSON.parse(event.target.result);
                 if (!importedSettings || typeof importedSettings.servers === 'undefined') throw new Error('Invalid settings file structure.');
                 if (confirm('This will overwrite your current settings. Are you sure you want to import?')) {
-                    const newServers = (importedSettings.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', askForLabelDirOnPage: s.askForLabelDirOnPage || false }));
+                    const newServers = (importedSettings.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', askForLabelDirOnPage: s.askForLabelDirOnPage || false, forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
                     let newActiveServerId = importedSettings.activeServerId || null;
                     if (newActiveServerId && !newServers.find(s => s.id === newActiveServerId)) newActiveServerId = newServers.length > 0 ? newServers[0].id : null;
                     if (!newActiveServerId && newServers.length > 0) newActiveServerId = newServers[0].id;
@@ -1051,6 +1177,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableSoundNotifications: importedSettings.enableSoundNotifications || false,
                         enableServerSpecificContextMenu: importedSettings.enableServerSpecificContextMenu || false,
                         showDownloadDirInContextMenu: importedSettings.showDownloadDirInContextMenu || false,
+                        badgeMode: importedSettings.badgeMode || 'links',
+                        badgeShowServerHealth: importedSettings.badgeShowServerHealth !== false,
+                        autoAddClipboardOnOpen: importedSettings.autoAddClipboardOnOpen || false,
+                        rssAutoAddEnabled: importedSettings.rssAutoAddEnabled || false,
+                        rssFeeds: Array.isArray(importedSettings.rssFeeds) ? importedSettings.rssFeeds : [],
+                        searchProvider: importedSettings.searchProvider || 'none',
+                        searchApiUrl: importedSettings.searchApiUrl || '',
+                        searchApiKey: importedSettings.searchApiKey || '',
                         trackerUrlRules: importedSettings.trackerUrlRules || [],
                         linkCatchingPatterns: importedSettings.linkCatchingPatterns || [],
                         contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
@@ -1109,9 +1243,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
-            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled'
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
+            'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
-            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '' }));
+            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
             globalSettings.advancedAddDialog = (result.advancedAddDialog || result.showAdvancedAddDialog && 'manual' || 'never'); // Migrate showAdvancedAddDialog -> advancedAddDialog
             advancedAddDialogInput.value = globalSettings.advancedAddDialog;
@@ -1165,6 +1300,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             enableServerSpecificContextMenuToggle.checked = globalSettings.enableServerSpecificContextMenu;
             globalSettings.showDownloadDirInContextMenu = result.showDownloadDirInContextMenu || false;
             showDownloadDirInContextMenuToggle.checked = globalSettings.showDownloadDirInContextMenu;
+            globalSettings.badgeMode = result.badgeMode || 'links';
+            badgeModeInput.value = globalSettings.badgeMode;
+            globalSettings.badgeShowServerHealth = result.badgeShowServerHealth !== false;
+            badgeShowServerHealthToggle.checked = globalSettings.badgeShowServerHealth;
+            globalSettings.autoAddClipboardOnOpen = result.autoAddClipboardOnOpen || false;
+            autoAddClipboardOnOpenToggle.checked = globalSettings.autoAddClipboardOnOpen;
+            globalSettings.rssAutoAddEnabled = result.rssAutoAddEnabled || false;
+            rssAutoAddEnabledToggle.checked = globalSettings.rssAutoAddEnabled;
+            globalSettings.rssFeeds = Array.isArray(result.rssFeeds) ? result.rssFeeds : [];
+            rssFeedsInput.value = JSON.stringify(globalSettings.rssFeeds, null, 2);
+            globalSettings.searchProvider = result.searchProvider || 'none';
+            searchProviderInput.value = globalSettings.searchProvider;
+            globalSettings.searchApiUrl = result.searchApiUrl || '';
+            searchApiUrlInput.value = globalSettings.searchApiUrl;
+            globalSettings.searchApiKey = result.searchApiKey || '';
+            searchApiKeyInput.value = globalSettings.searchApiKey;
             trackerUrlRules = result.trackerUrlRules || [];
             if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
             if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;

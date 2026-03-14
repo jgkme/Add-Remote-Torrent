@@ -37,6 +37,10 @@
       <button id="showAddServerFormButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
         Add New Server
       </button>
+      <input type="file" id="importServerProfileFile" accept=".json" class="hidden">
+      <button id="importServerProfileButton" class="ml-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:bg-purple-500 dark:hover:bg-purple-600">
+        Import Server Profile
+      </button>
     </section>
 
     <!-- Server Form Section (Initially Hidden) -->
@@ -314,6 +318,14 @@
         <input type="checkbox" id="addPaused" name="addPaused" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
         <label for="addPaused" class="text-sm font-medium text-gray-700 dark:text-gray-300">Add torrents in paused state by default</label>
       </div>
+      <div class="form-group mt-4 flex items-center space-x-2">
+        <input type="checkbox" id="forceStart" name="forceStart" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+        <label for="forceStart" class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Start by default (qBittorrent)</label>
+      </div>
+      <div class="form-group mt-4">
+        <label for="labelDirectoryMap" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Label-to-Directory Mapping (one per line: label=/path)</label>
+        <textarea id="labelDirectoryMap" rows="3" placeholder="movies=/downloads/movies" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+      </div>
 
       <div class="form-group mt-4 flex items-center space-x-2">
         <input type="checkbox" id="askForLabelDirOnPage" name="askForLabelDirOnPage" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
@@ -456,6 +468,48 @@
                 <input type="checkbox" id="forceTorrentDownloadToggle" name="forceTorrentDownloadToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
                 <label for="forceTorrentDownloadToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Always download .torrent files before sending to client</label>
             </div>
+            <div class="form-group">
+                <label for="badgeModeInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Badge Mode</label>
+                <select id="badgeModeInput" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+                    <option value="links">Link catch count</option>
+                    <option value="speed">Download speed</option>
+                    <option value="active_count">Active torrent count</option>
+                    <option value="off">Off</option>
+                </select>
+            </div>
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="badgeShowServerHealthToggle" name="badgeShowServerHealthToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="badgeShowServerHealthToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Badge color indicates active server health</label>
+            </div>
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="autoAddClipboardOnOpenToggle" name="autoAddClipboardOnOpenToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="autoAddClipboardOnOpenToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Auto-add supported clipboard link when popup opens</label>
+            </div>
+            <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="rssAutoAddEnabledToggle" name="rssAutoAddEnabledToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+                <label for="rssAutoAddEnabledToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable RSS auto-add polling</label>
+            </div>
+            <div class="form-group">
+                <label for="rssFeedsInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RSS Feeds JSON</label>
+                <textarea id="rssFeedsInput" rows="4" placeholder='[{"id":"feed-1","url":"https://example/rss","pattern":"linux"}]' class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="searchProviderInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Provider</label>
+                <select id="searchProviderInput" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+                    <option value="none">Disabled</option>
+                    <option value="jackett">Jackett</option>
+                    <option value="prowlarr">Prowlarr</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="searchApiUrlInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search API URL</label>
+                <input id="searchApiUrlInput" type="text" placeholder="http://localhost:9117" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="form-group">
+                <label for="searchApiKeyInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search API Key</label>
+                <input id="searchApiKeyInput" type="password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Firefox support: this build now includes `browser_specific_settings.gecko.id` in the manifest for easier cross-browser packaging.</p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Enable this if your torrent client is on a different machine and cannot access torrent URLs directly.</p>
             <div id="linkCatchingPatternsSection" class="mb-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
                 <h2 class="text-2xl font-semibold mb-4 border-b dark:border-gray-700 pb-2">Custom Link Catching Patterns</h2>

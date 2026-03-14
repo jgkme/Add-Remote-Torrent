@@ -19,23 +19,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Active server details display elements
     const activeServerDetailsDiv = document.getElementById('activeServerDetails');
-    const activeServerClientTypeSpan = document.getElementById('activeServerClientType'); // New
+    const activeServerClientTypeSpan = document.getElementById('activeServerClientType');
     const activeServerUrlSpan = document.getElementById('activeServerUrl');
     const activeServerTagsSpan = document.getElementById('activeServerTags');
     const activeServerCategorySpan = document.getElementById('activeServerCategory');
     const activeServerPausedSpan = document.getElementById('activeServerPaused');
+    const activeServerDlSpeedSpan = document.getElementById('activeServerDlSpeed');
+    const activeServerUlSpeedSpan = document.getElementById('activeServerUlSpeed');
+    const refreshTorrentsButton = document.getElementById('refreshTorrentsButton');
+    const torrentListContainer = document.getElementById('torrentListContainer');
+    const torrentDropZone = document.getElementById('torrentDropZone');
+    const torrentFileInput = document.getElementById('torrentFileInput');
+    const clipboardStatusText = document.getElementById('clipboardStatusText');
+    const addClipboardButton = document.getElementById('addClipboardButton');
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    const searchResultsContainer = document.getElementById('searchResultsContainer');
 
     let servers = [];
     let currentActiveServerId = null;
+    let latestClipboardValue = '';
+
+    function formatBytes(bytes, decimals = 1) {
+        const value = Number(bytes || 0);
+        if (!value) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(value) / Math.log(k));
+        return `${parseFloat((value / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+    }
+
+    function escapeHtml(unsafe) {
+        if (unsafe === null || typeof unsafe === 'undefined') return '';
+        const div = document.createElement('div');
+        div.textContent = String(unsafe);
+        return div.innerHTML;
+    }
 
     function displayActiveServerDetails(serverId) {
         const server = servers.find(s => s.id === serverId);
         if (server) {
-            activeServerClientTypeSpan.textContent = server.clientType || 'qbittorrent'; // Display client type
-            activeServerUrlSpan.textContent = server.url; // Use generic 'url'
+            activeServerClientTypeSpan.textContent = server.clientType || 'qbittorrent';
+            activeServerUrlSpan.textContent = server.url;
             activeServerTagsSpan.textContent = server.tags || 'Not set';
             activeServerCategorySpan.textContent = server.category || 'Not set';
             activeServerPausedSpan.textContent = server.addPaused ? 'Yes' : 'No';
+            activeServerDlSpeedSpan.textContent = `${formatBytes(server.downloadSpeed)}/s`;
+            activeServerUlSpeedSpan.textContent = `${formatBytes(server.uploadSpeed)}/s`;
             activeServerDetailsDiv.style.display = 'block';
         } else {
             activeServerClientTypeSpan.textContent = 'N/A';
@@ -43,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeServerTagsSpan.textContent = 'N/A';
             activeServerCategorySpan.textContent = 'N/A';
             activeServerPausedSpan.textContent = 'N/A';
+            activeServerDlSpeedSpan.textContent = 'N/A';
+            activeServerUlSpeedSpan.textContent = 'N/A';
             activeServerDetailsDiv.style.display = 'none';
         }
     }
@@ -75,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function loadPopupData() {
         chrome.storage.local.get(['servers', 'activeServerId', 'lastActionStatus'], (result) => {
-            servers = (result.servers || []).map(s => ({ // Ensure clientType and correct url field
+            servers = (result.servers || []).map(s => ({
                 ...s,
                 clientType: s.clientType || 'qbittorrent',
                 url: s.url || s.qbUrl 
@@ -99,6 +131,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 lastActionStatusSpan.textContent = 'N/A';
             }
+            refreshPopupServerStats();
+            refreshTorrentList();
         });
     }
 
@@ -135,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if(needsUIRefresh) {
-                populateServerSelect(); // This will also update server details display
+                populateServerSelect();
             }
         }
     });
@@ -154,8 +188,146 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
     });
 
+    async function refreshPopupServerStats() {
+        chrome.runtime.sendMessage({ action: 'getPopupServerStats' }, (response) => {
+            if (chrome.runtime.lastError || !response?.server) return;
+            const server = response.server;
+            servers = servers.map(s => (s.id === server.id ? server : s));
+            displayActiveServerDetails(currentActiveServerId);
+        });
+    }
+
+    function renderTorrentList(torrents, errorMessage = '') {
+        if (errorMessage) {
+            torrentListContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(errorMessage)}</p>`;
+            return;
+        }
+        if (!Array.isArray(torrents) || torrents.length === 0) {
+            torrentListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No active torrents available.</p>';
+            return;
+        }
+        torrentListContainer.innerHTML = torrents.map((torrent) => {
+            const progressPct = Math.max(0, Math.min(100, Math.round((torrent.progress || 0) * 100)));
+            return `
+                <div class="rounded border border-gray-200 dark:border-gray-600 p-2">
+                    <p class="font-medium text-gray-800 dark:text-gray-100 truncate" title="${escapeHtml(torrent.name)}">${escapeHtml(torrent.name)}</p>
+                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded h-1.5 mt-1 mb-1">
+                        <div class="bg-blue-500 h-1.5 rounded" style="width: ${progressPct}%"></div>
+                    </div>
+                    <p class="text-[10px] text-gray-600 dark:text-gray-300">${progressPct}% | DL ${formatBytes(torrent.dlspeed)}/s | UL ${formatBytes(torrent.upspeed)}/s</p>
+                    <div class="mt-1 space-x-1">
+                        <button data-action="pause" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded">Pause</button>
+                        <button data-action="resume" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-green-600 text-white rounded">Resume</button>
+                        <button data-action="delete" data-hash="${escapeHtml(torrent.hash)}" class="torrent-action-btn px-2 py-0.5 text-[10px] bg-red-600 text-white rounded">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        document.querySelectorAll('.torrent-action-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const payload = { actionType: btn.dataset.action, hash: btn.dataset.hash };
+                chrome.runtime.sendMessage({ action: 'torrentAction', payload }, (response) => {
+                    if (response?.success) {
+                        refreshTorrentList();
+                    } else {
+                        lastActionStatusSpan.textContent = `Error: ${response?.error || 'Action failed.'}`;
+                    }
+                });
+            });
+        });
+    }
+
+    function refreshTorrentList() {
+        chrome.runtime.sendMessage({ action: 'getPopupTorrents' }, (response) => {
+            if (chrome.runtime.lastError) {
+                renderTorrentList([], chrome.runtime.lastError.message);
+                return;
+            }
+            renderTorrentList(response?.torrents || [], response?.error || '');
+        });
+    }
+
+    async function readClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            latestClipboardValue = String(text || '').trim();
+            if (latestClipboardValue.startsWith('magnet:') || /^https?:\/\//i.test(latestClipboardValue)) {
+                clipboardStatusText.textContent = `${latestClipboardValue.substring(0, 60)}${latestClipboardValue.length > 60 ? '...' : ''}`;
+                chrome.storage.local.get(['autoAddClipboardOnOpen'], ({ autoAddClipboardOnOpen }) => {
+                    if (autoAddClipboardOnOpen) {
+                        chrome.runtime.sendMessage({ action: 'addTorrentManually', url: latestClipboardValue });
+                    }
+                });
+            } else {
+                clipboardStatusText.textContent = 'Clipboard has no supported torrent URL.';
+            }
+        } catch (error) {
+            clipboardStatusText.textContent = 'Clipboard permission denied.';
+        }
+    }
+
+    async function addLocalTorrentFile(file) {
+        if (!file) return;
+        const activeServer = servers.find((s) => s.id === currentActiveServerId);
+        if (!activeServer) {
+            lastActionStatusSpan.textContent = 'Error: No active server selected.';
+            return;
+        }
+        const dataUrl = await fileToDataUrl(file);
+        const contentBase64 = dataUrl.split(',')[1] || '';
+        chrome.runtime.sendMessage({
+            action: 'addTorrentWithContent',
+            payload: {
+                serverId: activeServer.id,
+                fileName: file.name,
+                contentBase64
+            }
+        }, () => {
+            manualUrlInput.value = '';
+        });
+    }
+
+    function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function triggerSearch() {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">Searching...</p>';
+        chrome.runtime.sendMessage({ action: 'searchTorrents', query }, (response) => {
+            if (!response?.success) {
+                searchResultsContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(response?.error || 'Search failed')}</p>`;
+                return;
+            }
+            const items = response.results || [];
+            if (!items.length) {
+                searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No search results.</p>';
+                return;
+            }
+            searchResultsContainer.innerHTML = items.map((item) => `
+                <div class="border border-gray-200 dark:border-gray-600 rounded p-2">
+                    <p class="font-medium truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
+                    <p class="text-[10px] text-gray-600 dark:text-gray-300">Seeders: ${item.seeders ?? 'N/A'} | Size: ${item.size ? formatBytes(item.size) : 'N/A'}</p>
+                    <button class="search-add-btn mt-1 px-2 py-1 text-[10px] bg-blue-600 text-white rounded" data-link="${escapeHtml(item.link)}">Add</button>
+                </div>
+            `).join('');
+            document.querySelectorAll('.search-add-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    chrome.runtime.sendMessage({ action: 'addTorrentManually', url: btn.dataset.link });
+                });
+            });
+        });
+    }
+
     // Initial load
     loadPopupData();
+    readClipboard();
 
     reportIssueButton.addEventListener('click', () => {
         chrome.storage.local.get(['lastActionStatus', 'servers', 'activeServerId'], (result) => {
@@ -228,36 +400,71 @@ Add any other context about the problem here. Please double-check that you have 
         });
     });
 
+    refreshTorrentsButton.addEventListener('click', () => {
+        refreshPopupServerStats();
+        refreshTorrentList();
+    });
+
+    addClipboardButton.addEventListener('click', () => {
+        if (latestClipboardValue.startsWith('magnet:') || /^https?:\/\//i.test(latestClipboardValue)) {
+            chrome.runtime.sendMessage({ action: 'addTorrentManually', url: latestClipboardValue });
+        } else {
+            lastActionStatusSpan.textContent = 'Error: Clipboard does not have a valid torrent link.';
+        }
+    });
+
+    torrentDropZone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        torrentDropZone.classList.add('border-blue-500');
+    });
+    torrentDropZone.addEventListener('dragleave', () => {
+        torrentDropZone.classList.remove('border-blue-500');
+    });
+    torrentDropZone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        torrentDropZone.classList.remove('border-blue-500');
+        const file = event.dataTransfer?.files?.[0];
+        addLocalTorrentFile(file);
+    });
+    torrentFileInput.addEventListener('change', () => {
+        addLocalTorrentFile(torrentFileInput.files?.[0]);
+        torrentFileInput.value = '';
+    });
+
+    searchButton.addEventListener('click', triggerSearch);
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') triggerSearch();
+    });
+
     // Event listener for Manual Add button
     manualAddButton.addEventListener('click', () => {
         const urlToAdd = manualUrlInput.value.trim();
         if (urlToAdd) {
-            // We need to send this URL to the background script to be processed
-            // similar to how context menu clicks are handled.
-            // The background script will use the currently active server.
-            chrome.runtime.sendMessage(
-                { action: 'addTorrentManually', url: urlToAdd },
-                (response) => {
+            const lines = urlToAdd.split('\n').map((line) => line.trim()).filter(Boolean);
+            if (lines.length > 1) {
+                chrome.runtime.sendMessage({ action: 'addTorrentBatch', urls: lines }, (response) => {
                     if (chrome.runtime.lastError) {
-                        // This typically won't be hit if background script is just queueing,
-                        // but good to have for direct response issues.
                         lastActionStatusSpan.textContent = `Error: ${chrome.runtime.lastError.message}`;
-                        // Optionally save this error to storage as well
-                        // chrome.storage.local.set({ lastActionStatus: `Error: ${chrome.runtime.lastError.message}` });
-                    } else if (response && response.status) {
-                        // If background script sends an immediate status (e.g. validation error)
+                    } else if (response?.status) {
                         lastActionStatusSpan.textContent = response.status;
-                        // chrome.storage.local.set({ lastActionStatus: response.status });
                     }
-                    // Clear the input field after attempting to add
-                    manualUrlInput.value = ''; 
-                    // The actual success/failure message will be set by background.js 
-                    // via storage change listener, which updates lastActionStatusSpan.
-                }
-            );
+                    manualUrlInput.value = '';
+                });
+            } else {
+                chrome.runtime.sendMessage(
+                    { action: 'addTorrentManually', url: urlToAdd },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            lastActionStatusSpan.textContent = `Error: ${chrome.runtime.lastError.message}`;
+                        } else if (response && response.status) {
+                            lastActionStatusSpan.textContent = response.status;
+                        }
+                        manualUrlInput.value = '';
+                    }
+                );
+            }
         } else {
-            // Optionally provide feedback if URL is empty, though not strictly necessary
-            // lastActionStatusSpan.textContent = "Please enter a URL.";
+            lastActionStatusSpan.textContent = "Please enter at least one URL.";
         }
     });
 });

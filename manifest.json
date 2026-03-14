@@ -2,14 +2,15 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.26",
+  "version": "0.4.3",
   "description": "Add Remote Torrent",
   "permissions": [
     "storage",
     "contextMenus",
     "notifications",
     "offscreen",
-    "alarms"
+    "alarms",
+    "scripting"
   ],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "action": {
@@ -18,6 +19,28 @@
       "16": "icons/icon-16x16.png",
       "48": "icons/icon-48x48.png",
       "128": "icons/icon-128x128.png"
+    }
+  },
+  "commands": {
+    "quick_add_clipboard": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+V",
+        "mac": "Command+Shift+V"
+      },
+      "description": "Quick add torrent from clipboard"
+    },
+    "toggle_link_catching": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Toggle on-page torrent link catching"
+    },
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      }
     }
   },
   "icons": {
@@ -58,5 +81,10 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "add-remote-torrent@local"
+    }
+  }
 }
