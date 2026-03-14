@@ -144,6 +144,10 @@ To get started:
 
 ## Changelog
 
+- **v0.4.26 (2026-03-14):**
+  - **Chore (Release):** Bumped extension versions to `0.4.26` across `manifest.json` and `package.json` and generated fresh release artifacts.
+  - **DevEx:** Added project Cursor skills for MV3 workflow, client handler consistency, issue triage, and release/version workflows.
+  - **DevContainer:** Improved Bun setup reliability by exporting Bun paths in the container environment and hardening post-create installation checks.
 - **v0.4.24 (2025-12-16):**
   - **Fix (rTorrent):** Fixed an issue where labels/categories selected in the advanced add dialog were not being applied to torrents. The background script now correctly checks both `defaultCategory` and `category` server configuration fields when determining the label to use.
 - **v0.4.23 (2025-12-04):**

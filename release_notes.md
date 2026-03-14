@@ -1,3 +1,9 @@
+### v0.4.26 (2026-03-14)
+
+*   **Chore (Release):** Bumped extension versions to `0.4.26` in `manifest.json` and `package.json`, and regenerated signed release artifacts.
+*   **DevEx:** Added project Cursor skills for extension workflow, client handler patterns, issue triage, release packaging, and version/changelog tasks.
+*   **DevContainer:** Improved Bun setup reliability by exporting Bun paths in container env and hardening post-create validation.
+
 ### v0.4.23 (2025-12-04)
 
 *   **Fix (Critical, rTorrent):** Fully resolved XML-RPC fault -506 ("Method 'get_free_disk_space' not defined") during server status checks and "Test Connection". Removed faulty call entirely.
