@@ -153,6 +153,9 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.33 (2026-03-15):**
+  - **Chore (Release):** Onboarding and delight polish pass with lazy-loaded bencode.
+  - **Build:** Generated release artifacts for `v0.4.33`.
 - **v0.4.32 (2026-03-14):**
   - **Chore (Release):** Minor release: optimize and polish pass with popup interaction performance improvements and dashboard rendering cleanup..
   - **Build:** Generated release artifacts for `v0.4.32`.
