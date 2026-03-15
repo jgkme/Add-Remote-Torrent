@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!torrentUrl || !activeServerId) {
         debug.error("[ART ConfirmAdd] Error: Missing torrent URL or server ID. Params were:", 
             "url:", torrentUrl, "serverId:", activeServerId);
-        document.body.innerHTML = '<p class="p-4 text-red-600 dark:text-red-400">Error: Missing torrent URL or server ID. Please close this window and try again. Check console for details.</p>';
+        document.body.innerHTML = '<div class="p-4 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">Missing torrent URL or server ID. Close this window and try again from the popup or context menu.</div>';
         return;
     }
     chrome.storage.local.get(['servers'], (result) => {
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } else {
             const errorPara = document.createElement('p');
-      errorPara.textContent = `Error: Could not find server with ID ${activeServerId}. Please close this window.`;
+      errorPara.textContent = `Could not find server with ID ${activeServerId}. Re-open this dialog from popup/options after selecting a valid server.`;
       document.body.innerHTML = '';
       document.body.appendChild(errorPara);
         }
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectFilesToggle.checked && !isMagnetLink) {
             fileActionsContainer.style.display = 'block'; // Show action buttons
             fileListContainer.style.display = 'block';
-            fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Fetching torrent file info...</p>';
+            fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Preparing file list... this can take a moment for large torrents.</p>';
             
             try {
                 debug.log("[ART ConfirmAdd] Attempting to fetch .torrent file from URL:", torrentUrl);
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     `).join('');
                 } else {
-                    fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No files found in torrent or unable to parse file list.</p>';
+                    fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No file list found in this torrent metadata.</p>';
                 }
 
             } catch (error) {

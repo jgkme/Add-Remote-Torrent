@@ -27,6 +27,7 @@
         <option value="">Loading servers...</option>
         {/* Server options will be populated by popup.js */}
       </select>
+      <p id="popupOnboardingHint" class="hidden mt-1 text-xs text-gray-600 dark:text-gray-300">Tip: set up a server profile in Options first, then come back to add torrents quickly from this popup.</p>
     </section>
 
     <section id="activeServerDetails" role="button" tabindex="0" aria-label="Open active server Web UI" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" style="display:none;">
@@ -43,8 +44,8 @@
     <section class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
       <p><strong>Last Action:</strong> <span id="lastActionStatus" role="status" aria-live="polite" class="font-normal text-gray-700 dark:text-gray-200">N/A</span></p>
       <div class="flex space-x-2 mt-2">
-        <button id="clearLastActionStatusButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md" title="Clear last action status">Clear Status</button>
-        <button id="reportIssueButton" class="px-2 py-1 text-xs bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-200 rounded-md" title="Report an issue on GitHub">Report Issue</button>
+        <button id="clearLastActionStatusButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md transition-colors" title="Clear last action status">Clear Status</button>
+        <button id="reportIssueButton" class="px-2 py-1 text-xs bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-200 rounded-md transition-colors" title="Report an issue on GitHub">Report Issue</button>
       </div>
     </section>
     
@@ -52,7 +53,7 @@
         <label for="manualUrlInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Add (URL or multiple lines):</label>
         <div class="flex space-x-2">
             <textarea id="manualUrlInput" rows="2" placeholder="Magnet or .torrent URL (one per line)" class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"></textarea>
-            <button id="manualAddButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm">Add</button>
+            <button id="manualAddButton" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 text-sm transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">Add</button>
         </div>
     </section>
 
@@ -66,13 +67,13 @@
 
     <section id="clipboardSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
       <p><strong>Clipboard:</strong> <span id="clipboardStatusText" role="status" aria-live="polite" class="font-normal text-gray-700 dark:text-gray-200">Not checked</span></p>
-      <button id="addClipboardButton" class="mt-2 px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md">Add Clipboard Link</button>
+      <button id="addClipboardButton" class="mt-2 px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">Add Clipboard Link</button>
     </section>
 
     <section id="torrentListSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
       <div class="flex items-center justify-between mb-2">
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Active Torrents</p>
-        <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md">Refresh</button>
+        <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md transition-colors hover:bg-gray-300 dark:hover:bg-gray-500">Refresh</button>
       </div>
       <div id="torrentListContainer" aria-live="polite" class="space-y-2 max-h-40 overflow-y-auto">
         <p class="text-gray-600 dark:text-gray-200">No data yet.</p>
@@ -83,16 +84,16 @@
       <label for="searchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search (Jackett/Prowlarr)</label>
       <div class="flex space-x-2">
         <input id="searchInput" type="text" placeholder="Search torrents..." class="grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
-        <button id="searchButton" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm">Search</button>
+        <button id="searchButton" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">Search</button>
       </div>
       <div id="searchResultsContainer" aria-live="polite" class="space-y-2 max-h-40 overflow-y-auto mt-2"></div>
     </section>
 
     <div class="grid grid-cols-2 gap-2 mt-2">
-        <button id="openDashboardButton" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 dark:bg-teal-500 dark:hover:bg-teal-600">
+        <button id="openDashboardButton" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 dark:bg-teal-500 dark:hover:bg-teal-600 transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">
             Dashboard
         </button>
-        <button id="openOptionsButton" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600">
+        <button id="openOptionsButton" class="w-full px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">
             Options
         </button>
     </div>

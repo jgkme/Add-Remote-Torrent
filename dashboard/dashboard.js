@@ -25,7 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderServerStatus(servers) {
         serverStatusContainer.innerHTML = '';
         if (!servers || servers.length === 0) {
-            serverStatusContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 col-span-full">No servers configured. Please add a server in the options page.</p>';
+            serverStatusContainer.innerHTML = `
+                <div class="col-span-full rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-5">
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">No servers configured yet.</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Open Options, add your first torrent client profile, then return here to monitor status and transfer progress.</p>
+                    <a href="../options/options.html" class="inline-block mt-3 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Open Options</a>
+                </div>
+            `;
             return;
         }
 
@@ -39,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const dlSpeed = (typeof server.downloadSpeed === 'number') ? `${formatBytes(server.downloadSpeed)}/s` : 'N/A';
             const ulSpeed = (typeof server.uploadSpeed === 'number') ? `${formatBytes(server.uploadSpeed)}/s` : 'N/A';
             const activeTorrents = Array.isArray(server.activeTorrents) ? server.activeTorrents.slice(0, 5) : [];
+
+            const detailsStatus = isOnline ? 'Online' : 'Offline';
+            const detailsVersion = server.version ? escapeHtml(server.version.startsWith('v') ? server.version : `v${server.version}`) : 'N/A';
+            const detailsActiveCount = Array.isArray(server.activeTorrents) ? server.activeTorrents.length : 0;
+            const detailsServerId = escapeHtml(server.id || 'N/A');
 
             cardElement.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -70,9 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 </div>
                 <div class="mt-4">
-                    <button class="text-blue-500 hover:underline text-sm show-more-btn" aria-expanded="false">Show More</button>
+                    <button class="text-blue-500 hover:underline text-sm show-more-btn" aria-expanded="false">Show Details</button>
                     <div class="raw-data hidden mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded" aria-hidden="true">
-                        <pre class="text-xs whitespace-pre-wrap break-all">${escapeHtml(JSON.stringify(server, null, 2))}</pre>
+                        <div class="text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                            <p><strong>Status:</strong> ${detailsStatus}</p>
+                            <p><strong>Client Version:</strong> ${detailsVersion}</p>
+                            <p><strong>Server ID:</strong> <span class="break-all">${detailsServerId}</span></p>
+                            <p><strong>Tracked Active Torrents:</strong> ${detailsActiveCount}</p>
+                        </div>
                     </div>
                 </div>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Last checked: ${server.lastChecked ? escapeHtml(new Date(server.lastChecked).toLocaleString()) : 'Never'}</p>
@@ -86,12 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isHidden = rawData.classList.contains('hidden');
                 if (isHidden) {
                     rawData.classList.remove('hidden');
-                    e.target.textContent = 'Show Less';
+                    e.target.textContent = 'Hide Details';
                     e.target.setAttribute('aria-expanded', 'true');
                     rawData.setAttribute('aria-hidden', 'false');
                 } else {
                     rawData.classList.add('hidden');
-                    e.target.textContent = 'Show More';
+                    e.target.textContent = 'Show Details';
                     e.target.setAttribute('aria-expanded', 'false');
                     rawData.setAttribute('aria-hidden', 'true');
                 }
@@ -102,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderActionHistory(history) {
         actionHistoryList.innerHTML = '';
         if (!history || history.length === 0) {
-            actionHistoryList.innerHTML = '<li class="text-gray-500 dark:text-gray-400">No recent activity to display.</li>';
+            actionHistoryList.innerHTML = '<li class="text-gray-500 dark:text-gray-400">No recent activity yet. Actions from popup/context menu will appear here.</li>';
             return;
         }
         const items = history.map((action) => {

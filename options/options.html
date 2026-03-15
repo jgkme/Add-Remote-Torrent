@@ -493,20 +493,31 @@
             </div>
             <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RSS Feed Manager</label>
-                <div class="space-y-2 rounded-md border border-gray-300 dark:border-gray-600 p-3">
-                    <div id="rssFeedsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                <div class="space-y-3 rounded-md border border-gray-300 dark:border-gray-600 p-3">
+                    <p class="text-xs text-gray-600 dark:text-gray-300">
+                        Add feeds to auto-send matching torrents to your active or selected server.
+                    </p>
+                    <div class="flex items-center justify-between text-xs">
+                        <span id="rssFeedCount" class="text-gray-600 dark:text-gray-300">0 feeds</span>
+                        <span id="rssEditNotice" class="hidden px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">Editing feed</span>
+                    </div>
+                    <div id="rssFeedsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <input id="rssFeedUrlInput" type="text" placeholder="Feed URL (https://...)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
                         <input id="rssFeedPatternInput" type="text" placeholder="Regex filter (optional)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
                         <select id="rssFeedServerSelect" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
                             <option value="">Use active server</option>
                         </select>
-                        <button id="addRssFeedButton" type="button" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm">Add RSS Feed</button>
+                        <button id="addRssFeedButton" type="button" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">Add RSS Feed</button>
+                        <button id="cancelRssEditButton" type="button" class="px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 rounded-md text-sm dark:bg-gray-600 dark:hover:bg-gray-700 hidden transition-colors">Cancel Edit</button>
                     </div>
-                    <textarea id="rssFeedsInput" rows="2" placeholder='[{"id":"feed-1","url":"https://example/rss","pattern":"linux"}]' class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs"></textarea>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Advanced: raw JSON fallback (auto-syncs with manager).</p>
+                    <details class="rounded-md border border-gray-200 dark:border-gray-700 p-2">
+                        <summary class="cursor-pointer text-xs text-gray-600 dark:text-gray-300">Advanced JSON editor</summary>
+                        <textarea id="rssFeedsInput" rows="3" placeholder='[{"id":"feed-1","url":"https://example/rss","pattern":"linux"}]' class="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs"></textarea>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Raw JSON fallback (auto-syncs with manager).</p>
+                    </details>
                 </div>
             </div>
             <div class="form-group">

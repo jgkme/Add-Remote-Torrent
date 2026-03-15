@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
+    const popupOnboardingHint = document.getElementById('popupOnboardingHint');
 
     let servers = [];
     let currentActiveServerId = null;
@@ -101,9 +102,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeServerSelect.appendChild(option);
             activeServerSelect.disabled = true;
             displayActiveServerDetails(null); // Clear details
+            popupOnboardingHint.classList.remove('hidden');
             return;
         }
         activeServerSelect.disabled = false;
+        popupOnboardingHint.classList.add('hidden');
 
         servers.forEach(server => {
             const option = document.createElement('option');
@@ -215,7 +218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (!Array.isArray(torrents) || torrents.length === 0) {
-            torrentListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No active torrents available.</p>';
+            torrentListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No active torrents right now. Start one from Manual Add, Search, or Clipboard.</p>';
             return;
         }
         torrentListContainer.innerHTML = torrents.map((torrent) => {
@@ -228,9 +231,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <p class="text-[10px] text-gray-600 dark:text-gray-300">${progressPct}% | DL ${formatBytes(torrent.dlspeed)}/s | UL ${formatBytes(torrent.upspeed)}/s</p>
                     <div class="mt-1 space-x-1">
-                        <button data-action="pause" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-yellow-500 text-white rounded">Pause</button>
-                        <button data-action="resume" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-green-600 text-white rounded">Resume</button>
-                        <button data-action="delete" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:44px" class="torrent-action-btn px-2.5 py-1 text-xs bg-red-600 text-white rounded">Delete</button>
+                        <button data-action="pause" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-yellow-500 text-white rounded">Pause</button>
+                        <button data-action="resume" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-green-600 text-white rounded">Resume</button>
+                        <button data-action="delete" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-red-600 text-white rounded">Delete</button>
                     </div>
                 </div>
             `;
@@ -307,7 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const items = response.results || [];
             if (!items.length) {
-                searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No search results.</p>';
+                searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No results this time. Try broader terms or a different indexer filter.</p>';
                 return;
             }
             searchResultsContainer.innerHTML = items.map((item) => `

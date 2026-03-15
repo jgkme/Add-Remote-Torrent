@@ -131,6 +131,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rssFeedPatternInput = document.getElementById('rssFeedPatternInput');
     const rssFeedServerSelect = document.getElementById('rssFeedServerSelect');
     const addRssFeedButton = document.getElementById('addRssFeedButton');
+    const cancelRssEditButton = document.getElementById('cancelRssEditButton');
+    const rssFeedCount = document.getElementById('rssFeedCount');
+    const rssEditNotice = document.getElementById('rssEditNotice');
     const searchProviderInput = document.getElementById('searchProviderInput');
     const searchApiUrlInput = document.getElementById('searchApiUrlInput');
     const searchApiKeyInput = document.getElementById('searchApiKeyInput');
@@ -273,6 +276,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch {
             return String(value ?? '');
         }
+    }
+
+    function resetRssFeedEditor() {
+        editingRssFeedId = null;
+        rssFeedUrlInput.value = '';
+        rssFeedPatternInput.value = '';
+        rssFeedServerSelect.value = '';
+        addRssFeedButton.textContent = 'Add RSS Feed';
+        cancelRssEditButton.classList.add('hidden');
+        rssEditNotice.classList.add('hidden');
+    }
+
+    function highlightRssSaveFeedback() {
+        addRssFeedButton.classList.add('ring-2', 'ring-green-400', 'dark:ring-green-500');
+        setTimeout(() => {
+            addRssFeedButton.classList.remove('ring-2', 'ring-green-400', 'dark:ring-green-500');
+        }, 850);
     }
 
     function displayFormStatus(message, type) {
@@ -771,20 +791,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         const feeds = Array.isArray(globalSettings.rssFeeds) ? globalSettings.rssFeeds : [];
         rssFeedsInput.value = JSON.stringify(feeds, null, 2);
         rssFeedsList.innerHTML = '';
+        rssFeedCount.textContent = `${feeds.length} feed${feeds.length === 1 ? '' : 's'}`;
         if (feeds.length === 0) {
-            rssFeedsList.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No RSS feeds configured.</p>';
+            rssFeedsList.innerHTML = `
+                <div class="rounded-md border border-dashed border-gray-300 dark:border-gray-600 p-3 text-xs">
+                    <p class="font-medium text-gray-700 dark:text-gray-200">No RSS feeds yet.</p>
+                    <p class="mt-1 text-gray-600 dark:text-gray-300">Quick start:</p>
+                    <ol class="mt-1 list-decimal list-inside text-gray-600 dark:text-gray-300 space-y-0.5">
+                        <li>Paste a feed URL.</li>
+                        <li>Optional: add a regex filter like <code>1080p|2160p</code>.</li>
+                        <li>Choose a target server and click <strong>Add RSS Feed</strong>.</li>
+                    </ol>
+                    <button type="button" class="rss-feed-add-example mt-2 px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white">Use Example Feed</button>
+                </div>
+            `;
             return;
         }
         feeds.forEach((feed) => {
             const serverName = feed.serverId ? (servers.find((s) => s.id === feed.serverId)?.name || 'Unknown server') : 'Active server';
             const item = document.createElement('div');
-            item.className = 'rounded border border-gray-200 dark:border-gray-600 p-2 text-xs';
+            item.className = 'rounded border border-gray-200 dark:border-gray-600 p-2 text-xs bg-gray-50 dark:bg-gray-700/40 transition-shadow hover:shadow-sm';
             item.innerHTML = `
-                <p class="font-medium text-gray-800 dark:text-gray-200 break-all">${escapeHtml(feed.url)}</p>
-                <p class="text-gray-600 dark:text-gray-300">Pattern: ${escapeHtml(feed.pattern || '(none)')}</p>
-                <p class="text-gray-600 dark:text-gray-300">Target: ${escapeHtml(serverName)}</p>
-                <button type="button" class="rss-feed-edit mt-1 mr-1 px-2 py-1 bg-blue-600 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Edit</button>
-                <button type="button" class="rss-feed-delete mt-1 px-2 py-1 bg-red-600 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Delete</button>
+                <p class="font-medium text-gray-800 dark:text-gray-100 break-all">${escapeHtml(feed.url)}</p>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    <span class="inline-flex items-center rounded-full bg-gray-200 dark:bg-gray-600 px-2 py-0.5 text-[10px] text-gray-700 dark:text-gray-200">Pattern: ${escapeHtml(feed.pattern || 'none')}</span>
+                    <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-[10px] text-indigo-700 dark:text-indigo-200">Target: ${escapeHtml(serverName)}</span>
+                </div>
+                <div class="mt-2 flex gap-1">
+                    <button type="button" class="rss-feed-edit px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Edit</button>
+                    <button type="button" class="rss-feed-delete px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Delete</button>
+                </div>
             `;
             rssFeedsList.appendChild(item);
         });
@@ -798,6 +834,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rssFeedPatternInput.value = feed.pattern || '';
                 rssFeedServerSelect.value = feed.serverId || '';
                 addRssFeedButton.textContent = 'Save RSS Feed';
+                cancelRssEditButton.classList.remove('hidden');
+                rssEditNotice.classList.remove('hidden');
             });
         });
         rssFeedsList.querySelectorAll('.rss-feed-delete').forEach((button) => {
@@ -807,11 +845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
                     renderRssFeedsList();
                     if (editingRssFeedId === id) {
-                        editingRssFeedId = null;
-                        addRssFeedButton.textContent = 'Add RSS Feed';
-                        rssFeedUrlInput.value = '';
-                        rssFeedPatternInput.value = '';
-                        rssFeedServerSelect.value = '';
+                        resetRssFeedEditor();
                     }
                     displayFormStatus('RSS feed removed.', 'success');
                 });
@@ -1238,6 +1272,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.searchApiKey = searchApiKeyInput.value;
         chrome.storage.local.set({ searchApiKey: globalSettings.searchApiKey }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    rssFeedsList.addEventListener('click', (event) => {
+        const button = event.target.closest('.rss-feed-add-example');
+        if (!button) return;
+        rssFeedUrlInput.value = 'https://nyaa.si/?page=rss';
+        rssFeedPatternInput.value = '1080p|2160p';
+        rssFeedServerSelect.value = '';
+        displayFormStatus('Example feed loaded. Adjust and click Add RSS Feed.', 'info');
+    });
     addRssFeedButton.addEventListener('click', () => {
         const url = rssFeedUrlInput.value.trim();
         const pattern = rssFeedPatternInput.value.trim();
@@ -1261,14 +1303,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const withoutExisting = (globalSettings.rssFeeds || []).filter((feed) => feed.id !== newFeed.id);
         globalSettings.rssFeeds = [...withoutExisting, newFeed];
         chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
-            rssFeedUrlInput.value = '';
-            rssFeedPatternInput.value = '';
-            rssFeedServerSelect.value = '';
-            editingRssFeedId = null;
-            addRssFeedButton.textContent = 'Add RSS Feed';
+            resetRssFeedEditor();
             renderRssFeedsList();
-            displayFormStatus('RSS feed saved.', 'success');
+            highlightRssSaveFeedback();
+            displayFormStatus('Nice! RSS feed saved.', 'success');
         });
+    });
+    cancelRssEditButton.addEventListener('click', () => {
+        resetRssFeedEditor();
+        displayFormStatus('RSS feed edit canceled.', 'info');
     });
     testSearchProviderButton.addEventListener('click', () => {
         const provider = searchProviderInput.value;

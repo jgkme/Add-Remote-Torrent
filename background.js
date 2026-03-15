@@ -3,7 +3,15 @@
 
 import { debug } from "./debug";
 import { getClientApi } from "./api_handlers/api_client_factory.js";
-import bencode from "bencode"; // Use 'bencode' library, consistent with confirmAdd.js
+
+let bencodeModulePromise = null;
+async function getBencode() {
+  if (!bencodeModulePromise) {
+    bencodeModulePromise = import("bencode");
+  }
+  const module = await bencodeModulePromise;
+  return module.default || module;
+}
 
 // Global manager for the offscreen document
 const offscreenDocumentManager = {
@@ -1380,6 +1388,7 @@ async function addTorrentToClient(
       "[ART Background] Applying tracker URL rules for .torrent file..."
     );
     try {
+      const bencode = await getBencode();
       const torrentDataBuffer = Uint8Array.from(
         atob(torrentOptions.torrentFileContentBase64),
         (c) => c.charCodeAt(0)
