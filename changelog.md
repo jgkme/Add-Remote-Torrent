@@ -121,6 +121,13 @@ If you encounter a bug, please [open an issue on our GitHub page](https://github
 We are working on a feature to make this process easier by allowing you to report issues directly from the extension.
 
 ## Changelog
+*   **v0.4.35 (2026-04-13):**
+    *   **Fix (UI):** Fixed options/popup/confirm dialog scripts failing to run by loading them as ES modules (`type="module"`), so settings persist correctly and related UI flows work as expected.
+*   **v0.4.34 (2026-04-03):**
+    *   **Fix (Private Trackers):** Improved handling of on-page and context-menu torrent adds by downloading `.torrent` files in the browser (with cookies) whenever the request originates from a real page, even if the URL does not obviously look like a torrent link.
+    *   **Fix (Diagnostics):** Added clearer history entries and notifications when the extension cannot download a `.torrent` file and falls back to sending only the URL, making private-tracker failures easier to understand and debug.
+    *   **Docs:** Clarified options/help text for the "Always download .torrent files before sending to client" setting and recommended usage for private trackers without magnet links.
+    *   **Build:** Generated release artifacts for `v0.4.34`.
 *   **v0.3.12 (2025-08-21):**
     *    *   **qBittorrent:** Fixed an issue where Automatic Torrent Management (ATM) was not being triggered when adding a torrent with a category. The `autoTMM` parameter is now correctly sent to the API.
 *   **v0.3.11 (2025-08-19):**

@@ -470,6 +470,9 @@
                 <input type="checkbox" id="forceTorrentDownloadToggle" name="forceTorrentDownloadToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
                 <label for="forceTorrentDownloadToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Always download .torrent files before sending to client</label>
             </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Helpful for private trackers without magnet links. The extension will download the .torrent using your browser session (cookies) and upload it to the client. Make sure site access is allowed for the tracker domain.
+            </p>
             <div class="form-group">
                 <label for="badgeModeInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Badge Mode</label>
                 <select id="badgeModeInput" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
@@ -664,7 +667,7 @@
       </section>
 
   </div>
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
   <footer class="mt-12 text-center text-xs text-gray-500 dark:text-gray-400 py-4 border-t dark:border-gray-700">
     <p>
       Add Remote Torrent - Version <span id="extensionVersion"></span>

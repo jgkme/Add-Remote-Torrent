@@ -80,6 +80,8 @@ To catch these links, you need to add a custom URL pattern:
 
 **Example:** If a site's download links look like `https://www.example-tracker.com/torrent.php/12345/my-file.torrent`, a good pattern to add would be `example-tracker.com/torrent.php/`.
 
+For private trackers that do **not** provide magnet links, you may also want to enable **"Always download .torrent files before sending to client"** in **Other Global Settings**. This makes the extension download the `.torrent` file in your browser session (with your cookies) and upload it to the remote client, which is especially helpful when the client itself cannot reach the tracker URL directly.
+
 ## Troubleshooting & FAQ
 
 **Q: Why does Chrome show a warning about "Enhanced Protection" when I install the extension?**
@@ -154,13 +156,24 @@ Use the release script for full automation (version bump, changelog updates, bui
 ## Changelog
 
 - **v0.4.33 (2026-03-15):**
-  - **Chore (Release):** Onboarding and delight polish pass with lazy-loaded bencode.
+  - **UX (Onboarding):** Added clearer guided empty states in popup/dashboard/options so first-time users know exactly where to configure their first server.
+  - **UX (Clarity):** Reworked status/help copy in Confirm Add and popup empty results to be more human-readable and action-oriented.
+  - **UX (Details View):** Improved dashboard "Show Details" behavior so server diagnostics are easier to read without dumping raw JSON noise into the main flow.
+  - **UI Polish:** Added subtle button feedback and transition refinements across popup, dashboard, options, and confirm dialog.
+  - **Performance:** Lazy-loaded `bencode` in the background path that parses `.torrent` file content, reducing initial service worker bundle pressure.
   - **Build:** Generated release artifacts for `v0.4.33`.
 - **v0.4.32 (2026-03-14):**
-  - **Chore (Release):** Minor release: optimize and polish pass with popup interaction performance improvements and dashboard rendering cleanup..
+  - **Performance (Popup):** Optimized popup rendering and interactions to feel snappier during repeated add/refresh/action workflows.
+  - **UI Polish (Dashboard):** Refined dashboard rendering and spacing for better readability of server status and recent activity blocks.
+  - **Interaction Consistency:** Standardized interactive controls and hover/active behavior to reduce jarring UI differences between views.
   - **Build:** Generated release artifacts for `v0.4.32`.
 - **v0.4.31 (2026-03-14):**
-  - **Chore (Release):** Minor release: roadmap hardening completion, multi-client torrent control support, UI/UX/accessibility improvements, and robustness fixes..
+  - **Roadmap Completion:** Closed hardening/roadmap gaps and moved previously partial implementations to production-ready behavior.
+  - **Multi-Client Controls:** Implemented active torrent listing plus pause/resume/delete actions beyond qBittorrent, including Transmission/Deluge/rTorrent client flows.
+  - **Compatibility (Synology):** Hardened Download Station authentication logic for broader token/SID compatibility across Synology setups.
+  - **Settings Wiring:** Completed options wiring for force-start behavior, RSS manager controls, and search integration configuration.
+  - **Stability & QA:** Ran full build/lint hardening and fixed integration regressions introduced by the roadmap expansion.
+  - **Accessibility/UX:** Improved control sizing, interaction flow, and status messaging in high-frequency popup/dashboard actions.
   - **Build:** Generated release artifacts for `v0.4.31`.
 - **v0.4.3 (2026-03-14):**
   - **Feature (Shortcuts):** Added extension keyboard commands for quick add from clipboard, toggle on-page link catching, and open popup action.

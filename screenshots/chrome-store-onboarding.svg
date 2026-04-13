@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#f8fafc"/>
+  <text x="56" y="70" font-size="38" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">First-Time Setup Experience</text>
+  <rect x="56" y="112" width="1168" height="632" rx="16" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="96" y="152" width="700" height="552" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="126" y="198" font-size="28" font-family="Arial, sans-serif" fill="#1d4ed8" font-weight="700">No servers configured yet</text>
+  <text x="126" y="232" font-size="18" font-family="Arial, sans-serif" fill="#334155">Add your first torrent client profile to start sending magnets and .torrent links.</text>
+  <rect x="126" y="266" width="280" height="44" rx="10" fill="#2563eb"/>
+  <text x="196" y="295" font-size="16" font-family="Arial, sans-serif" fill="#fff" font-weight="700">Open Options</text>
+  <rect x="126" y="340" width="640" height="320" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="152" y="378" font-size="22" font-family="Arial, sans-serif" fill="#1e3a8a" font-weight="700">Guided setup in 3 steps</text>
+  <text x="152" y="418" font-size="16" font-family="Arial, sans-serif" fill="#1e40af">1. Add server URL, username, and password</text>
+  <text x="152" y="452" font-size="16" font-family="Arial, sans-serif" fill="#1e40af">2. Select client type and test connection</text>
+  <text x="152" y="486" font-size="16" font-family="Arial, sans-serif" fill="#1e40af">3. Set defaults (category, save path, force start)</text>
+  <rect x="152" y="526" width="186" height="34" rx="8" fill="#16a34a"/>
+  <text x="188" y="548" font-size="14" font-family="Arial, sans-serif" fill="#fff">Saved successfully</text>
+  <rect x="834" y="152" width="350" height="552" rx="14" fill="#0f172a"/>
+  <text x="860" y="198" font-size="20" font-family="Arial, sans-serif" fill="#93c5fd" font-weight="700">What you can do next</text>
+  <text x="860" y="236" font-size="14" font-family="Arial, sans-serif" fill="#e2e8f0">- Add from right-click context menu</text>
+  <text x="860" y="264" font-size="14" font-family="Arial, sans-serif" fill="#e2e8f0">- Use popup batch add for multiple links</text>
+  <text x="860" y="292" font-size="14" font-family="Arial, sans-serif" fill="#e2e8f0">- Configure RSS auto-add rules</text>
+  <text x="860" y="320" font-size="14" font-family="Arial, sans-serif" fill="#e2e8f0">- Search via Jackett/Prowlarr integration</text>
+  <text x="860" y="348" font-size="14" font-family="Arial, sans-serif" fill="#e2e8f0">- Monitor active torrents and speeds</text>
+  <rect x="860" y="392" width="290" height="1" fill="#334155"/>
+  <text x="860" y="434" font-size="14" font-family="Arial, sans-serif" fill="#cbd5e1">All settings stay local on your device.</text>
+</svg>

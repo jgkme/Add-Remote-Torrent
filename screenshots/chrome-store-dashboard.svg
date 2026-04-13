@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#f1f5f9"/>
+  <text x="54" y="64" font-size="38" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">Dashboard - Server Status</text>
+  <rect x="1010" y="32" width="200" height="40" rx="8" fill="#2563eb"/>
+  <text x="1065" y="58" font-size="16" font-family="Arial, sans-serif" fill="#fff" font-weight="700">Refresh All</text>
+  <rect x="54" y="100" width="1172" height="420" rx="14" fill="#fff" stroke="#cbd5e1"/>
+  <rect x="84" y="138" width="360" height="170" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="104" y="168" font-size="20" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">Home qBittorrent</text>
+  <rect x="298" y="144" width="120" height="28" rx="14" fill="#dcfce7"/><text x="334" y="163" font-size="12" font-family="Arial, sans-serif" fill="#166534">Online</text>
+  <text x="104" y="198" font-size="14" font-family="Arial, sans-serif" fill="#334155">DL: 12.4 MB/s   UL: 1.2 MB/s</text>
+  <text x="104" y="222" font-size="14" font-family="Arial, sans-serif" fill="#334155">Active Torrents: 12</text>
+  <rect x="104" y="238" width="300" height="10" rx="5" fill="#dbeafe"/><rect x="104" y="238" width="210" height="10" rx="5" fill="#3b82f6"/>
+  <text x="104" y="270" font-size="12" font-family="Arial, sans-serif" fill="#64748b">Version: v5.0.2  Free space: 1.1 TB</text>
+  <rect x="472" y="138" width="360" height="170" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="492" y="168" font-size="20" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">Seedbox Transmission</text>
+  <rect x="696" y="144" width="120" height="28" rx="14" fill="#dcfce7"/><text x="732" y="163" font-size="12" font-family="Arial, sans-serif" fill="#166534">Online</text>
+  <text x="492" y="198" font-size="14" font-family="Arial, sans-serif" fill="#334155">DL: 5.8 MB/s   UL: 920 KB/s</text>
+  <text x="492" y="222" font-size="14" font-family="Arial, sans-serif" fill="#334155">Active Torrents: 7</text>
+  <rect x="492" y="238" width="300" height="10" rx="5" fill="#dbeafe"/><rect x="492" y="238" width="154" height="10" rx="5" fill="#3b82f6"/>
+  <text x="492" y="270" font-size="12" font-family="Arial, sans-serif" fill="#64748b">Version: v4.0.6  Free space: 620 GB</text>
+  <rect x="860" y="138" width="336" height="170" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="880" y="168" font-size="20" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">NAS Download Station</text>
+  <rect x="1090" y="144" width="90" height="28" rx="14" fill="#fee2e2"/><text x="1116" y="163" font-size="12" font-family="Arial, sans-serif" fill="#991b1b">Offline</text>
+  <text x="880" y="198" font-size="14" font-family="Arial, sans-serif" fill="#334155">DL: N/A   UL: N/A</text>
+  <text x="880" y="222" font-size="14" font-family="Arial, sans-serif" fill="#334155">Active Torrents: 0</text>
+  <text x="880" y="270" font-size="12" font-family="Arial, sans-serif" fill="#64748b">Tip: verify token/session settings.</text>
+  <rect x="54" y="548" width="1172" height="214" rx="14" fill="#fff" stroke="#cbd5e1"/>
+  <text x="84" y="586" font-size="28" font-family="Arial, sans-serif" fill="#0f172a" font-weight="700">Recent Activity</text>
+  <rect x="84" y="604" width="1110" height="42" rx="8" fill="#ecfeff" stroke="#99f6e4"/>
+  <text x="102" y="631" font-size="14" font-family="Arial, sans-serif" fill="#0f766e">Added torrent from popup search: Ubuntu 24.04 ISO</text>
+  <rect x="84" y="654" width="1110" height="42" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="102" y="681" font-size="14" font-family="Arial, sans-serif" fill="#334155">Paused torrent: game-assets-pack.torrent</text>
+  <rect x="84" y="704" width="1110" height="42" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="102" y="731" font-size="14" font-family="Arial, sans-serif" fill="#334155">RSS rule matched and auto-added 2 items</text>
+</svg>

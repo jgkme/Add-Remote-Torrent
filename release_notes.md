@@ -1,3 +1,10 @@
+### v0.4.34 (2026-04-03)
+
+*   **Fix (Private Trackers):** When adding torrents from on-page link catching or the context menu, the extension now more aggressively downloads `.torrent` files in the browser (using your logged-in session) before sending them to the client, even if the URL does not obviously look like a `.torrent` link.
+*   **Fix (Diagnostics):** If the extension cannot obtain a usable `.torrent` file and must fall back to sending only the URL, it now records a clear entry in the action history and can surface a concise notification to explain what happened.
+*   **Docs:** Updated options help text so users of private trackers without magnet links know when to enable **Always download .torrent files before sending to client** and to grant site access for their tracker domain.
+*   **Build:** Generated release artifacts for `v0.4.34`.
+
 ### v0.4.33 (2026-03-15)
 
 *   **Chore (Release):** Onboarding and delight polish pass with lazy-loaded bencode.

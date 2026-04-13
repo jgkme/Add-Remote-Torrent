@@ -1283,8 +1283,16 @@ async function addTorrentToClient(
   let wasRuleApplied = false;
 
   if (!isMagnet && !directTorrentContentBase64) {
-    const { forceTorrentDownload = false } = await chrome.storage.local.get("forceTorrentDownload");
-    const shouldFetchTorrentContent = forceTorrentDownload || looksLikeTorrentUrl(torrentUrl);
+    const { forceTorrentDownload = false } = await chrome.storage.local.get(
+      "forceTorrentDownload"
+    );
+    // If this add came from a real page (on-page catching or context menu),
+    // assume the user intended this to be a torrent even if the URL looks opaque.
+    const assumeUserIntendedTorrentLink = Boolean(sourcePageUrl);
+    const shouldFetchTorrentContent =
+      forceTorrentDownload ||
+      assumeUserIntendedTorrentLink ||
+      looksLikeTorrentUrl(torrentUrl);
     if (!shouldFetchTorrentContent) {
       debug.log("[ART Background] forceTorrentDownload disabled and URL not recognized as direct torrent; sending URL directly.");
     } else {
@@ -1320,6 +1328,16 @@ async function addTorrentToClient(
             `[ART Background] URL ${torrentUrl} had .torrent Content-Type but empty/invalid body. Sending URL to client.`
           );
           torrentOptions.torrentFileContentBase64 = null;
+          if (shouldFetchTorrentContent) {
+            const msg = "Failed to download .torrent file from site (empty response); sent original URL to client instead.";
+            updateActionHistory(msg);
+            chrome.notifications.create({
+              type: "basic",
+              iconUrl: "icons/icon-48x48.png",
+              title: "Add Remote Torrent",
+              message: msg,
+            });
+          }
         }
       } else {
         debug.warn(
@@ -1337,6 +1355,16 @@ async function addTorrentToClient(
             `[ART Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`
           );
           torrentOptions.torrentFileContentBase64 = null;
+          if (shouldFetchTorrentContent) {
+            const msg = "Site returned no usable data when downloading .torrent; sent original URL to client instead.";
+            updateActionHistory(msg);
+            chrome.notifications.create({
+              type: "basic",
+              iconUrl: "icons/icon-48x48.png",
+              title: "Add Remote Torrent",
+              message: msg,
+            });
+          }
         }
       }
     } catch (fetchError) {
@@ -1346,6 +1374,16 @@ async function addTorrentToClient(
         ". Will send URL to client as is."
       );
       torrentOptions.torrentFileContentBase64 = null;
+      if (shouldFetchTorrentContent) {
+        const msg = "Could not download .torrent file with your browser session; sent original URL to client instead.";
+        updateActionHistory(msg);
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon-48x48.png",
+          title: "Add Remote Torrent",
+          message: msg,
+        });
+      }
     }
     }
   }
