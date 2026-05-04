@@ -7,6 +7,16 @@ Please give it a try and create some feedbacks or issues here.
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof?hl=en-US&utm_source=ext_sidebar)**
 
+## Version history
+
+### 0.4.36 (2026-05-05)
+
+- **Feat / Fix (qBittorrent):** Web API 2.14+ `torrents/add` JSON responses (including 202/409); legacy `Ok.` unchanged.
+- **Feat:** Optional qBittorrent Web API key (Bearer auth, v5.2+).
+- **Fix:** Auth vs network error messages on add; HTTP 401 hints on connection test.
+- **Feat:** Immediate server status check on startup; persist **Web API** version for qBittorrent.
+- **Chore:** Dev dependency updates (webpack, tailwind, postcss, terser, etc.).
+
 ## Supported Clients
 - qBittorrent
 - Transmission

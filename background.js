@@ -401,12 +401,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   } else if (request.action === "triggerServerStatusCheck") {
-    // Manually trigger the alarm's action
-    chrome.alarms.get("serverStatusCheck", (alarm) => {
-      if (alarm) {
-        onAlarm(alarm);
-      }
-    });
+    void runServerStatusCheck().catch((e) =>
+      debug.error("[ART Background] Manual server status check failed:", e)
+    );
     sendResponse({ status: "Server status check triggered." });
     return false;
   }
@@ -444,97 +441,108 @@ chrome.runtime.onInstalled.addListener(async () => {
     delayInMinutes: 2,
     periodInMinutes: 10,
   });
+
+  void runServerStatusCheck().catch((e) =>
+    debug.error("[ART Background] Initial server status check failed:", e)
+  );
 });
 
-async function onAlarm(alarm) {
-  if (alarm.name === "serverStatusCheck") {
-    debug.log("[ART Background] Running periodic server status check...");
-    const { servers } = await chrome.storage.local.get("servers");
-    if (!servers || servers.length === 0) {
-      debug.log(
-        "[ART Background] No servers configured, skipping status check."
-      );
-      return;
-    }
+async function runServerStatusCheck() {
+  debug.log("[ART Background] Running server status check...");
+  const { servers } = await chrome.storage.local.get("servers");
+  if (!servers || servers.length === 0) {
+    debug.log(
+      "[ART Background] No servers configured, skipping status check."
+    );
+    return;
+  }
 
-    // Create a queue to process server checks with limited concurrency
-    const queue = [...servers];
-    const updatedServers = [];
-    const concurrency = 4; // Process up to 4 servers at a time
+  const queue = [...servers];
+  const updatedServers = [];
+  const concurrency = 4;
 
-    async function processQueue() {
-      const server = queue.shift();
-      if (!server) return;
+  async function processQueue() {
+    const server = queue.shift();
+    if (!server) return;
 
-      const apiClient = getClientApi(server.clientType);
-      let updatedServer;
-      if (!apiClient) {
+    const apiClient = getClientApi(server.clientType);
+    let updatedServer;
+    if (!apiClient) {
+      updatedServer = {
+        ...server,
+        status: "offline",
+        lastChecked: new Date().toISOString(),
+      };
+    } else {
+      try {
+        const result = await apiClient.testConnection(server);
+        let activeTorrents = server.activeTorrents || [];
+        let activeTorrentsCount = server.activeTorrentsCount || 0;
+        if (typeof apiClient.getActiveTorrents === "function") {
+          try {
+            activeTorrents = await apiClient.getActiveTorrents(server);
+            activeTorrentsCount = activeTorrents.filter(
+              (torrent) => Number(torrent.progress || 0) < 1
+            ).length;
+          } catch (error) {
+            debug.warn("[ART Background] Failed to fetch active torrents:", error);
+          }
+        }
+        updatedServer = {
+          ...server,
+          status: result.success ? "online" : "offline",
+          lastChecked: new Date().toISOString(),
+          version: result.success
+            ? (result.data?.version ?? server.version)
+            : server.version,
+          webApiVersion: result.success
+            ? (result.data?.webApiVersion ?? server.webApiVersion)
+            : server.webApiVersion,
+          freeSpace: result.success
+            ? (result.data?.freeSpace ?? server.freeSpace)
+            : server.freeSpace,
+          torrents: result.data?.torrentsInfo?.total,
+          uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
+          downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
+          activeTorrents,
+          activeTorrentsCount,
+        };
+      } catch (e) {
         updatedServer = {
           ...server,
           status: "offline",
           lastChecked: new Date().toISOString(),
         };
-      } else {
-        try {
-          const result = await apiClient.testConnection(server);
-          let activeTorrents = server.activeTorrents || [];
-          let activeTorrentsCount = server.activeTorrentsCount || 0;
-          if (typeof apiClient.getActiveTorrents === "function") {
-            try {
-              activeTorrents = await apiClient.getActiveTorrents(server);
-              activeTorrentsCount = activeTorrents.filter(
-                (torrent) => Number(torrent.progress || 0) < 1
-              ).length;
-            } catch (error) {
-              debug.warn("[ART Background] Failed to fetch active torrents:", error);
-            }
-          }
-          updatedServer = {
-            ...server,
-            status: result.success ? "online" : "offline",
-            lastChecked: new Date().toISOString(),
-            version: result.success ? result.data?.version : server.version,
-            freeSpace: result.success
-              ? result.data?.freeSpace
-              : server.freeSpace,
-            torrents: result.data?.torrentsInfo?.total,
-            uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
-            downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
-            activeTorrents,
-            activeTorrentsCount,
-          };
-        } catch (e) {
-          updatedServer = {
-            ...server,
-            status: "offline",
-            lastChecked: new Date().toISOString(),
-          };
-        }
       }
-      updatedServers.push(updatedServer);
     }
+    updatedServers.push(updatedServer);
+  }
 
-    const workers = Array(concurrency).fill(Promise.resolve());
-    await Promise.all(
-      workers.map(async (worker) => {
-        while (queue.length > 0) {
-          await processQueue();
-        }
-      })
-    );
+  const workers = Array(concurrency).fill(Promise.resolve());
+  await Promise.all(
+    workers.map(async () => {
+      while (queue.length > 0) {
+        await processQueue();
+      }
+    })
+  );
 
-    // Ensure the order is the same as the original servers array for consistency
-    const finalUpdatedServers = servers.map(
-      (originalServer) =>
-        updatedServers.find((updated) => updated.id === originalServer.id) ||
-        originalServer
-    );
+  const finalUpdatedServers = servers.map(
+    (originalServer) =>
+      updatedServers.find((updated) => updated.id === originalServer.id) ||
+      originalServer
+  );
 
-    await chrome.storage.local.set({ servers: finalUpdatedServers });
-    await updateGlobalBadge();
-    debug.log(
-      "[ART Background] Server status check complete. Updated server statuses in storage."
-    );
+  await chrome.storage.local.set({ servers: finalUpdatedServers });
+  await updateGlobalBadge();
+  debug.log(
+    "[ART Background] Server status check complete. Updated server statuses in storage."
+  );
+}
+
+async function onAlarm(alarm) {
+  if (alarm.name === "serverStatusCheck") {
+    await runServerStatusCheck();
   } else if (alarm.name === "torrentStatusCheck") {
     debug.log("[ART Background] Running periodic torrent status check...");
     const {
@@ -639,6 +647,9 @@ chrome.runtime.onStartup.addListener(() => {
     delayInMinutes: 2,
     periodInMinutes: 10,
   });
+  void runServerStatusCheck().catch((e) =>
+    debug.error("[ART Background] Startup server status check failed:", e)
+  );
   updateGlobalBadge();
 });
 

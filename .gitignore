@@ -4,6 +4,7 @@
 # Build output
 /dist
 *.zip
+*.zip.sha256
 
 # OS generated files
 .DS_Store

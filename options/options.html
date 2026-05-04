@@ -276,6 +276,16 @@
         <input type="text" id="qbittorrentSavePath" name="qbittorrentSavePath" placeholder="/downloads" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
       </div>
 
+      <div class="form-group mt-6" id="qbittorrentApiKeyGroup" style="display:none;">
+        <label for="qbittorrentApiKey" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Web API key (optional, qBittorrent 5.2+):</label>
+        <input type="password" id="qbittorrentApiKey" name="qbittorrentApiKey" autocomplete="off" placeholder="qbt_… (leave empty to use username/password login)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate under Preferences → Web UI → API Key. When set, the extension uses Bearer authentication instead of Web UI cookie login (helps with some 5.2 setups). Cannot combine with reverse-proxy Basic Auth on the same request.</p>
+        <label class="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <input type="checkbox" id="qbittorrentApiKeyClear" name="qbittorrentApiKeyClear" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600">
+          <span>Remove saved API key on save</span>
+        </label>
+      </div>
+
       <div class="form-group mt-6" id="ruTorrentPathGroup" style="display:none;">
         <label for="ruTorrentPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ruTorrent Relative Path:</label>
         <input type="text" id="ruTorrentPath" name="ruTorrentPath" placeholder="/rutorrent" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">

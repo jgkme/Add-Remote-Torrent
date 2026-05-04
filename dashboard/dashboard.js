@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white truncate">${escapeHtml(server.name)}</h3>
                     <span class="px-2 py-1 text-xs font-semibold text-white ${isOnline ? 'bg-green-500' : 'bg-red-500'} rounded-full">${isOnline ? 'Online' : 'Offline'}</span>
                 </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${escapeHtml(server.clientType || 'N/A')} ${server.version ? `(${escapeHtml(server.version.startsWith('v') ? server.version : 'v' + server.version)})` : ''}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Client:</strong> ${escapeHtml(server.clientType || 'N/A')} ${server.version ? `(${escapeHtml(server.version.startsWith('v') ? server.version : 'v' + server.version)})` : ''}${server.clientType === 'qbittorrent' && server.webApiVersion ? ` Web API ${escapeHtml(server.webApiVersion)}` : ''}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>URL:</strong> <span class="break-all">${escapeHtml(server.url)}</span></p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Free Space:</strong> ${escapeHtml(freeSpace)}</p>
                 <p class="text-sm text-gray-600 dark:text-gray-400"><strong>Torrents:</strong> ${escapeHtml(totalTorrents)}</p>

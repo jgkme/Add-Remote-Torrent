@@ -3,10 +3,94 @@ import { debug } from '../debug';
 // qBittorrent API Handler
 // This file will contain the logic for interacting with the qBittorrent WebUI API.
 
+/** qBittorrent v5.2+ optional Web API key (Bearer); when set, cookie login is skipped. */
+function usesQbittorrentApiKey(serverConfig) {
+  const k = serverConfig && serverConfig.qbittorrentApiKey;
+  return typeof k === 'string' && k.trim().length > 0;
+}
+
+/**
+ * Web API 2.14.0+ returns JSON with counts; legacy servers return plain "Ok." (see WebAPI_Changelog.md).
+ */
+function classifyTorrentsAddResponse(httpStatus, responseText) {
+  const t = (responseText || '').trim();
+  if (t.includes('already in the download list')) {
+    return { duplicate: true };
+  }
+  if (t.startsWith('{')) {
+    try {
+      const j = JSON.parse(t);
+      const isNewAddShape =
+        j &&
+        typeof j === 'object' &&
+        ('success_count' in j ||
+          'pending_count' in j ||
+          'failure_count' in j ||
+          'added_torrent_ids' in j);
+      if (isNewAddShape) {
+        const sc = Number(j.success_count);
+        const pc = Number(j.pending_count);
+        const fc = Number(j.failure_count);
+        if (httpStatus === 409) {
+          return { ok: false, reason: 'all_failed', detail: t };
+        }
+        if (fc > 0 && sc === 0 && pc === 0) {
+          return { ok: false, reason: 'failures_only', detail: t };
+        }
+        if (sc > 0 || pc > 0) {
+          return { ok: true, json: j };
+        }
+        return { ok: false, reason: 'empty_counts', detail: t };
+      }
+    } catch (_) {
+      /* fall through to legacy */
+    }
+  }
+  const low = t.toLowerCase();
+  if (low === 'ok.' || t === '') {
+    return { ok: true, legacy: true };
+  }
+  return { ok: false, unexpected: true, detail: t };
+}
+
+function mapQbitFlowError(error) {
+  const msg = error && error.message ? error.message : String(error);
+  if (/Login failed:\s*401/i.test(msg) || (/401/.test(msg) && /Login failed/i.test(msg))) {
+    return {
+      userMessage: 'qBittorrent rejected your username or password.',
+      technicalDetail: msg,
+      errorCode: 'AUTH_FAILED_QBIT',
+    };
+  }
+  if (/Login failed/i.test(msg) || /not 'Ok\.'/.test(msg) || /Login succeeded but server returned/i.test(msg)) {
+    return {
+      userMessage: 'Could not log in to qBittorrent. Check credentials, CSRF settings, and the Web UI URL.',
+      technicalDetail: msg,
+      errorCode: 'AUTH_FAILED_QBIT',
+    };
+  }
+  if (/Failed to get qBittorrent version:\s*401/i.test(msg)) {
+    return {
+      userMessage: 'qBittorrent denied access (unauthorized). Check credentials or API key.',
+      technicalDetail: msg,
+      errorCode: 'AUTH_FAILED_QBIT',
+    };
+  }
+  return {
+    userMessage: 'A network error occurred or the server could not be reached during qBittorrent add.',
+    technicalDetail: msg,
+    errorCode: 'NETWORK_ERROR_QBIT_ADD',
+  };
+}
+
 const qbitSession = {
   loginPromise: null,
   isLoggedIn: false,
   login: async function(serverConfig) {
+    if (usesQbittorrentApiKey(serverConfig)) {
+      this.isLoggedIn = true;
+      return;
+    }
     if (this.loginPromise) {
       await this.loginPromise;
       return;
@@ -64,8 +148,11 @@ const qbitSession = {
   },
   
   fetch: async function(apiUrl, options, serverConfig, isRetry = false) {
-    if (!this.isLoggedIn && !isRetry) {
+    if (!usesQbittorrentApiKey(serverConfig) && !this.isLoggedIn && !isRetry) {
       await this.login(serverConfig);
+    }
+    if (usesQbittorrentApiKey(serverConfig)) {
+      this.isLoggedIn = true;
     }
 
     const finalOptions = {
@@ -78,15 +165,16 @@ const qbitSession = {
       }
     };
 
-    // Add basic auth header if enabled
-    if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
+    if (usesQbittorrentApiKey(serverConfig)) {
+      finalOptions.headers['Authorization'] = `Bearer ${serverConfig.qbittorrentApiKey.trim()}`;
+    } else if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
       const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
       finalOptions.headers['Authorization'] = `Basic ${authString}`;
     }
 
     const response = await fetch(apiUrl, finalOptions);
 
-    if (response.status === 403 && !isRetry) {
+    if (response.status === 403 && !isRetry && !usesQbittorrentApiKey(serverConfig)) {
       debug.log('qBittorrent session expired (403), re-authenticating...');
       this.isLoggedIn = false;
       return this.fetch(apiUrl, options, serverConfig, true); // Retry once after logging in
@@ -277,7 +365,8 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const addResponse = await qbitSession.fetch(addTorrentApiUrl, { method: 'POST', body: addTorrentFormData }, serverConfig);
     const addResponseText = await addResponse.text();
 
-    if (addResponseText.includes('already in the download list')) {
+    const classified = classifyTorrentsAddResponse(addResponse.status, addResponseText);
+    if (classified.duplicate) {
         debug.log('qBittorrent: Torrent is already in the download list.');
         return { success: true, duplicate: true, data: { message: 'Torrent is already in the download list.' } };
     }
@@ -286,8 +375,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: `Add torrent API returned: ${addResponse.status} ${addResponse.statusText}. Response: ${addResponseText}`, errorCode: "ADD_FAILED" }};
     }
 
-    if (addResponseText.trim().toLowerCase() !== 'ok.' && addResponseText.trim() !== '') {
-        return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" }};
+    if (!classified.ok) {
+        if (classified.unexpected) {
+            return { success: false, error: { userMessage: "Torrent submitted, but server gave an unexpected response.", technicalDetail: `qBittorrent add response: ${classified.detail || addResponseText}`, errorCode: "UNEXPECTED_RESPONSE" } };
+        }
+        return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: classified.detail || addResponseText, errorCode: "ADD_FAILED" } };
     }
 
     // After successful addition, find the new hash
@@ -350,14 +442,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
   } catch (error) {
     debug.error('Error in qBittorrent addTorrent flow:', error);
-    return { 
-      success: false, 
-      error: {
-        userMessage: "A network error occurred or the server could not be reached during qBittorrent add.",
-        technicalDetail: error.message,
-        errorCode: "NETWORK_ERROR_QBIT_ADD"
-      }
-    };
+    return { success: false, error: mapQbitFlowError(error) };
   }
 }
 
@@ -505,11 +590,12 @@ async function getBuildInfo(serverConfig) {
 
 export async function testConnection(serverConfig) {
   try {
-    // Force a login attempt. The session manager handles the actual fetch.
-    await qbitSession.login(serverConfig);
+    if (usesQbittorrentApiKey(serverConfig)) {
+      qbitSession.isLoggedIn = true;
+    } else {
+      await qbitSession.login(serverConfig);
+    }
 
-    // After successful login, get version and build info.
-    // These calls will use the established session.
     const version = await getQbittorrentVersion(serverConfig);
     const buildInfo = await getBuildInfo(serverConfig);
 
@@ -518,6 +604,7 @@ export async function testConnection(serverConfig) {
         data: {
             message: 'Authentication successful.',
             version: version,
+            webApiVersion: buildInfo.webUIVersion,
             freeSpace: buildInfo.freeSpace,
             torrentsInfo: {
                 total: buildInfo.total_torrents,
@@ -528,12 +615,19 @@ export async function testConnection(serverConfig) {
     };
   } catch (error) {
     debug.error('[qBittorrent Handler] testConnection failed:', error);
-    qbitSession.isLoggedIn = false; // Ensure session is marked as invalid on any failure
+    qbitSession.isLoggedIn = false;
+    const msg = error && error.message ? error.message : String(error);
+    let userMessage = "Connection failed. Check URL, credentials, and network. For qBittorrent v4.3.0+, consider disabling 'CSRF Protection' in WebUI options.";
+    if (/Login failed:\s*401/i.test(msg) || (/401/.test(msg) && /Login failed/i.test(msg))) {
+      userMessage = 'Connection failed: qBittorrent rejected the username or password (HTTP 401).';
+    } else if (/Failed to get qBittorrent version:\s*401/i.test(msg)) {
+      userMessage = 'Connection failed: unauthorized when reading version. Check API key or credentials.';
+    }
     return { 
       success: false, 
       error: {
-        userMessage: "Connection failed. Check URL, credentials, and network. For qBittorrent v4.3.0+, consider disabling 'CSRF Protection' in WebUI options.",
-        technicalDetail: error.message,
+        userMessage,
+        technicalDetail: msg,
         errorCode: "CONNECTION_TEST_FAILED"
       }
     };

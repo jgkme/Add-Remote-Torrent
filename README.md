@@ -7,6 +7,15 @@ Please give it a try and create some feedbacks or issues here.
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof?hl=en-US&utm_source=ext_sidebar)**
 
+## Release notes
+
+### 0.4.36
+
+- **qBittorrent 5.2 / Web API 2.14+:** Handles `torrents/add` JSON responses and HTTP status codes 202/409; older servers that return plain `Ok.` are unchanged.
+- **Optional Web API key:** For qBittorrent 5.2+, you can paste an API key from **Preferences → Web UI → API Key** into the server profile so the extension uses Bearer authentication instead of Web UI cookie login (useful when cookie-based access fails).
+- **Clearer errors:** Login or credential problems are distinguished from generic network failures when adding torrents.
+- **Server status:** A status check runs shortly after browser/extension startup (as well as on the existing schedule); qBittorrent profiles can show the detected Web API version.
+
 ## Supported Clients
 
 - qBittorrent
@@ -90,7 +99,7 @@ A: Chrome's Enhanced Safe Browsing shows this warning for new extensions or exte
 **Q: I'm having trouble connecting to my client, especially with qBittorrent v4.3.0+ or ruTorrent.**
 A:
 
-- **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature.
+- **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature. On **qBittorrent 5.2+**, if adding still fails, generate a **Web API key** in the same Web UI settings and enter it in the extension’s server profile (optional field).
 - **ruTorrent:** For the best results, enter the full URL to your ruTorrent installation in the **"Server URL"** field (e.g., `https://your-server.com/rutorrent`) and leave the **"ruTorrent Relative Path"** field blank. Alternatively, you can enter the base URL (e.g., `https://your-server.com`) and the path (e.g., `/rutorrent`) in their respective fields.
 
 **Q: A torrent link didn't get added correctly.**

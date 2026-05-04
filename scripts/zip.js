@@ -38,17 +38,18 @@ async function buildPackages() {
     fs.writeFileSync(outputHashFile, hexHash);
     console.log(`Successfully saved hash to ${outputHashFile}`);
 
-    // 4. Create the signed .crx file for the Chrome Web Store
+    // 4. Optional: signed .crx for side-loading (zip above is the primary GitHub release artifact)
     console.log(`\nCreating signed .crx file...`);
     if (!fs.existsSync(privateKeyPath)) {
-        console.error(`Error: Private key not found at ${privateKeyPath}.`);
-        console.error('A private key is required to sign the extension for the Chrome Web Store.');
-        console.error('Please ensure "private.pem" exists in the project root.');
-        process.exit(1);
+        console.warn(`Warning: Private key not found at ${privateKeyPath}; skipping .crx.`);
+    } else {
+        try {
+            execSync(`npx crx3 -p "${privateKeyPath}" -o "${outputCrxFile}" "${distFolder}"`, { stdio: 'inherit' });
+            console.log(`Successfully created signed package at ${outputCrxFile}`);
+        } catch (crxErr) {
+            console.warn('\nWarning: .crx signing failed; .zip and .sha256 are still valid for release.', crxErr.message || crxErr);
+        }
     }
-
-    execSync(`npx crx3 -p "${privateKeyPath}" -o "${outputCrxFile}" "${distFolder}"`, { stdio: 'inherit' });
-    console.log(`Successfully created signed package at ${outputCrxFile}`);
 
   } catch (error) {
     console.error('\nAn error occurred during the packaging process:', error);

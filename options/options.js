@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const scgiPathInput = document.getElementById('scgiPath');
     const qbittorrentSavePathGroup = document.getElementById('qbittorrentSavePathGroup');
     const qbittorrentSavePathInput = document.getElementById('qbittorrentSavePath');
+    const qbittorrentApiKeyGroup = document.getElementById('qbittorrentApiKeyGroup');
+    const qbittorrentApiKeyInput = document.getElementById('qbittorrentApiKey');
+    const qbittorrentApiKeyClearInput = document.getElementById('qbittorrentApiKeyClear');
     const transmissionDownloadDirGroup = document.getElementById('transmissionDownloadDirGroup');
     const transmissionDownloadDirInput = document.getElementById('transmissionDownloadDir');
     const transmissionSpeedLimitGroup = document.getElementById('transmissionSpeedLimitGroup');
@@ -378,7 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const clientHints = {
-        qbittorrent: 'For versions 4.3.0 and newer, you may need to disable "CSRF Protection" in the WebUI options for the extension to connect properly.',
+        qbittorrent: 'For versions 4.3.0+, you may need to disable "CSRF Protection" in the Web UI. qBittorrent 5.2+ uses Web API 2.14+ (the extension supports both legacy and new responses). Optional: generate an API key under Preferences → Web UI → API Key and paste it below—useful when cookie login fails.',
         transmission: 'The default RPC path is usually <strong>/transmission/rpc</strong>. Ensure your server\'s URL is correct (e.g., http://localhost:9091).',
         deluge: 'The password for the Deluge WebUI is often separate from the daemon password and is managed in the WebUI plugin settings. It may be blank by default.',
         utorrent: 'This handler is for modern uTorrent WebUI versions. Ensure the "Relative Path" is correct (e.g., /gui/). The extension will try to auto-detect this.',
@@ -412,6 +415,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(rpcPathGrp) rpcPathGrp.style.display = 'none';
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
         if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'none';
+        if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'none';
         if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'none';
         if(transmissionSpeedLimitGroup) transmissionSpeedLimitGroup.style.display = 'none';
         if(transmissionSeedingLimitGroup) transmissionSeedingLimitGroup.style.display = 'none';
@@ -442,6 +446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         switch (clientType) {
             case 'qbittorrent':
                 if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
+                if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'block';
                 break;
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
@@ -538,6 +543,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             rpcPathInput.value = server.rpcPath || '';
             scgiPathInput.value = server.scgiPath || '';
             qbittorrentSavePathInput.value = server.qbittorrentSavePath || '';
+            if (qbittorrentApiKeyInput) qbittorrentApiKeyInput.value = '';
+            if (qbittorrentApiKeyClearInput) qbittorrentApiKeyClearInput.checked = false;
             transmissionDownloadDirInput.value = server.transmissionDownloadDir || '';
             transmissionDownloadSpeedLimitInput.value = server.transmissionDownloadSpeedLimit || '';
             transmissionUploadSpeedLimitInput.value = server.transmissionUploadSpeedLimit || '';
@@ -589,6 +596,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             rpcPathInput.value = '';
             scgiPathInput.value = '';
             qbittorrentSavePathInput.value = '';
+            if (qbittorrentApiKeyInput) qbittorrentApiKeyInput.value = '';
+            if (qbittorrentApiKeyClearInput) qbittorrentApiKeyClearInput.checked = false;
             transmissionDownloadDirInput.value = '';
             transmissionDownloadSpeedLimitInput.value = '';
             transmissionUploadSpeedLimitInput.value = '';
@@ -646,6 +655,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         rpcPathInput.value = ''; 
         scgiPathInput.value = ''; 
         qbittorrentSavePathInput.value = '';
+        if (qbittorrentApiKeyInput) qbittorrentApiKeyInput.value = '';
+        if (qbittorrentApiKeyClearInput) qbittorrentApiKeyClearInput.checked = false;
         transmissionDownloadDirInput.value = '';
         ruTorrentPathInput.value = '';
         rutorrentdontaddnamepathInput.checked = false;
@@ -715,6 +726,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const rawVersion = String(server.version);
                 const normalisedVersion = rawVersion.replace(/^v/i, '');
                 clientTypeSpan.textContent += ` (v${normalisedVersion})`;
+            }
+            if (server.clientType === 'qbittorrent' && server.webApiVersion) {
+                clientTypeSpan.textContent += ` · Web API ${server.webApiVersion}`;
             }
             serverInfoDiv.appendChild(clientTypeSpan);
 
@@ -1058,6 +1072,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverData.torrentfluxRelativePath = torrentfluxRelativePath;
         } else if (clientType === 'qbittorrent') {
             serverData.qbittorrentSavePath = qbittorrentSavePath;
+            const apiKeyTrim = qbittorrentApiKeyInput ? qbittorrentApiKeyInput.value.trim() : '';
+            const removeApiKey = qbittorrentApiKeyClearInput && qbittorrentApiKeyClearInput.checked;
+            if (removeApiKey) {
+                serverData.qbittorrentApiKey = '';
+            } else if (apiKeyTrim) {
+                serverData.qbittorrentApiKey = apiKeyTrim;
+            } else if (id) {
+                const existingSrv = servers.find((s) => s.id === id);
+                serverData.qbittorrentApiKey = existingSrv?.qbittorrentApiKey || '';
+            } else {
+                serverData.qbittorrentApiKey = '';
+            }
         }
         if (id) {
             const index = servers.findIndex(s => s.id === id);
@@ -1124,6 +1150,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayFormStatus(`Exported profile for "${server.name}".`, 'success');
     }
     testConnectionButton.addEventListener('click', () => {
+        const apiKeyForTest =
+            clientTypeSelect.value === 'qbittorrent'
+                ? qbittorrentApiKeyClearInput && qbittorrentApiKeyClearInput.checked
+                    ? ''
+                    : (qbittorrentApiKeyInput && qbittorrentApiKeyInput.value.trim()) ||
+                      (serverIdInput.value &&
+                          servers.find((s) => s.id === serverIdInput.value)?.qbittorrentApiKey) ||
+                      ''
+                : undefined;
         const serverConfig = {
             id: serverIdInput.value,
             name: serverNameInput.value.trim(),
@@ -1138,6 +1173,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             scgiPath: clientTypeSelect.value === 'rtorrent' ? scgiPathInput.value.trim() : undefined,
             ruTorrentrelativepath: clientTypeSelect.value === 'rutorrent' ? ruTorrentPathInput.value.trim() : undefined,
             utorrentrelativepath: clientTypeSelect.value === 'utorrent' ? document.getElementById('utorrentRelativePath').value.trim() : undefined,
+            qbittorrentSavePath:
+                clientTypeSelect.value === 'qbittorrent'
+                    ? qbittorrentSavePathInput.value.trim()
+                    : undefined,
+            qbittorrentApiKey: apiKeyForTest,
         };
         if (!serverConfig.url && clientTypeSelect.value !== 'rtorrent') { 
             displayFormStatus('Server URL is required to test connection.', 'error'); return;
@@ -1166,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 const serverIndex = servers.findIndex(s => s.id === serverConfig.id);
                                 if (serverIndex > -1) {
                                     servers[serverIndex].version = response.data.version;
+                                    servers[serverIndex].webApiVersion = response.data.webApiVersion;
                                     servers[serverIndex].freeSpace = response.data.freeSpace;
                                     // Persist the updated server info
                                     chrome.storage.local.set({ servers }, () => {
@@ -1359,7 +1400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const importedSettings = JSON.parse(event.target.result);
                 if (!importedSettings || typeof importedSettings.servers === 'undefined') throw new Error('Invalid settings file structure.');
                 if (confirm('This will overwrite your current settings. Are you sure you want to import?')) {
-                    const newServers = (importedSettings.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', askForLabelDirOnPage: s.askForLabelDirOnPage || false, forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
+                    const newServers = (importedSettings.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', askForLabelDirOnPage: s.askForLabelDirOnPage || false, forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '', qbittorrentApiKey: s.qbittorrentApiKey || '' }));
                     let newActiveServerId = importedSettings.activeServerId || null;
                     if (newActiveServerId && !newServers.find(s => s.id === newActiveServerId)) newActiveServerId = newServers.length > 0 ? newServers[0].id : null;
                     if (!newActiveServerId && newServers.length > 0) newActiveServerId = newServers[0].id;
@@ -1445,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
             'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
-            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
+            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', qbittorrentApiKey: s.qbittorrentApiKey || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
             globalSettings.advancedAddDialog = (result.advancedAddDialog || result.showAdvancedAddDialog && 'manual' || 'never'); // Migrate showAdvancedAddDialog -> advancedAddDialog
             advancedAddDialogInput.value = globalSettings.advancedAddDialog;
