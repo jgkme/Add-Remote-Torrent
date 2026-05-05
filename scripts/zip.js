@@ -38,18 +38,16 @@ async function buildPackages() {
     fs.writeFileSync(outputHashFile, hexHash);
     console.log(`Successfully saved hash to ${outputHashFile}`);
 
-    // 4. Optional: signed .crx for side-loading (zip above is the primary GitHub release artifact)
+    // 4. Signed .crx (requires private.pem; override+patches pin crx3+pbf for Node require())
     console.log(`\nCreating signed .crx file...`);
     if (!fs.existsSync(privateKeyPath)) {
-        console.warn(`Warning: Private key not found at ${privateKeyPath}; skipping .crx.`);
-    } else {
-        try {
-            execSync(`npx crx3 -p "${privateKeyPath}" -o "${outputCrxFile}" "${distFolder}"`, { stdio: 'inherit' });
-            console.log(`Successfully created signed package at ${outputCrxFile}`);
-        } catch (crxErr) {
-            console.warn('\nWarning: .crx signing failed; .zip and .sha256 are still valid for release.', crxErr.message || crxErr);
-        }
+        console.error(`Error: Private key not found at ${privateKeyPath}.`);
+        console.error('Add private.pem in the project root to produce a signed .crx.');
+        process.exit(1);
     }
+
+    execSync(`npx crx3 -p "${privateKeyPath}" -o "${outputCrxFile}" "${distFolder}"`, { stdio: 'inherit' });
+    console.log(`Successfully created signed package at ${outputCrxFile}`);
 
   } catch (error) {
     console.error('\nAn error occurred during the packaging process:', error);

@@ -1,0 +1,14 @@
+diff --git a/lib/crx3stream.js b/lib/crx3stream.js
+index 28f5f4f250b9acc2303aae51f5bee9a7c550903b..897e0717c1daad6b446b4b6a549e2922d3d4c98c 100644
+--- a/lib/crx3stream.js
++++ b/lib/crx3stream.js
+@@ -4,7 +4,8 @@ const {
+ } = require('fs');
+ const crypto = require('crypto');
+ 
+-const PBf = require('pbf').default;
++const _pbf = require('pbf');
++const PBf = _pbf.default != null ? _pbf.default : _pbf;
+ 
+ const crxpb = require('./crx3.pb.js');
+ const config = require('./configuration');

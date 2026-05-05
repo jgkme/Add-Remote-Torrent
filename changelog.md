@@ -9,12 +9,13 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
-### 0.4.36 (2026-05-05)
+### 0.4.37 (2026-05-05)
 
 - **Feat / Fix (qBittorrent):** Web API 2.14+ `torrents/add` JSON responses (including 202/409); legacy `Ok.` unchanged.
 - **Feat:** Optional qBittorrent Web API key (Bearer auth, v5.2+).
 - **Fix:** Auth vs network error messages on add; HTTP 401 hints on connection test.
 - **Feat:** Immediate server status check on startup; persist **Web API** version for qBittorrent.
+- **Fix:** Restore `.crx` signing by patching `crx3` for CommonJS `pbf` and pinning `pbf@3`.
 - **Chore:** Dev dependency updates (webpack, tailwind, postcss, terser, etc.).
 
 ## Supported Clients

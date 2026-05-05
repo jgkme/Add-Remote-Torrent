@@ -9,12 +9,13 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Release notes
 
-### 0.4.36
+### 0.4.37
 
 - **qBittorrent 5.2 / Web API 2.14+:** Handles `torrents/add` JSON responses and HTTP status codes 202/409; older servers that return plain `Ok.` are unchanged.
 - **Optional Web API key:** For qBittorrent 5.2+, you can paste an API key from **Preferences → Web UI → API Key** into the server profile so the extension uses Bearer authentication instead of Web UI cookie login (useful when cookie-based access fails).
 - **Clearer errors:** Login or credential problems are distinguished from generic network failures when adding torrents.
 - **Server status:** A status check runs shortly after browser/extension startup (as well as on the existing schedule); qBittorrent profiles can show the detected Web API version.
+- **Packaging:** `.crx` signing works again (Bun patch for `crx3` + pinned `pbf`).
 
 ## Supported Clients
 
