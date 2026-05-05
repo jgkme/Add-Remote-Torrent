@@ -165,6 +165,26 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.37 (2026-05-05):**
+  - **Feat / Fix (qBittorrent):** Web API 2.14+ `torrents/add` JSON responses (including 202/409); legacy `Ok.` unchanged.
+  - **Feat:** Optional qBittorrent Web API key (Bearer auth, v5.2+).
+  - **Fix:** Auth vs network error messages on add; HTTP 401 hints on connection test.
+  - **Feat:** Immediate server status check on startup; persist **Web API** version for qBittorrent.
+  - **Fix:** Restore `.crx` signing by patching `crx3` for CommonJS `pbf` and pinning `pbf@3`.
+  - **Chore:** Dev dependency updates (webpack, tailwind, postcss, terser, etc.).
+- **v0.4.36 (2026-05-04):**
+  - **Feat / Fix (qBittorrent):** Parse `torrents/add` JSON responses (Web API 2.14+) with legacy `Ok.` fallback.
+  - **Feat:** Optional `qbittorrentApiKey` (Bearer auth) and clearer auth vs network errors.
+  - **Feat:** Persist detected `webApiVersion`; run server status check on install/startup.
+  - **Build:** More resilient packaging when `.crx` signing fails.
+  - **Chore:** Dev dependency updates.
+- **v0.4.35 (2026-04-13):**
+  - **Fix (UI):** Fixed options/popup/confirm dialog scripts failing to run by loading them as ES modules (`type="module"`), so settings persist correctly and related UI flows work as expected.
+- **v0.4.34 (2026-04-03):**
+  - **Fix (Private Trackers):** Improved handling of on-page and context-menu torrent adds by downloading `.torrent` files in the browser (with cookies) whenever the request originates from a real page, even if the URL does not obviously look like a torrent link.
+  - **Fix (Diagnostics):** Added clearer history entries and notifications when the extension cannot download a `.torrent` file and falls back to sending only the URL, making private-tracker failures easier to understand and debug.
+  - **Docs:** Clarified options/help text for the "Always download .torrent files before sending to client" setting and recommended usage for private trackers without magnet links.
+  - **Build:** Generated release artifacts for `v0.4.34`.
 - **v0.4.33 (2026-03-15):**
   - **UX (Onboarding):** Added clearer guided empty states in popup/dashboard/options so first-time users know exactly where to configure their first server.
   - **UX (Clarity):** Reworked status/help copy in Confirm Add and popup empty results to be more human-readable and action-oriented.
