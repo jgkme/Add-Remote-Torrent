@@ -213,9 +213,23 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (labelToApply) {
         // Deluge requires the Label plugin for label.* RPC methods.
-        const labelResult = await makeAuthenticatedRpcCall(serverConfig, 'label.set_torrent', [torrentId, labelToApply]);
+        // Best effort: create label if missing, then set it. Retry once for Deluge 2.x timing.
+        await makeAuthenticatedRpcCall(serverConfig, 'label.add', [labelToApply]);
+        let labelResult = await makeAuthenticatedRpcCall(serverConfig, 'label.set_torrent', [torrentId, labelToApply]);
         if (!labelResult.success) {
-            debug.warn(`Deluge: Failed to set label "${labelToApply}" for ${torrentId}.`, labelResult.error);
+            const td = String(labelResult?.error?.technicalDetail || '');
+            if (/Unknown method/i.test(td) || /Method not found/i.test(td)) {
+                debug.warn('Deluge: Label plugin does not appear to be enabled (label.* methods unavailable).');
+            } else {
+                // Some setups need a short delay before the torrent becomes available for label assignment.
+                await new Promise((r) => setTimeout(r, 750));
+                labelResult = await makeAuthenticatedRpcCall(serverConfig, 'label.set_torrent', [torrentId, labelToApply]);
+                if (!labelResult.success) {
+                    debug.warn(`Deluge: Failed to set label "${labelToApply}" for ${torrentId}.`, labelResult.error);
+                } else {
+                    debug.log(`Deluge: Set label "${labelToApply}" for ${torrentId}.`);
+                }
+            }
         } else {
             debug.log(`Deluge: Set label "${labelToApply}" for ${torrentId}.`);
         }
