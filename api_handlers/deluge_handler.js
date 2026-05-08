@@ -137,6 +137,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         paused: userWantsPaused,
         torrentFileContentBase64,
     } = torrentOptions;
+    const labelToApply =
+        (typeof torrentOptions.category === 'string' && torrentOptions.category.trim()) ||
+        (Array.isArray(torrentOptions.labels) && torrentOptions.labels.length > 0
+            ? String(torrentOptions.labels[0] || '').trim()
+            : '');
 
     const isMagnet = torrentUrl.startsWith('magnet:');
     const useFileSelection = !isMagnet && typeof totalFileCount === 'number' && totalFileCount > 0 && Array.isArray(selectedFileIndices);
@@ -204,6 +209,16 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     if (!torrentId) {
         return { success: false, error: { userMessage: "Torrent hash missing from Deluge response.", technicalDetail: JSON.stringify(addResult.data) } };
+    }
+
+    if (labelToApply) {
+        // Deluge requires the Label plugin for label.* RPC methods.
+        const labelResult = await makeAuthenticatedRpcCall(serverConfig, 'label.set_torrent', [torrentId, labelToApply]);
+        if (!labelResult.success) {
+            debug.warn(`Deluge: Failed to set label "${labelToApply}" for ${torrentId}.`, labelResult.error);
+        } else {
+            debug.log(`Deluge: Set label "${labelToApply}" for ${torrentId}.`);
+        }
     }
 
     if (useFileSelection) {
