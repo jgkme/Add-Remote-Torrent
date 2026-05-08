@@ -155,6 +155,8 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.38 (2026-05-08):**
+  - **Fix (Deluge):** Apply custom label/category after adding (Label plugin). Creates label if missing (`label.add`) and retries once to avoid Deluge 2.x timing issues.
 - **v0.4.37 (2026-05-05):**
   - **Feat / Fix (qBittorrent):** Web API 2.14+ `torrents/add` JSON responses (including 202/409); legacy `Ok.` unchanged.
   - **Feat:** Optional qBittorrent Web API key (Bearer auth, v5.2+).
