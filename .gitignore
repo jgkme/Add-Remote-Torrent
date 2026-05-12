@@ -32,5 +32,8 @@ github.pub
 # Environment files
 .envrc
 
+# Local-only agent instructions (not for GitHub)
+agent.md
+
 # Secrets
 *.pem
