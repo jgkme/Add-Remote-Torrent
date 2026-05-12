@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.39 (2026-05-13)
+
+- **Fix (qBittorrent):** Per-server cookie login sessions so multiple profiles no longer share one global “logged in” flag (fixes spurious 401 / wrong-server auth after using another profile).
+- **Fix (qBittorrent):** User-facing unauthorized and connection-test messages emphasize username/password and CSRF; Web API key documented as optional fallback only.
+
 ### 0.4.38 (2026-05-08)
 
 - **Feat / Fix (qBittorrent):** Web API 2.14+ `torrents/add` JSON responses (including 202/409); legacy `Ok.` unchanged.

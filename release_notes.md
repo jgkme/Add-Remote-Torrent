@@ -1,3 +1,9 @@
+### v0.4.39 (2026-05-13)
+
+*   **Fix (qBittorrent):** Cookie-based Web UI login is now tracked **per server profile** instead of one global session. After logging into one qBittorrent server, calls to another profile no longer skipped `auth/login`, which previously caused HTTP 401 on the API and confusing messages about needing a Web API key (common with multiple seedboxes and qBittorrent 5.2+).
+*   **Fix (qBittorrent):** Refined unauthorized and connection-test wording so users check username/password and CSRF first; the optional Web API key (5.2+) is described only as a fallback when cookie access still cannot reach the API.
+*   **Build:** Generated release artifacts for `v0.4.39`.
+
 ### v0.4.34 (2026-04-03)
 
 *   **Fix (Private Trackers):** When adding torrents from on-page link catching or the context menu, the extension now more aggressively downloads `.torrent` files in the browser (using your logged-in session) before sending them to the client, even if the URL does not obviously look like a `.torrent` link.

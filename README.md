@@ -90,7 +90,7 @@ A: Chrome's Enhanced Safe Browsing shows this warning for new extensions or exte
 **Q: I'm having trouble connecting to my client, especially with qBittorrent v4.3.0+ or ruTorrent.**
 A:
 
-- **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature. On **qBittorrent 5.2+**, if adding still fails, generate a **Web API key** in the same Web UI settings and enter it in the extension’s server profile (optional field).
+- **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature. If you use **several qBittorrent server profiles**, each logs in separately (v0.4.39+). On **qBittorrent 5.2+**, you can optionally generate a **Web API key** in the same Web UI settings and enter it in the extension’s server profile when cookie-based API access still fails—it is **not** required for normal username/password login.
 - **ruTorrent:** For the best results, enter the full URL to your ruTorrent installation in the **"Server URL"** field (e.g., `https://your-server.com/rutorrent`) and leave the **"ruTorrent Relative Path"** field blank. Alternatively, you can enter the base URL (e.g., `https://your-server.com`) and the path (e.g., `/rutorrent`) in their respective fields.
 
 **Q: A torrent link didn't get added correctly.**
@@ -155,6 +155,9 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.39 (2026-05-13):**
+  - **Fix (qBittorrent):** Per-server cookie login sessions. A single shared session caused the second (and later) servers to skip `auth/login`, which produced HTTP 401 on the API and misleading prompts about Web API keys—especially noticeable with multiple profiles or qBittorrent 5.2+.
+  - **Fix (qBittorrent):** Clearer unauthorized / connection-test copy: username/password and CSRF first; optional Web API key described only as a fallback when cookie access cannot reach the API.
 - **v0.4.38 (2026-05-08):**
   - **Fix (Deluge):** Apply custom label/category after adding (Label plugin). Creates label if missing (`label.add`) and retries once to avoid Deluge 2.x timing issues.
 - **v0.4.37 (2026-05-05):**

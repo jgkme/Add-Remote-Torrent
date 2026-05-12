@@ -10,6 +10,33 @@ function usesQbittorrentApiKey(serverConfig) {
 }
 
 /**
+ * Cookie login state must be per server profile. A single global session caused
+ * requests to server B to skip login after server A was used → 401 and misleading
+ * "API key" hints (see multi-server note in torrent-client-handler-patterns).
+ */
+function qbittorrentSessionKey(serverConfig) {
+  if (!serverConfig) return 'unknown';
+  const id = serverConfig.id;
+  if (id !== undefined && id !== null && String(id).trim() !== '') {
+    return `id:${String(id).trim()}`;
+  }
+  const url = (serverConfig.url || '').trim();
+  const username = (serverConfig.username || '').trim();
+  const bearer = usesQbittorrentApiKey(serverConfig) ? 'bearer' : 'cookie';
+  return `cfg:${url}|${username}|${bearer}`;
+}
+
+const qbitSessionBuckets = new Map();
+
+function getQbitSessionBucket(serverConfig) {
+  const key = qbittorrentSessionKey(serverConfig);
+  if (!qbitSessionBuckets.has(key)) {
+    qbitSessionBuckets.set(key, { loginPromise: null, isLoggedIn: false });
+  }
+  return qbitSessionBuckets.get(key);
+}
+
+/**
  * Web API 2.14.0+ returns JSON with counts; legacy servers return plain "Ok." (see WebAPI_Changelog.md).
  */
 function classifyTorrentsAddResponse(httpStatus, responseText) {
@@ -71,7 +98,8 @@ function mapQbitFlowError(error) {
   }
   if (/Failed to get qBittorrent version:\s*401/i.test(msg)) {
     return {
-      userMessage: 'qBittorrent denied access (unauthorized). Check credentials or API key.',
+      userMessage:
+        'qBittorrent denied access (unauthorized) after login. Check username and password, Web UI URL, and CSRF settings. If you use multiple qBittorrent profiles, ensure each has been tested or used at least once so the extension logs in separately. Optional Web API key (5.2+) is only for setups where cookie-based API access still fails.',
       technicalDetail: msg,
       errorCode: 'AUTH_FAILED_QBIT',
     };
@@ -84,25 +112,24 @@ function mapQbitFlowError(error) {
 }
 
 const qbitSession = {
-  loginPromise: null,
-  isLoggedIn: false,
   login: async function(serverConfig) {
+    const bucket = getQbitSessionBucket(serverConfig);
     if (usesQbittorrentApiKey(serverConfig)) {
-      this.isLoggedIn = true;
+      bucket.isLoggedIn = true;
       return;
     }
-    if (this.loginPromise) {
-      await this.loginPromise;
+    if (bucket.loginPromise) {
+      await bucket.loginPromise;
       return;
     }
-    this.loginPromise = this._performLogin(serverConfig);
+    bucket.loginPromise = this._performLogin(serverConfig, bucket);
     try {
-      await this.loginPromise;
+      await bucket.loginPromise;
     } finally {
-      this.loginPromise = null;
+      bucket.loginPromise = null;
     }
   },
-  _performLogin: async function(serverConfig) {
+  _performLogin: async function(serverConfig, bucket) {
     const { url, username, password, basicAuthUsername, basicAuthPassword, useBasicAuth } = serverConfig;
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
@@ -133,26 +160,27 @@ const qbitSession = {
     });
 
     if (!loginResp.ok) {
-      this.isLoggedIn = false;
+      bucket.isLoggedIn = false;
       throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
     }
     const loginTxt = await loginResp.text();
     if (loginTxt.trim().toLowerCase() !== 'ok.') {
-      this.isLoggedIn = false;
+      bucket.isLoggedIn = false;
       debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
       throw new Error(`Login succeeded but server returned: ${loginTxt}`);
     }
 
-    this.isLoggedIn = true;
+    bucket.isLoggedIn = true;
     debug.log('qBittorrent session established.');
   },
   
   fetch: async function(apiUrl, options, serverConfig, isRetry = false) {
-    if (!usesQbittorrentApiKey(serverConfig) && !this.isLoggedIn && !isRetry) {
+    const bucket = getQbitSessionBucket(serverConfig);
+    if (!usesQbittorrentApiKey(serverConfig) && !bucket.isLoggedIn && !isRetry) {
       await this.login(serverConfig);
     }
     if (usesQbittorrentApiKey(serverConfig)) {
-      this.isLoggedIn = true;
+      bucket.isLoggedIn = true;
     }
 
     const finalOptions = {
@@ -176,7 +204,7 @@ const qbitSession = {
 
     if (response.status === 403 && !isRetry && !usesQbittorrentApiKey(serverConfig)) {
       debug.log('qBittorrent session expired (403), re-authenticating...');
-      this.isLoggedIn = false;
+      bucket.isLoggedIn = false;
       return this.fetch(apiUrl, options, serverConfig, true); // Retry once after logging in
     }
 
@@ -591,7 +619,7 @@ async function getBuildInfo(serverConfig) {
 export async function testConnection(serverConfig) {
   try {
     if (usesQbittorrentApiKey(serverConfig)) {
-      qbitSession.isLoggedIn = true;
+      getQbitSessionBucket(serverConfig).isLoggedIn = true;
     } else {
       await qbitSession.login(serverConfig);
     }
@@ -615,13 +643,14 @@ export async function testConnection(serverConfig) {
     };
   } catch (error) {
     debug.error('[qBittorrent Handler] testConnection failed:', error);
-    qbitSession.isLoggedIn = false;
+    getQbitSessionBucket(serverConfig).isLoggedIn = false;
     const msg = error && error.message ? error.message : String(error);
     let userMessage = "Connection failed. Check URL, credentials, and network. For qBittorrent v4.3.0+, consider disabling 'CSRF Protection' in WebUI options.";
     if (/Login failed:\s*401/i.test(msg) || (/401/.test(msg) && /Login failed/i.test(msg))) {
       userMessage = 'Connection failed: qBittorrent rejected the username or password (HTTP 401).';
     } else if (/Failed to get qBittorrent version:\s*401/i.test(msg)) {
-      userMessage = 'Connection failed: unauthorized when reading version. Check API key or credentials.';
+      userMessage =
+        'Connection failed: unauthorized when calling the API after login. Verify username/password, CSRF settings, and Web UI URL. Optional Web API key (qBittorrent 5.2+) is only for setups where cookie-based login cannot reach the API.';
     }
     return { 
       success: false, 
