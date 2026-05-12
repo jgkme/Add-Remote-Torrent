@@ -164,9 +164,14 @@ const qbitSession = {
       throw new Error(`Login failed: ${loginResp.status} ${loginResp.statusText}`);
     }
     const loginTxt = await loginResp.text();
-    if (loginTxt.trim().toLowerCase() !== 'ok.') {
+    const body = loginTxt.trim();
+    const bodyOk = body.toLowerCase() === 'ok.';
+    // qBittorrent 5.2+ (Web API 2.14.1+) may return 204 No Content or 200 with an empty body on
+    // successful auth/login while still setting the session cookie — legacy clients returned "Ok.".
+    const emptySuccessBody = body === '' && (loginResp.status === 204 || loginResp.status === 200);
+    if (!bodyOk && !emptySuccessBody) {
       bucket.isLoggedIn = false;
-      debug.warn(`qBit login not 'Ok.': ${loginTxt}`);
+      debug.warn(`qBit login unexpected body (HTTP ${loginResp.status}): ${loginTxt}`);
       throw new Error(`Login succeeded but server returned: ${loginTxt}`);
     }
 

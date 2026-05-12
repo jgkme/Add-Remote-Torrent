@@ -9,6 +9,10 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.40 (2026-05-12)
+
+- **Fix (qBittorrent):** Treat `auth/login` success when the response body is empty or status is **204** (qBittorrent 5.2+), in addition to legacy `Ok.` responses.
+
 ### 0.4.39 (2026-05-13)
 
 - **Fix (qBittorrent):** Per-server cookie login sessions so multiple profiles no longer share one global “logged in” flag (fixes spurious 401 / wrong-server auth after using another profile).

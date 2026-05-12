@@ -155,6 +155,8 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.40 (2026-05-12):**
+  - **Fix (qBittorrent):** Accept successful `auth/login` with an empty body or **HTTP 204** (Web API 5.2+), not only legacy `Ok.` text—fixes false “connection failed / CSRF” errors when username and password are correct.
 - **v0.4.39 (2026-05-13):**
   - **Fix (qBittorrent):** Per-server cookie login sessions. A single shared session caused the second (and later) servers to skip `auth/login`, which produced HTTP 401 on the API and misleading prompts about Web API keys—especially noticeable with multiple profiles or qBittorrent 5.2+.
   - **Fix (qBittorrent):** Clearer unauthorized / connection-test copy: username/password and CSRF first; optional Web API key described only as a fallback when cookie access cannot reach the API.

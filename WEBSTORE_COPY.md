@@ -41,6 +41,7 @@ For deeper logs:
 - Please remove sensitive info (passwords/tokens/IPs) before posting
 
 Recent updates:
+- v0.4.40 (2026-05-12): qBittorrent 5.2+ — accept empty/204 `auth/login` responses (not only legacy `Ok.`) so username/password works after upgrade.
 - v0.4.39 (2026-05-13): qBittorrent — separate cookie login per server profile (fixes wrong-server 401 / misleading API-key prompts with multiple servers); clearer auth error copy.
 - v0.4.38 (2026-05-08): Deluge — apply custom label/category after adding (Label plugin); create missing label; retry for Deluge 2.x timing.
 - v0.4.37 (2026-05-05): qBittorrent — Web API 2.14+ torrents/add JSON responses (incl. 202/409) with legacy “Ok.” fallback; optional Web API key (Bearer); clearer auth vs network errors; startup status checks; packaging/signing fixes.

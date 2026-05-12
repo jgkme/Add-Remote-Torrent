@@ -1,3 +1,8 @@
+### v0.4.40 (2026-05-12)
+
+*   **Fix (qBittorrent):** Successful Web UI login on **qBittorrent 5.2+** can return **HTTP 204** or an **empty** body instead of the legacy `Ok.` string. The extension now accepts those responses so username/password connection tests and adds work without a false CSRF or “check URL” failure.
+*   **Build:** Generated release artifacts for `v0.4.40`.
+
 ### v0.4.39 (2026-05-13)
 
 *   **Fix (qBittorrent):** Cookie-based Web UI login is now tracked **per server profile** instead of one global session. After logging into one qBittorrent server, calls to another profile no longer skipped `auth/login`, which previously caused HTTP 401 on the API and confusing messages about needing a Web API key (common with multiple seedboxes and qBittorrent 5.2+).
