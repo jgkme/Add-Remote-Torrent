@@ -1,3 +1,10 @@
+### v0.4.41 (2026-05-13)
+
+*   **Fix (Synology Download Station):** Restores **v0.4.23**-style authentication: session **`_sid` only**, without requesting **`enable_syno_token`** or sending **`SynoToken`** on Download Station / Web API calls. Builds after **v0.4.23** had added SynoToken support; on several DSM setups this caused **API error 105** or failed adds while **v0.4.23** still worked—this release aligns with that proven behaviour while keeping per-server SID caching, POST **Basic Auth** for reverse proxies, and proper **119** session retry.
+*   **UX (Synology):** More helpful messages for common Synology API error codes (including **105**).
+*   **Diagnostics:** Failed periodic connection checks now save **`lastError`** on each server; the **Dashboard → Show Details** panel shows the latest failure; torrent-add errors surface a short **technical detail** when the handler provides one.
+*   **Build:** Generated release artifacts for `v0.4.41`.
+
 ### v0.4.40 (2026-05-12)
 
 *   **Fix (qBittorrent):** Successful Web UI login on **qBittorrent 5.2+** can return **HTTP 204** or an **empty** body instead of the legacy `Ok.` string. The extension now accepts those responses so username/password connection tests and adds work without a false CSRF or “check URL” failure.

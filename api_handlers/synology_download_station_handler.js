@@ -3,7 +3,8 @@ import { debug } from '../debug';
 // Synology Download Station API Handler
 
 // Session cache per server to avoid cross-server leakage.
-const synologySessionCache = new Map(); // key: server url -> { sid, synotoken, lastLoginTime }
+// Keep shape compatible with pre–v0.4.24: `_sid` only (no SynoToken) unless DSM misbehaves — see getSynologySession.
+const synologySessionCache = new Map(); // key: server url -> { sid, lastLoginTime }
 const SYNOLOGY_SESSION_CACHE_DURATION = 30 * 60 * 1000;
 
 function getServerCacheKey(serverConfig) {
@@ -17,6 +18,25 @@ function getAuthHeaders(serverConfig) {
         headers['Authorization'] = `Basic ${authString}`;
     }
     return headers;
+}
+
+/**
+ * Synology Web API common error codes (DSM / packages). Maps to user-facing hints.
+ * Ref: Synology Developer Guide (`error.code` in JSON responses).
+ */
+function synologyApiUserMessage(code) {
+    const messages = {
+        101: 'Invalid parameter sent to Synology (check destination folder path and link format).',
+        102: 'Synology reported an unknown API — DSM or Download Station may need an update.',
+        103: 'This Synology API version is not supported — try a different package/API version if your DSM exposes it.',
+        104: 'Unknown API method — DSM/Download Station may have changed.',
+        105: 'Permission denied: this DSM user cannot use Download Station via the API. In DSM go to Control Panel → User & Group → select the user → Applications (or Privileges) and allow Download Station, or use an account with access.',
+        106: 'Synology session timed out — try Test connection again.',
+        107: 'Synology session was replaced (duplicate login). Try again shortly.',
+        119: 'Invalid or expired Synology session — the extension will retry login automatically.',
+        400: 'Invalid torrent file or magnet link for Synology Download Station.',
+    };
+    return messages[code] || null;
 }
 
 async function getSynologySession(serverConfig) {
@@ -34,6 +54,8 @@ async function getSynologySession(serverConfig) {
     // User log indicates SYNO.API.Auth path is entry.cgi and maxVersion is 7.
     // Using version 6 for SYNO.API.Auth as it's often cited as stable.
     const authUrl = `${serverConfig.url.replace(/\/$/, '')}/webapi/entry.cgi`;
+    // Match v0.4.23 login query: do NOT use enable_syno_token — some DSM / Download Station
+    // setups return error 105 or fail tasks when SynoToken is requested and sent on later calls.
     const params = new URLSearchParams({
         api: 'SYNO.API.Auth',
         version: serverConfig.authApiVersion || '6', // Changed version
@@ -42,7 +64,6 @@ async function getSynologySession(serverConfig) {
         passwd: serverConfig.password, // This should be passwd
         session: 'DownloadStation', // Session name
         format: 'sid',
-        enable_syno_token: 'yes',
     });
 
     const authHeaders = getAuthHeaders(serverConfig);
@@ -60,7 +81,6 @@ async function getSynologySession(serverConfig) {
         if (data.success && data.data && data.data.sid) {
             const session = {
                 sid: data.data.sid,
-                synotoken: data.data.synotoken || null,
                 lastLoginTime: now,
             };
             synologySessionCache.set(key, session);
@@ -141,9 +161,6 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
     queryParams.set('version', version);
     queryParams.set('method', methodName);
     queryParams.set('_sid', session.sid);
-    if (session.synotoken) {
-        queryParams.set('SynoToken', session.synotoken);
-    }
 
     let requestOptions = { method: httpMethod };
     let fullUrl = apiUrl;
@@ -172,7 +189,7 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
 
         const data = await response.json();
         if (data && !data.success && data.error && data.error.code === 119 && !params.retriedWithNewSid) {
-            debug.log('Synology request failed due to invalid/expired SID/SynoToken (Code 119). Refetching session and retrying.');
+            debug.log('Synology request failed due to invalid/expired SID (Code 119). Refetching session and retrying.');
             synologySessionCache.delete(getServerCacheKey(serverConfig));
             const retryParams = { ...params, retriedWithNewSid: true };
             return makeSynologyApiRequest(serverConfig, apiName, version, methodName, retryParams, httpMethod);
@@ -180,17 +197,19 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
         if (data.success) {
             return { success: true, data: data.data };
         } else {
-            // Handle specific Synology error codes if known, e.g., 101 = invalid parameter
-            let userMsg = "Synology server reported an error.";
-            if (data.error && data.error.code === 400) userMsg = "Invalid torrent file or magnet link.";
-            // Add more specific messages based on common error codes from Synology API docs
-            
+            const errCode = data.error ? data.error.code : undefined;
+            const mapped = typeof errCode === 'number' ? synologyApiUserMessage(errCode) : null;
+            let userMsg = mapped || 'Synology server reported an error.';
+            if (!mapped && data.error && data.error.code === 400) {
+                userMsg = 'Invalid torrent file or magnet link.';
+            }
+
             return { 
                 success: false, 
                 error: {
                     userMessage: userMsg,
-                    technicalDetail: `Synology API Error Code: ${data.error ? data.error.code : 'Unknown'}. Errors: ${data.error?.errors ? JSON.stringify(data.error.errors) : 'N/A'}`,
-                    errorCode: `SYNO_API_ERR_${data.error ? data.error.code : 'UNKNOWN'}`
+                    technicalDetail: `Synology API Error Code: ${errCode ?? 'Unknown'}. Errors: ${data.error?.errors ? JSON.stringify(data.error.errors) : 'N/A'}`,
+                    errorCode: `SYNO_API_ERR_${errCode ?? 'UNKNOWN'}`
                 }
             };
         }

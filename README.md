@@ -155,6 +155,10 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.41 (2026-05-13):**
+  - **Fix (Synology Download Station):** Restore **SID-only** Web API auth like **v0.4.23** (no `enable_syno_token` / **SynoToken** on requests). Newer builds had added SynoToken flow; some DSM setups responded with API **105** or failed adds until reverted—validated against working **v0.4.23** behaviour.
+  - **Fix / UX (Synology):** Clearer user-visible messages for common Synology API error codes (e.g. **105** permission).
+  - **Feat / Fix (Diagnostics):** Persist **last connection error** per server for offline checks; dashboard **Show Details** lists it; failed adds append a short **technical hint** to “Last Action” / notifications when available.
 - **v0.4.40 (2026-05-12):**
   - **Fix (qBittorrent):** Accept successful `auth/login` with an empty body or **HTTP 204** (Web API 5.2+), not only legacy `Ok.` text—fixes false “connection failed / CSRF” errors when username and password are correct.
 - **v0.4.39 (2026-05-13):**

@@ -492,6 +492,17 @@ async function runServerStatusCheck() {
           ...server,
           status: result.success ? "online" : "offline",
           lastChecked: new Date().toISOString(),
+          lastError: result.success
+            ? null
+            : {
+                userMessage:
+                  result?.error?.userMessage ||
+                  result?.message ||
+                  "Connection failed.",
+                technicalDetail: result?.error?.technicalDetail || "",
+                errorCode: result?.error?.errorCode || "",
+                at: new Date().toISOString(),
+              },
           version: result.success
             ? (result.data?.version ?? server.version)
             : server.version,
@@ -512,6 +523,12 @@ async function runServerStatusCheck() {
           ...server,
           status: "offline",
           lastChecked: new Date().toISOString(),
+          lastError: {
+            userMessage: "Connection check threw an error.",
+            technicalDetail: e?.message ? String(e.message) : String(e),
+            errorCode: "STATUS_CHECK_EXCEPTION",
+            at: new Date().toISOString(),
+          },
         };
       }
     }
@@ -1607,7 +1624,13 @@ async function addTorrentToClient(
         typeof result.error === "object" &&
         result.error.userMessage
       ) {
-        userFriendlyError = result.error.userMessage;
+        const code = result.error.errorCode ? ` (${result.error.errorCode})` : "";
+        const detail = result.error.technicalDetail
+          ? ` Details: ${String(result.error.technicalDetail).substring(0, 300)}`
+          : "";
+        // Include errorCode + short technical detail in the surfaced message so users can report it
+        // without needing DevTools logs.
+        userFriendlyError = `${result.error.userMessage}${code}${detail}`;
         debug.error(
           `Error adding torrent: ${result.error.technicalDetail || ""} (Code: ${
             result.error.errorCode || "N/A"

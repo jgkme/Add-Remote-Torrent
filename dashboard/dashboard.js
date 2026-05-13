@@ -50,6 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailsVersion = server.version ? escapeHtml(server.version.startsWith('v') ? server.version : `v${server.version}`) : 'N/A';
             const detailsActiveCount = Array.isArray(server.activeTorrents) ? server.activeTorrents.length : 0;
             const detailsServerId = escapeHtml(server.id || 'N/A');
+            const detailsLastErrorUser = server.lastError?.userMessage ? escapeHtml(server.lastError.userMessage) : '';
+            const detailsLastErrorTech = server.lastError?.technicalDetail ? escapeHtml(server.lastError.technicalDetail) : '';
+            const detailsLastErrorCode = server.lastError?.errorCode ? escapeHtml(server.lastError.errorCode) : '';
+            const detailsLastErrorAt = server.lastError?.at ? escapeHtml(new Date(server.lastError.at).toLocaleString()) : '';
 
             cardElement.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -88,6 +92,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p><strong>Client Version:</strong> ${detailsVersion}</p>
                             <p><strong>Server ID:</strong> <span class="break-all">${detailsServerId}</span></p>
                             <p><strong>Tracked Active Torrents:</strong> ${detailsActiveCount}</p>
+                            ${
+                                !isOnline && (detailsLastErrorUser || detailsLastErrorTech || detailsLastErrorCode)
+                                    ? `
+                                      <div class="pt-2 mt-2 border-t border-gray-200 dark:border-gray-600">
+                                        <p><strong>Last Error:</strong> <span class="wrap-break-word">${detailsLastErrorUser || 'N/A'}</span></p>
+                                        ${detailsLastErrorCode ? `<p><strong>Error Code:</strong> ${detailsLastErrorCode}</p>` : ''}
+                                        ${detailsLastErrorAt ? `<p><strong>When:</strong> ${detailsLastErrorAt}</p>` : ''}
+                                        ${detailsLastErrorTech ? `<p><strong>Technical:</strong> <span class="break-all">${detailsLastErrorTech}</span></p>` : ''}
+                                      </div>
+                                    `
+                                    : ''
+                            }
                         </div>
                     </div>
                 </div>

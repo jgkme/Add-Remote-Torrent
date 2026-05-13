@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.41 (2026-05-13)
+
+- **Fix (Synology Download Station):** SID-only session (`_sid`) without SynoToken/login flag changes introduced after **v0.4.23**—fixes regression where some NAS setups returned API **105** or broke adds.
+- **UX (Synology):** Friendlier copy for common Synology API error codes.
+- **Diagnostics:** Store **lastError** on failed server status checks; dashboard details; richer add-failure messages when handlers expose **technicalDetail**.
+
 ### 0.4.40 (2026-05-12)
 
 - **Fix (qBittorrent):** Treat `auth/login` success when the response body is empty or status is **204** (qBittorrent 5.2+), in addition to legacy `Ok.` responses.
