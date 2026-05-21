@@ -145,7 +145,7 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 A: Very old versions of the uTorrent WebUI have a different API. When you configure your server in the extension's options, make sure you select **"uTorrent (Old)"** as the "Client Type". This uses a legacy API handler that is compatible with older clients. If you have selected the standard "uTorrent" client type, it will fail with a token error.
 
 **Q: On macOS, clicking torrent links doesn't do anything.**
-A: Please ensure that the "Enable on-page link/form catching" option is enabled in the extension's settings. You can find this under "Other Global Settings" on the options page. If it is enabled and still not working, please open an issue on GitHub and provide as much detail as possible, including your macOS and Chrome versions.
+A: Please ensure that the "Enable on-page link/form catching" option is enabled in the extension's settings. You can find this under "Other Global Settings" on the options page. **v0.4.43+** only loads the on-page script when that option is on (it is **off by default** for new installs). If you enabled it before updating, the setting is kept—reload the page or open a new tab if interception does not start right away; tabs in other windows may need a refresh. If it is enabled and still not working, please open an issue on GitHub and provide as much detail as possible, including your macOS and Chrome versions.
 
 **Q: I'm having trouble connecting to rTorrent on seedbox.io.**
 A: For older `seedbox.io` accounts, you may need a specific URL format. When configuring the `rTorrent (XML-RPC)` client, try the following:
@@ -203,6 +203,11 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.43 (2026-05-22):**
+  - **Perf:** Lazy-load client API handlers (smaller service worker).
+  - **Perf / Privacy:** Link-catching content script only when enabled in Options; preserved setting for existing users; optional host permissions unchanged (LAN/VPS/custom URLs still work).
+  - **Fix:** `activeTab` clipboard quick-add; advanced dialog after service worker restart.
+  - **Docs / Chore:** Privacy & store metadata; dev dependency updates.
 - **v0.4.42 (2026-05-22):**
   - **Fix (Shortcuts):** Quick-add-from-clipboard has no default shortcut (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting). Assign at `chrome://extensions/shortcuts` if wanted; clear the old **Ctrl+Shift+V** binding there after update if paste-without-formatting still fails ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59)).
 - **v0.4.41 (2026-05-13):**

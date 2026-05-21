@@ -9,6 +9,14 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.43 (2026-05-22)
+
+- **Perf:** Lazy-load torrent client API handlers — much smaller service worker; handlers load on first use per client type.
+- **Perf / Privacy:** On-page link catching runs only when **Enable on-page link/form catching** is on in Options (not injected on every site by default). Existing users who already enabled it keep that setting (`chrome.storage.local`); the extension re-registers the script on install, startup, and when the toggle changes. Refresh tabs in other windows after enabling if links are not intercepted.
+- **Fix:** `activeTab` + `scripting` for clipboard quick-add; advanced add dialog survives service worker restarts.
+- **Docs:** Updated privacy policy, store listing metadata (`CHROMEWEBSTORE.md`), and manifest short description.
+- **Chore:** Dev dependency updates (webpack, Tailwind, PostCSS, terser, etc.).
+
 ### 0.4.42 (2026-05-22)
 
 - **Fix (Shortcuts):** Quick-add-from-clipboard has no default shortcut (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59))). Assign at `chrome://extensions/shortcuts` if desired. Updates do not clear old bindings; clear **Ctrl+Shift+V** there if needed—a one-time notification appears when the conflict is still detected.

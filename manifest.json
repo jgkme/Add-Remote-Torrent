@@ -2,15 +2,16 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.42",
-  "description": "Add Remote Torrent",
+  "version": "0.4.43",
+  "description": "Add magnets and .torrent URLs to remote clients. Multi-server, local-only settings.",
   "permissions": [
     "storage",
     "contextMenus",
     "notifications",
     "offscreen",
     "alarms",
-    "scripting"
+    "scripting",
+    "activeTab"
   ],
   "optional_host_permissions": [
     "http://*/*",
@@ -52,17 +53,6 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content_script.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "web_accessible_resources": [
     {
       "resources": [

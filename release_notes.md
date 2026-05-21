@@ -1,3 +1,12 @@
+### v0.4.43 (2026-05-22)
+
+*   **Perf:** Torrent client handlers are lazy-loaded per server type, shrinking the background service worker bundle.
+*   **Perf / Privacy:** The link-catching content script is registered only when **Enable on-page link/form catching** is turned on in Options—not on every webpage by default. If you already had link catching enabled, your setting is unchanged; after updating, the extension restores registration automatically. Tabs in the focused window are activated immediately; refresh other open tabs if needed.
+*   **Fix:** Clipboard quick-add uses `activeTab` with a one-shot script on the active `http://`/`https://` tab. Advanced add dialog window handling is more reliable after a service worker restart.
+*   **Docs:** Privacy policy and Chrome Web Store permission notes updated.
+*   **Chore:** Dev dependency updates.
+*   **Build:** Generated release artifacts for `v0.4.43`.
+
 ### v0.4.42 (2026-05-22)
 
 *   **Fix (Shortcuts):** “Quick add from clipboard” has **no default keyboard shortcut** (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59))). Assign one at `chrome://extensions/shortcuts` if you want it. Updating does not remove an old binding automatically—clear **Ctrl+Shift+V** there if paste-without-formatting still fails; a one-time notification is shown when the extension detects the conflict.

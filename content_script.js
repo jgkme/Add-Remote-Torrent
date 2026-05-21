@@ -1,9 +1,8 @@
-// Content script for Add Remote Torrent
+// Content script for Add Remote Torrent (loaded only when link catching is enabled)
 import { debug } from './debug';
 import { debounce } from './utils';
 import { LinkMonitor } from './LinkMonitor.js';
 
-// A safe wrapper for chrome.runtime.sendMessage that checks for a valid context first.
 function safeSendMessage(message, callback) {
     if (chrome.runtime?.id) {
         if (callback) {
@@ -12,13 +11,13 @@ function safeSendMessage(message, callback) {
             chrome.runtime.sendMessage(message);
         }
     } else {
-        debug.log("Extension context invalidated. Message not sent:", message);
+        debug.log('Extension context invalidated. Message not sent:', message);
     }
 }
 
 let art_modal_open_func, art_modal_close_func;
+let linkMonitorInstance = null;
 
-// Modal initialization function
 const art_initModalLogic = () => {
     let modalWrapper = null;
     let modalWindow = null;
@@ -82,10 +81,10 @@ const art_initModalLogic = () => {
     document.addEventListener('keydown', keydownHandler, false);
 
     return [openModal, closeModal];
-}
+};
 
 const getOptions = async () => new Promise((resolve, reject) => {
-    safeSendMessage({ action: 'getStorageData' }, response => {
+    safeSendMessage({ action: 'getStorageData' }, (response) => {
         if (chrome.runtime.lastError) {
             return reject(new Error(chrome.runtime.lastError.message));
         }
@@ -93,9 +92,9 @@ const getOptions = async () => new Promise((resolve, reject) => {
             return reject(new Error('No response from getStorageData or response is undefined.'));
         }
         debug.setEnabled(response?.contentDebugEnabled);
-        const patterns = (response.linkCatchingPatterns || []).map(p => p.pattern);
+        const patterns = (response.linkCatchingPatterns || []).map((p) => p.pattern);
         const urlPatterns = [...patterns, '^magnet:'];
-        response.urlMatchers = urlPatterns.map(p => {
+        response.urlMatchers = urlPatterns.map((p) => {
             try {
                 return new RegExp(p, 'i');
             } catch (e) {
@@ -109,7 +108,7 @@ const getOptions = async () => new Promise((resolve, reject) => {
 
 const isTorrentUrl = (url, options = {}) => {
     if (url && Array.isArray(options.urlMatchers)) {
-        return options.urlMatchers.some(matcher => {
+        return options.urlMatchers.some((matcher) => {
             try {
                 return url.match(matcher);
             } catch (e) {
@@ -118,7 +117,7 @@ const isTorrentUrl = (url, options = {}) => {
         });
     }
     return false;
-}
+};
 
 const checkLinkElement = (el, options, logAction) => {
     if (el._art_handler_added) {
@@ -131,12 +130,12 @@ const checkLinkElement = (el, options, logAction) => {
         addClickHandler(el, options);
         return true;
     }
-}
+};
 
-const registerLinks = options => {
+const registerLinks = (options) => {
     const elements = Array.from(document.querySelectorAll('a, input, button'));
     let torrentLinksFound = 0;
-    elements.forEach(el => {
+    elements.forEach((el) => {
         if (checkLinkElement(el, options, 'registerLinks crawler')) {
             torrentLinksFound++;
         }
@@ -149,7 +148,7 @@ const registerLinks = options => {
             safeSendMessage({ action: 'updateBadge', count: torrentLinksFound });
         }
     }
-}
+};
 
 const addClickHandler = (el = {}, options) => {
     if (el.addEventListener && !el._art_handler_added) {
@@ -168,19 +167,19 @@ const addClickHandler = (el = {}, options) => {
                 const pageUrl = window.location.href;
                 safeSendMessage({
                     action: 'addTorrent',
-                    url: url,
-                    pageUrl: pageUrl
+                    url,
+                    pageUrl,
                 });
             } else if (!el._art_is_torrent) {
                 debug.log('[ART ContentScript] Link clicked, but its associated url is no longer a torrent:', url);
             }
         });
     }
-}
+};
 
 const updateBadge = () => {
     const torrentLinksOnPage = Array.from(document.querySelectorAll('a, input, button'))
-        .filter(el => el._art_is_torrent)
+        .filter((el) => el._art_is_torrent)
         .length;
     debug.log('[ART ContentScript] updateBadge(): updateBadge message with count:', torrentLinksOnPage);
     safeSendMessage({ action: 'updateBadge', count: torrentLinksOnPage });
@@ -188,41 +187,63 @@ const updateBadge = () => {
 const updateBadgeDebounced = debounce(updateBadge, 50);
 
 const initLinkMonitor = async (options) => {
-    let linkMonitor;
     try {
         if (!options || options.catchfrompage !== true) {
             return;
         }
-        linkMonitor = new LinkMonitor((el, logAction) => {
+
+        if (linkMonitorInstance) {
+            linkMonitorInstance.stop();
+            linkMonitorInstance = null;
+        }
+
+        linkMonitorInstance = new LinkMonitor((el, logAction) => {
             checkLinkElement(el, options, `LinkMonitor: ${logAction}`);
             if (options.linksfoundindicator === true) {
                 updateBadgeDebounced();
             }
         });
+
         setTimeout(() => {
             debug.log('Registering links with delay:', options.registerDelay);
             registerLinks(options);
         }, options.registerDelay || 0);
     } catch (error) {
-        linkMonitor && linkMonitor.stop();
+        if (linkMonitorInstance) {
+            linkMonitorInstance.stop();
+            linkMonitorInstance = null;
+        }
         debug.error(error);
     }
 };
 
-window.addEventListener('pageshow', () => {
-    debug.log('[ART ContentScript] pageshow event detected, (re)initializing link monitor');
-    getOptions().then(initLinkMonitor).catch(error => {
-        if (error.message.includes("Extension context invalidated") || error.message.includes("Receiving end does not exist")) {
-            debug.log("[ART ContentScript] Extension has been updated or reloaded. Content script will be re-injected on next page load. This is normal.");
+async function bootstrapLinkCatching() {
+    try {
+        const options = await getOptions();
+        await initLinkMonitor(options);
+    } catch (error) {
+        if (
+            error.message.includes('Extension context invalidated') ||
+            error.message.includes('Receiving end does not exist')
+        ) {
+            debug.log(
+                '[ART ContentScript] Extension updated or reloaded; reload the page if link catching stops working.'
+            );
         } else {
-            debug.error("[ART ContentScript] Failed to initialize:", error);
+            debug.error('[ART ContentScript] Failed to initialize:', error);
         }
-    });
-});
-
-chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-    if (message.action === 'addTorrent') {
-        sendResponse({});
-        return true;
     }
-});
+}
+
+if (!globalThis.__artContentScriptLoaded) {
+    globalThis.__artContentScriptLoaded = true;
+    window.addEventListener('pageshow', () => {
+        debug.log('[ART ContentScript] pageshow event detected, (re)initializing link monitor');
+        void bootstrapLinkCatching();
+    });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => void bootstrapLinkCatching(), { once: true });
+    }
+}
+
+void bootstrapLinkCatching();

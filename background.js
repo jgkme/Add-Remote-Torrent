@@ -3,6 +3,11 @@
 
 import { debug } from "./debug";
 import { getClientApi } from "./api_handlers/api_client_factory.js";
+import {
+  syncLinkCatchingContentScript,
+  syncLinkCatchingFromStorage,
+  injectLinkCatchingIntoFocusedWindowTabs,
+} from "./content_script_registration.js";
 
 let bencodeModulePromise = null;
 async function getBencode() {
@@ -64,8 +69,12 @@ const popAdvancedDialog = async (url, targetServer) => {
   );
 
   if (dialogWindow?.id) {
-    // Make sure existing popups are closed before opening a new one
-    chrome.windows.remove(dialogWindow.id).catch(() => {}); // Silently ignore errors
+    try {
+      await chrome.windows.get(dialogWindow.id);
+      await chrome.windows.remove(dialogWindow.id);
+    } catch {
+      // Window already closed (e.g. service worker restarted)
+    }
     dialogWindow = null;
   }
 
@@ -175,13 +184,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
       return true;
     }
-    const apiClient = getClientApi(serverConfig.clientType);
-    apiClient
-      .testConnection(serverConfig)
-      .then((response) => {
+    (async () => {
+      try {
+        const apiClient = await getClientApi(serverConfig.clientType);
+        const response = await apiClient.testConnection(serverConfig);
         sendResponse(response);
-      })
-      .catch((error) => {
+      } catch (error) {
         debug.error(
           `Error during testConnection for ${serverConfig.clientType}:`,
           error
@@ -190,7 +198,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           success: false,
           message: `Failed to test connection: ${error.message}`,
         });
-      });
+      }
+    })();
     return true;
   } else if (request.action === "addTorrentManually" && request.url) {
     addTorrentToClient(request.url);
@@ -316,7 +325,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ torrents: [], error: "No active server configured." });
         return;
       }
-      const apiClient = getClientApi(server.clientType);
+      const apiClient = await getClientApi(server.clientType);
       if (!apiClient || typeof apiClient.getActiveTorrents !== "function") {
         sendResponse({ torrents: [], error: "Client does not support torrent listing." });
         return;
@@ -337,7 +346,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         "activeServerId",
       ]);
       const server = servers.find((s) => s.id === activeServerId);
-      const apiClient = getClientApi(server?.clientType);
+      const apiClient = await getClientApi(server?.clientType);
       if (!server || !apiClient || typeof apiClient.torrentAction !== "function") {
         sendResponse({ success: false, error: "Torrent actions unsupported for active server." });
         return;
@@ -481,6 +490,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   void runServerStatusCheck().catch((e) =>
     debug.error("[ART Background] Initial server status check failed:", e)
   );
+  void syncLinkCatchingFromStorage().catch((e) =>
+    debug.error("[ART Background] Link-catching content script sync failed:", e)
+  );
 });
 
 async function runServerStatusCheck() {
@@ -501,7 +513,7 @@ async function runServerStatusCheck() {
     const server = queue.shift();
     if (!server) return;
 
-    const apiClient = getClientApi(server.clientType);
+    const apiClient = await getClientApi(server.clientType);
     let updatedServer;
     if (!apiClient) {
       updatedServer = {
@@ -637,7 +649,7 @@ async function onAlarm(alarm) {
       );
       if (torrentsOnThisServer.length === 0) continue;
 
-      const apiClient = getClientApi(server.clientType);
+      const apiClient = await getClientApi(server.clientType);
       if (!apiClient || typeof apiClient.getTorrentsInfo !== "function") {
         continue;
       }
@@ -704,6 +716,9 @@ chrome.runtime.onStartup.addListener(() => {
     debug.error("[ART Background] Startup server status check failed:", e)
   );
   updateGlobalBadge();
+  void syncLinkCatchingFromStorage().catch((e) =>
+    debug.error("[ART Background] Startup link-catching sync failed:", e)
+  );
 });
 
 // Listen for storage changes to update context menu when servers are modified
@@ -727,6 +742,17 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
       changes.activeServerId)
   ) {
     updateGlobalBadge();
+  }
+  if (namespace === "local" && changes.catchfrompage) {
+    const enabled = changes.catchfrompage.newValue === true;
+    void (async () => {
+      await syncLinkCatchingContentScript(enabled);
+      if (enabled) {
+        await injectLinkCatchingIntoFocusedWindowTabs();
+      }
+    })().catch((e) =>
+      debug.error("[ART Background] Link-catching sync after setting change failed:", e)
+    );
   }
 });
 
@@ -1543,7 +1569,7 @@ async function addTorrentToClient(
   wasRuleApplied = ruleApplicationResult.wasRuleApplied;
 
   const { name: serverName, clientType } = serverToUse;
-  const apiClient = getClientApi(clientType);
+  const apiClient = await getClientApi(clientType);
 
   if (!apiClient || typeof apiClient.addTorrent !== "function") {
     const errorMsg = `No valid API handler found for client type: ${clientType}`;
@@ -1720,20 +1746,36 @@ async function addTorrentToClient(
 }
 
 async function getClipboardText() {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (!tab?.id) return "";
+  // activeTab is granted when the user runs quick_add_clipboard (keyboard shortcut).
+  let tab;
+  try {
+    [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  } catch (error) {
+    debug.warn("[ART Background] Could not resolve active tab for clipboard:", error);
+    return "";
+  }
+  if (!tab?.id) {
+    return "";
+  }
+  if (tab.url && !/^https?:\/\//i.test(tab.url)) {
+    debug.log(
+      "[ART Background] Clipboard shortcut skipped: active tab is not a normal web page:",
+      tab.url
+    );
+    return "";
+  }
   try {
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: async () => {
         try {
           return await navigator.clipboard.readText();
-        } catch (e) {
+        } catch {
           return "";
         }
       },
     });
-    return String(result || "").trim();
+    return String(result ?? "").trim();
   } catch (error) {
     debug.warn("[ART Background] Clipboard read failed:", error);
     return "";
@@ -1905,9 +1947,10 @@ chrome.commands.onCommand.addListener(async (command) => {
     }
   } else if (command === "toggle_link_catching") {
     const { catchfrompage = false } = await chrome.storage.local.get("catchfrompage");
-    await chrome.storage.local.set({ catchfrompage: !catchfrompage });
+    const nextEnabled = !catchfrompage;
+    await chrome.storage.local.set({ catchfrompage: nextEnabled });
     await updateActionHistory(
-      `Link catching ${!catchfrompage ? "enabled" : "disabled"} via keyboard shortcut.`
+      `Link catching ${nextEnabled ? "enabled" : "disabled"} via keyboard shortcut. Refresh other open tabs if needed.`
     );
   }
 });
