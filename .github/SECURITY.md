@@ -22,5 +22,5 @@ We thank you for your cooperation and your efforts to keep Add Remote Torrent se
 
 ## Automated scanning
 
-- **Code scanning** uses GitHub’s **default CodeQL setup** (Security → Code scanning). Do not add a custom `.github/workflows/codeql.yml` while default setup is enabled—they conflict and uploads fail.
+- **Code scanning** uses `.github/workflows/codeql.yml` (JavaScript/TypeScript only). Do not re-enable **default CodeQL setup** in the repo settings at the same time—it adds a separate **actions** analysis that fails on workflow-only files.
 - **Dependabot** opens weekly npm update PRs (see `.github/dependabot.yml`). Security advisories appear under the repository **Security** tab.
