@@ -34,6 +34,9 @@ github.pub
 
 # Local-only agent instructions (not for GitHub)
 agent.md
+.agents/
+.skills/
+skills-lock.json
 
 # Secrets
 *.pem
