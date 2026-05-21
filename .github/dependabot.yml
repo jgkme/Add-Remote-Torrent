@@ -1,0 +1,26 @@
+# Keeps devDependencies current; security updates are separate (Dependabot alerts).
+# https://docs.github.com/en/code-security/dependabot
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      webpack:
+        patterns:
+          - webpack*
+          - terser*
+          - '@babel/*'
+      tailwind:
+        patterns:
+          - tailwindcss*
+          - '@tailwindcss/*'
+          - postcss*
+    ignore:
+      # Patched locally; let renovate-style bumps go through PR review
+      - dependency-name: crx3
+        versions: ['>= 3']
