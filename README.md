@@ -82,6 +82,51 @@ To catch these links, you need to add a custom URL pattern:
 
 For private trackers that do **not** provide magnet links, you may also want to enable **"Always download .torrent files before sending to client"** in **Other Global Settings**. This makes the extension download the `.torrent` file in your browser session (with your cookies) and upload it to the remote client, which is especially helpful when the client itself cannot reach the tracker URL directly.
 
+## Keyboard shortcuts
+
+Add Remote Torrent registers optional keyboard commands in Chrome. You can assign, change, or remove them at any time—Chrome does **not** let extensions change your shortcuts automatically when you update.
+
+**Open the shortcut editor**
+
+1. In Chrome’s address bar, go to [`chrome://extensions/shortcuts`](chrome://extensions/shortcuts)  
+   (or open **Extensions** → **Keyboard shortcuts** at the bottom of `chrome://extensions`).
+2. Find **Add Remote Torrent** in the list.
+
+**Available commands**
+
+| Command | What it does |
+| --- | --- |
+| **Quick add torrent from clipboard** | Adds a magnet or torrent URL if your clipboard contains one |
+| **Toggle on-page torrent link catching** | Turns on-page link catching on or off |
+| **Open popup** (browser action) | Opens the extension popup |
+
+**Assign a shortcut**
+
+1. Click the shortcut field next to the command you want.
+2. Press the key combination you want (must include **Ctrl** or **Alt** on Windows/Linux; **⌘** or **Ctrl** on macOS).
+3. Chrome saves it immediately.
+
+**Remove a shortcut (recommended if it conflicts with Chrome)**
+
+1. Click the shortcut field for that command.
+2. Press **Backspace** or **Delete** until the field is empty.
+3. The command stays available from the popup and context menus; it just won’t have a hotkey.
+
+**Paste without formatting (Ctrl+Shift+V)**
+
+Older versions of this extension suggested **Ctrl+Shift+V** / **⌘⇧V** for “quick add from clipboard,” which is the same shortcut Chrome uses for **paste without formatting**. **v0.4.42+** ships with **no default** shortcut for that command so Chrome’s behavior is not overridden on new installs.
+
+If **Ctrl+Shift+V** still does nothing after updating, your browser is still using the **old** binding:
+
+1. Open [`chrome://extensions/shortcuts`](chrome://extensions/shortcuts).
+2. Under **Add Remote Torrent**, find **Quick add torrent from clipboard**.
+3. Clear that shortcut (**Backspace**), or remap it to something else (for example **Ctrl+Shift+U**).
+4. Try **Ctrl+Shift+V** again in a text field—Chrome paste-without-formatting should work.
+
+After updating to **v0.4.42+**, you may also see a one-time notification if the extension still detects the conflicting binding.
+
+The extension **Options** page (under **Other Global Settings**) links to the same shortcut editor for quick access.
+
 ## Troubleshooting & FAQ
 
 **Q: Why does Chrome show a warning about "Enhanced Protection" when I install the extension?**
@@ -114,6 +159,9 @@ A: Yes. The extension uses a `MutationObserver` to detect dynamically added link
 - Go to the extension's **Options** page.
 - At the bottom, find the **"Debug & Log Settings"** section.
 - Uncheck the boxes for "content-script" to disable the on-page console messages.
+
+**Q: Ctrl+Shift+V (paste without formatting) stopped working when the extension is enabled.**
+A: That shortcut was previously assigned to **Quick add torrent from clipboard**. **v0.4.42+** no longer sets a default for that command, but Chrome keeps your old binding until you clear it. Open [`chrome://extensions/shortcuts`](chrome://extensions/shortcuts), clear or remap **Quick add torrent from clipboard**, then try again. See [Keyboard shortcuts](#keyboard-shortcuts) for step-by-step instructions.
 
 ## Reporting Issues
 
