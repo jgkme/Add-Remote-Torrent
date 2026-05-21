@@ -47,10 +47,7 @@ if [[ -z "${GH_TOKEN:-}" ]] && [[ -f .envrc ]]; then
 fi
 
 if [[ -z "${GH_TOKEN:-}" ]]; then
-  echo "GH_TOKEN is not set. Add export GH_TOKEN=... to .envrc (gitignored), then:"
-  echo "  set -a && source ./.envrc && set +a"
-  echo "  printf '%s\\n' \"\$GH_TOKEN\" | gh auth login --with-token"
-  echo "  gh auth setup-git"
+  echo "GH_TOKEN is not set. See local .cursor/MAINTAINERS.md or agent.md (gitignored; never commit tokens)."
   exit 1
 fi
 
