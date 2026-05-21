@@ -1,5 +1,6 @@
 import '../css/input.css';
-import { debug } from '../debug'; // Import Tailwind CSS entry point
+import { debug } from '../debug';
+import { generateLocalId } from '../utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -242,9 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let editingRssFeedId = null;
 
     // --- Utility Functions ---
-    function generateId(prefix = 'server') {
-        return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    }
+    const generateId = (prefix = 'server') => generateLocalId(prefix);
 
     function parseCredentialsFromUrl(urlString) {
         try {
@@ -1336,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         const newFeed = {
-            id: editingRssFeedId || `feed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            id: editingRssFeedId || generateLocalId('feed'),
             url,
             pattern,
             serverId: serverId || undefined
@@ -1577,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // --- URL Mapping Functions ---
     function generateMappingId() { 
-        return `map-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        return generateLocalId('map');
     }
     function toggleMappingListVisibility() {
         mappingsListContainer.style.display = globalSettings.enableUrlBasedServerSelection ? 'block' : 'none';
@@ -1802,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Tracker URL Rule Functions ---
     function generateTrackerRuleId() {
-        return `trackerRule-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        return generateLocalId('trackerRule');
     }
 
     function renderTrackerUrlRulesList() {
@@ -1960,7 +1959,7 @@ actionsDiv.appendChild(deleteButton);
 
     // --- Link Catching Pattern Functions ---
     function generateLinkPatternId() {
-        return `linkPattern-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        return generateLocalId('linkPattern');
     }
 
     function displayLinkPatternFormStatus(message, type) {
