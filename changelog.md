@@ -9,6 +9,10 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.42 (2026-05-22)
+
+- **Fix (Shortcuts):** Quick-add-from-clipboard has no default shortcut (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59))). Assign at `chrome://extensions/shortcuts` if desired. Updates do not clear old bindings; clear **Ctrl+Shift+V** there if needed—a one-time notification appears when the conflict is still detected.
+
 ### 0.4.41 (2026-05-13)
 
 - **Fix (Synology Download Station):** SID-only session (`_sid`) without SynoToken/login flag changes introduced after **v0.4.23**—fixes regression where some NAS setups returned API **105** or broke adds.

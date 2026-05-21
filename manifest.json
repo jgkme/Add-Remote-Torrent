@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.41",
+  "version": "0.4.42",
   "description": "Add Remote Torrent",
   "permissions": [
     "storage",
@@ -26,10 +26,6 @@
   },
   "commands": {
     "quick_add_clipboard": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+V",
-        "mac": "Command+Shift+V"
-      },
       "description": "Quick add torrent from clipboard"
     },
     "toggle_link_catching": {

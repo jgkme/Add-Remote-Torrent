@@ -155,6 +155,8 @@ Use the release script for full automation (version bump, changelog updates, bui
 
 ## Changelog
 
+- **v0.4.42 (2026-05-22):**
+  - **Fix (Shortcuts):** Quick-add-from-clipboard has no default shortcut (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting). Assign at `chrome://extensions/shortcuts` if wanted; clear the old **Ctrl+Shift+V** binding there after update if paste-without-formatting still fails ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59)).
 - **v0.4.41 (2026-05-13):**
   - **Fix (Synology Download Station):** Restore **SID-only** Web API auth like **v0.4.23** (no `enable_syno_token` / **SynoToken** on requests). Newer builds had added SynoToken flow; some DSM setups responded with API **105** or failed adds until reverted—validated against working **v0.4.23** behaviour.
   - **Fix / UX (Synology):** Clearer user-visible messages for common Synology API error codes (e.g. **105** permission).

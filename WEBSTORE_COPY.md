@@ -41,6 +41,7 @@ For deeper logs:
 - Please remove sensitive info (passwords/tokens/IPs) before posting
 
 Recent updates:
+- v0.4.42 (2026-05-22): Quick-add-from-clipboard has no default shortcut (was Ctrl+Shift+V) so Chrome paste-without-formatting is not overridden. Assign at chrome://extensions/shortcuts if wanted; clear the old Ctrl+Shift+V binding there after update if needed.
 - v0.4.41 (2026-05-13): Synology Download Station — restore SID-only API auth (matches v0.4.23); fixes setups that broke with SynoToken / error 105. Clearer Synology error hints; dashboard shows last connection error details.
 - v0.4.40 (2026-05-12): qBittorrent 5.2+ — accept empty/204 `auth/login` responses (not only legacy `Ok.`) so username/password works after upgrade.
 - v0.4.39 (2026-05-13): qBittorrent — separate cookie login per server profile (fixes wrong-server 401 / misleading API-key prompts with multiple servers); clearer auth error copy.

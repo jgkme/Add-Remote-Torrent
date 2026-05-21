@@ -409,7 +409,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(async () => {
+const CLIPBOARD_SHORTCUT_CONFLICT_KEYS = new Set([
+  "Ctrl+Shift+V",
+  "Command+Shift+V",
+  "MacCtrl+Shift+V",
+]);
+
+async function maybeNotifyClipboardShortcutConflict(details) {
+  if (details?.reason !== chrome.runtime.OnInstalledReason.UPDATE) {
+    return;
+  }
+  const { clipboardShortcutConflictNudgeShown } = await chrome.storage.local.get(
+    "clipboardShortcutConflictNudgeShown"
+  );
+  if (clipboardShortcutConflictNudgeShown) {
+    return;
+  }
+
+  const commands = await chrome.commands.getAll();
+  const clipboardCommand = commands.find((c) => c.name === "quick_add_clipboard");
+  const shortcut = clipboardCommand?.shortcut?.trim() || "";
+  if (!CLIPBOARD_SHORTCUT_CONFLICT_KEYS.has(shortcut)) {
+    return;
+  }
+
+  await chrome.storage.local.set({ clipboardShortcutConflictNudgeShown: true });
+  chrome.notifications.create(`clipboard-shortcut-${Date.now()}`, {
+    type: "basic",
+    iconUrl: "icons/icon-128x128.png",
+    title: "Add Remote Torrent — keyboard shortcut",
+    message:
+      "Quick add from clipboard was using Ctrl+Shift+V, which blocks Chrome paste-without-formatting. Open chrome://extensions/shortcuts to clear or remap it.",
+    priority: 1,
+  });
+}
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  void maybeNotifyClipboardShortcutConflict(details);
   // Check and add default debug settings if missing
   let { contentDebugEnabled, bgDebugEnabled } = await chrome.storage.local.get([
     "contentDebugEnabled",

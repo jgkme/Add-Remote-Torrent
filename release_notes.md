@@ -1,3 +1,8 @@
+### v0.4.42 (2026-05-22)
+
+*   **Fix (Shortcuts):** “Quick add from clipboard” has **no default keyboard shortcut** (was **Ctrl+Shift+V** / **⌘⇧V**, which blocked Chrome paste-without-formatting ([#59](https://github.com/jgkme/Add-Remote-Torrent/issues/59))). Assign one at `chrome://extensions/shortcuts` if you want it. Updating does not remove an old binding automatically—clear **Ctrl+Shift+V** there if paste-without-formatting still fails; a one-time notification is shown when the extension detects the conflict.
+*   **Build:** Generated release artifacts for `v0.4.42`.
+
 ### v0.4.41 (2026-05-13)
 
 *   **Fix (Synology Download Station):** Restores **v0.4.23**-style authentication: session **`_sid` only**, without requesting **`enable_syno_token`** or sending **`SynoToken`** on Download Station / Web API calls. Builds after **v0.4.23** had added SynoToken support; on several DSM setups this caused **API error 105** or failed adds while **v0.4.23** still worked—this release aligns with that proven behaviour while keeping per-server SID caching, POST **Basic Auth** for reverse proxies, and proper **119** session retry.
