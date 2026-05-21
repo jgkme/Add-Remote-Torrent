@@ -185,6 +185,8 @@ We are working on a feature to make this process easier by allowing you to repor
 
 This project uses [Bun](https://bun.sh) as the package manager and runtime.
 
+**Cursor agent skills** for this repo belong under **`.cursor/skills/`** only (not `.agents/skills/`). Maintainer and release notes are gitignored (see `agent.md` locally).
+
 To get started:
 
 1. Install Bun: `curl -fsSL https://bun.sh/install | bash`

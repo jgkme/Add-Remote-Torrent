@@ -5,6 +5,10 @@ description: Create and verify release artifacts for this extension using the ex
 
 # Release Packaging Checklist
 
+**Private setup (tokens, push, `gh release`):** read `.cursor/MAINTAINERS.md` (gitignored). Never put `GH_TOKEN` or `.envrc` in README or commits.
+
+**New skills:** install only under `.cursor/skills/` — never `.agents/skills/` (see `.cursor/rules/project-conventions.mdc`).
+
 ## Release Flow
 
 1. Ensure version is correct in `package.json` and extension metadata.

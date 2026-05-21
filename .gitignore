@@ -23,7 +23,10 @@ Thumbs.db
 github
 github.pub
 /.roo
-/memory-bank
+
+# Local agent / design notes (not for GitHub)
+/memory-bank/
+/screenshots/
 
 # IDE specific files
 .vscode/
