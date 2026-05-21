@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Pushes and gh release create require GH_TOKEN — set in .envrc (gitignored) or the environment.
 set -euo pipefail
 
 usage() {
@@ -35,6 +36,27 @@ fi
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh CLI is required but not found in PATH."
   exit 1
+fi
+
+# Load GH_TOKEN from .envrc when not exported (e.g. CI/agents without direnv).
+if [[ -z "${GH_TOKEN:-}" ]] && [[ -f .envrc ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ./.envrc
+  set +a
+fi
+
+if [[ -z "${GH_TOKEN:-}" ]]; then
+  echo "GH_TOKEN is not set. Add export GH_TOKEN=... to .envrc (gitignored), then:"
+  echo "  set -a && source ./.envrc && set +a"
+  echo "  printf '%s\\n' \"\$GH_TOKEN\" | gh auth login --with-token"
+  echo "  gh auth setup-git"
+  exit 1
+fi
+
+if ! gh auth status >/dev/null 2>&1; then
+  printf '%s\n' "$GH_TOKEN" | gh auth login --with-token
+  gh auth setup-git
 fi
 
 if [[ -n "$(git status --porcelain)" ]]; then

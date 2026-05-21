@@ -194,12 +194,23 @@ To get started:
 
 ### Release Command
 
-Use the release script for full automation (version bump, changelog updates, build, commit, tag, push, GitHub release):
+GitHub **push** and **`gh release create`** need auth. Put a classic PAT in **`.envrc`** as `GH_TOKEN` (file is **gitignored**—never commit it). The release script loads `.envrc` when `GH_TOKEN` is not already set.
+
+```bash
+# Once per machine/clone (direnv users: direnv allow)
+set -a && source ./.envrc && set +a
+printf '%s\n' "$GH_TOKEN" | gh auth login --with-token
+gh auth setup-git
+```
+
+Then from a **clean** working tree:
 
 - `./scripts/release.sh patch -m "Release summary"`
 - `./scripts/release.sh minor -m "Release summary"`
 - `./scripts/release.sh major -m "Release summary"`
 - `./scripts/release.sh 1.2.3 -m "Release summary"` (explicit version)
+
+The script bumps `package.json` / `manifest.json`, prepends `README.md` and `release_notes.md`, runs `bun run build`, commits, tags, pushes, and uploads zip/crx/sha256. For manual steps or a pending tag (e.g. commit already made), see the local **`agent.md`** playbook (also gitignored).
 
 ## Changelog
 
