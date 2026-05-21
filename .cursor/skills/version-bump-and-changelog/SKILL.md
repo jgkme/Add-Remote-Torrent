@@ -5,9 +5,7 @@ description: Perform safe extension version bumps and changelog updates for this
 
 # Version Bump And Changelog
 
-**Auth / push / GitHub release:** `.cursor/MAINTAINERS.md` (gitignored). Never document or commit PATs.
-
-**New skills:** install only under `.cursor/skills/` — never `.agents/skills/`.
+Project conventions: **`.cursor/rules/`**. Release auth / push: **`.cursor/MAINTAINERS.md`**.
 
 ## Versioning Workflow
 

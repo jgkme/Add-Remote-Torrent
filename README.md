@@ -185,7 +185,7 @@ We are working on a feature to make this process easier by allowing you to repor
 
 This project uses [Bun](https://bun.sh) as the package manager and runtime.
 
-**Cursor agent skills** for this repo belong under **`.cursor/skills/`** only (not `.agents/skills/`). Maintainer and release notes are gitignored (see `agent.md` locally).
+**Cursor:** repo **rules** live in **`.cursor/rules/`**; task **skills** in **`.cursor/skills/`** only (not `.agents/skills/`). Maintainer notes are gitignored (see `agent.md` locally).
 
 To get started:
 
