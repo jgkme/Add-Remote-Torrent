@@ -1,3 +1,14 @@
+### v0.4.44 (2026-05-22)
+
+*   **Feat (qBittorrent):** **Sync/import categories**, **sync tags**, and **sync default save path** from Options; paste or import `categories.json` with optional push to the server via Web API.
+*   **Feat (qBittorrent):** Popup **Search** using qBittorrent Search plugins on the active server (enable Search + plugins in qBittorrent).
+*   **Feat (qBittorrent):** Confirm-add **skip checking**, **sequential download**, **first/last piece priority**, **rename**, **free-space hint** (after Test connection stores Web API version), and **metadata fallback** when the page cannot fetch a `.torrent`.
+*   **Feat (qBittorrent):** Faster post-add handling on Web API **2.14+** (`added_torrent_ids`); **file priorities at add time** for uploaded `.torrent` files (2.11.9+).
+*   **Fix (qBittorrent):** Search status polling when job IDs differ in type; partial results if search is slow; host permission check before popup search; consistent error messages for sync/import actions.
+*   **Security:** Escape plugin names in the Options search-plugin list.
+*   **Docs:** README FAQ for categories and qBittorrent Search.
+*   **Build:** Generated release artifacts for `v0.4.44`.
+
 ### v0.4.43 (2026-05-22)
 
 *   **Perf:** Torrent client handlers are lazy-loaded per server type, shrinking the background service worker bundle.

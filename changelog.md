@@ -9,6 +9,15 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.44 (2026-05-22)
+
+- **Feat (qBittorrent):** Sync/import categories, sync tags, sync default save path; optional `categories.json` import with Web API push.
+- **Feat (qBittorrent):** Popup search via qBittorrent Search plugins; confirm-add skip checking, sequential, rename, free-space hint, metadata fallback.
+- **Feat (qBittorrent):** Web API 2.14+ add IDs and add-time file priorities for `.torrent` uploads.
+- **Fix (qBittorrent):** Search reliability, host permission preflight, normalized action errors.
+- **Security:** Escape search plugin names in Options.
+- **Build:** Release artifacts for `v0.4.44`.
+
 ### 0.4.43 (2026-05-22)
 
 - **Perf:** Lazy-load torrent client API handlers — much smaller service worker; handlers load on first use per client type.

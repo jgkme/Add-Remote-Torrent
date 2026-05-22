@@ -158,8 +158,8 @@ for f in "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE"; do
   fi
 done
 
-git add package.json manifest.json README.md release_notes.md "$CRX_FILE" "$SHA_FILE"
-git add -f "$ZIP_FILE"
+git add package.json manifest.json README.md release_notes.md
+git add -f "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE"
 git commit -m "$(cat <<EOF
 Release v${TARGET_VERSION}.
 

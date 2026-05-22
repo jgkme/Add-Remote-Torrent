@@ -202,6 +202,15 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.44 (2026-05-22):**
+  - **Feat (qBittorrent):** Options tools to **sync/import categories**, **sync tags**, and **sync default save path**; import `categories.json` locally with optional push via Web API.
+  - **Feat (qBittorrent):** Popup **Search** provider using installed qBittorrent Search plugins (active server).
+  - **Feat (qBittorrent):** Confirm-add **skip checking**, **sequential download**, **first/last piece priority**, **rename**, **free-space hint** (Web API 2.15.2+), and **metadata API fallback** for file selection.
+  - **Feat (qBittorrent):** Web API **2.14+** add feedback (`added_torrent_ids`) and **add-time file priorities** for uploaded `.torrent` files.
+  - **Fix (qBittorrent):** Search job ID matching, partial results on slow searches, host permission preflight, clearer sync/import errors.
+  - **Security:** Escape search plugin names in Options.
+  - **Docs:** FAQ for categories sync/import and qBittorrent Search.
+  - **Build:** Generated release artifacts for `v0.4.44`.
 - **v0.4.43 (2026-05-22):**
   - **Perf:** Lazy-load client API handlers (smaller service worker).
   - **Perf / Privacy:** Link-catching content script only when enabled in Options; preserved setting for existing users; optional host permissions unchanged (LAN/VPS/custom URLs still work).

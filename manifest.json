@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.43",
+  "version": "0.4.44",
   "description": "Add magnets and .torrent URLs to remote clients. Multi-server, local-only settings.",
   "permissions": [
     "storage",
