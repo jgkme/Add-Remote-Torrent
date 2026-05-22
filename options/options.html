@@ -286,6 +286,28 @@
         </label>
       </div>
 
+      <div class="form-group mt-6 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40" id="qbittorrentToolsGroup" style="display:none;">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">qBittorrent sync &amp; import</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Pull categories/tags/paths from this server, or import a <code class="text-xs">categories.json</code> export (5.2+). No direct file upload to qBittorrent — import parses locally and uses the Web API.</p>
+        <p class="text-xs text-amber-700 dark:text-amber-300 mb-3">Run <strong>Test connection</strong> once per profile to store Web API version (unlocks free-space hints, faster add feedback, and add-time file priorities). After sync or import, click <strong>Save Server</strong> to keep changes.</p>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button type="button" id="syncQbitCategoriesBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync categories</button>
+          <button type="button" id="importQbitCategoriesBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Import categories…</button>
+          <button type="button" id="syncQbitTagsBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync tags</button>
+          <button type="button" id="syncQbitSavePathBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync default save path</button>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
+          <input type="checkbox" id="qbitImportPushToServer" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600" checked>
+          <span>Push imported categories to qBittorrent (uncheck for extension profile only)</span>
+        </label>
+        <textarea id="qbitCategoriesPaste" rows="2" placeholder="Or paste categories JSON here…" class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white mb-2"></textarea>
+        <input type="file" id="qbitCategoriesFile" accept=".json,application/json" class="hidden">
+        <div class="mt-3">
+          <button type="button" id="refreshQbitSearchPluginsBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Refresh search plugins</button>
+          <ul id="qbitSearchPluginsList" class="mt-2 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside max-h-24 overflow-y-auto"></ul>
+        </div>
+      </div>
+
       <div class="form-group mt-6" id="ruTorrentPathGroup" style="display:none;">
         <label for="ruTorrentPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ruTorrent Relative Path:</label>
         <input type="text" id="ruTorrentPath" name="ruTorrentPath" placeholder="/rutorrent" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
@@ -473,6 +495,13 @@
                 <label for="enableTextNotificationsToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable text notifications for success/failure</label>
             </div>
             <div class="form-group flex items-center space-x-2">
+                <input type="checkbox" id="enableReviewPromptsToggle" name="enableReviewPromptsToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500" checked>
+                <label for="enableReviewPromptsToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Suggest Chrome Web Store reviews (after successful adds)</label>
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-2">
+                Rare, dismissible prompts only. Opens the public store review page if you choose.
+            </p>
+            <div class="form-group flex items-center space-x-2">
                 <input type="checkbox" id="enableCompletionNotificationsToggle" name="enableCompletionNotificationsToggle" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
                 <label for="enableCompletionNotificationsToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable notification on download completion</label>
             </div>
@@ -544,13 +573,15 @@
                     <option value="none">Disabled</option>
                     <option value="jackett">Jackett</option>
                     <option value="prowlarr">Prowlarr</option>
+                    <option value="qbittorrent">qBittorrent Search (5.2+ recommended)</option>
                 </select>
             </div>
-            <div class="form-group">
+            <p id="qbitSearchHint" class="text-xs text-gray-500 dark:text-gray-400 mb-2" style="display:none;">Uses the active qBittorrent server from the popup. Requires host permission for that URL (save the server profile first) and Search enabled in qBittorrent with plugins installed.</p>
+            <div class="form-group" id="searchApiUrlGroup">
                 <label for="searchApiUrlInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search API URL</label>
                 <input id="searchApiUrlInput" type="text" placeholder="http://localhost:9117" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
             </div>
-            <div class="form-group">
+            <div class="form-group" id="searchApiKeyGroup">
                 <label for="searchApiKeyInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search API Key</label>
                 <input id="searchApiKeyInput" type="password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white">
             </div>

@@ -8,6 +8,12 @@ import {
   syncLinkCatchingFromStorage,
   injectLinkCatchingIntoFocusedWindowTabs,
 } from "./content_script_registration.js";
+import {
+  initReviewPromptListeners,
+  recordSuccessfulAddAndMaybePrompt,
+} from "./review_prompt.js";
+
+initReviewPromptListeners();
 
 let bencodeModulePromise = null;
 async function getBencode() {
@@ -222,6 +228,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       moveCompleted,
       moveCompletedPath,
       forceStart,
+      skipChecking,
+      sequentialDownload,
+      firstLastPiecePrio,
+      rename: renameParam,
     } = request.params;
     // Asynchronously find the server config from the ID
     (async () => {
@@ -242,7 +252,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           bandwidthPriority,
           moveCompleted,
           moveCompletedPath,
-          forceStart
+          forceStart,
+          null,
+          null,
+          skipChecking,
+          sequentialDownload,
+          firstLastPiecePrio,
+          renameParam
         );
       } else {
         debug.error(
@@ -355,9 +371,105 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(result);
     })();
     return true;
+  } else if (request.action === "syncQbitCategories" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, async (api, server) => {
+        const r = await api.getCategories(server);
+        if (!r.success) return r;
+        return {
+          ...r,
+          profileFields: api.profileFieldsFromCategories(r.categories),
+        };
+      });
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "importQbitCategories" && request.serverId) {
+    (async () => {
+      const qbit = await import("./api_handlers/qbittorrent_handler.js");
+      const { servers = [] } = await chrome.storage.local.get("servers");
+      const server = servers.find((s) => s.id === request.serverId);
+      if (!server || server.clientType !== "qbittorrent") {
+        sendResponse({
+          success: false,
+          error: { userMessage: "qBittorrent server not found." },
+        });
+        return;
+      }
+      try {
+        const entries = qbit.parseCategoriesJson(request.jsonText || "");
+        const api = await getClientApi("qbittorrent");
+        const result = await api.importCategories(server, entries, {
+          pushToServer: request.pushToServer !== false,
+          merge: request.merge !== false,
+        });
+        sendResponse(result);
+      } catch (e) {
+        sendResponse({ success: false, error: { userMessage: e.message } });
+      }
+    })();
+    return true;
+  } else if (request.action === "syncQbitTags" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.getTags(server).then((r) =>
+          r.success
+            ? { success: true, tags: r.tags, defaultTags: r.tags.join(", ") }
+            : r
+        )
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "syncQbitDefaultSavePath" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.getDefaultSavePath(server)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "fetchQbitTorrentMetadata" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, async (api, server) => {
+        if (request.base64) {
+          return api.parseTorrentMetadata(
+            server,
+            request.base64,
+            request.fileName || "file.torrent"
+          );
+        }
+        if (request.url) {
+          return api.fetchTorrentMetadataFromUrl(server, request.url);
+        }
+        return { success: false, error: { userMessage: "Missing url or base64." } };
+      });
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "getQbitFreeSpace" && request.serverId && request.path) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.getFreeSpaceAtPath(server, request.path)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "getQbitSearchPlugins" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.getSearchPlugins(server)
+      );
+      sendResponse(result);
+    })();
+    return true;
   } else if (request.action === "searchTorrents" && request.query) {
     (async () => {
-      const result = await searchTorrents(request.query, request.limit || 20);
+      const result = await searchTorrents(request.query, request.limit || 20, {
+        serverId: request.serverId,
+        plugins: request.plugins,
+        category: request.category,
+      });
       sendResponse(result);
     })();
     return true;
@@ -1232,7 +1344,11 @@ async function addTorrentToClient(
   customMoveCompletedPath = null,
   customForceStart = null,
   directTorrentContentBase64 = null,
-  localFileName = null
+  localFileName = null,
+  customSkipChecking = null,
+  customSequentialDownload = null,
+  customFirstLastPiecePrio = null,
+  customRename = null
 ) {
   let serverToUse = null;
   let serverDeterminedByRule = false;
@@ -1367,6 +1483,10 @@ async function addTorrentToClient(
     torrentFileContentBase64: directTorrentContentBase64 || null,
     localFileName: localFileName || null,
     originalTorrentUrl: torrentUrl,
+    skipChecking: customSkipChecking === true,
+    sequentialDownload: customSequentialDownload === true,
+    firstLastPiecePrio: customFirstLastPiecePrio === true,
+    rename: customRename || null,
   };
 
   const isMagnet = torrentUrl.startsWith("magnet:");
@@ -1679,6 +1799,9 @@ async function addTorrentToClient(
       }
       playSound("audio/success.mp3");
       updateActionHistory(successMsg);
+      void recordSuccessfulAddAndMaybePrompt({
+        useTextNotification: !!enableTextNotifications,
+      });
     } else {
       let userFriendlyError = `Failed to add torrent to "${serverName}" (${clientType}).`;
       if (
@@ -1880,20 +2003,96 @@ async function processRssFeeds() {
   await chrome.storage.local.set({ rssSeenItems: seen });
 }
 
-async function searchTorrents(query, limit = 20) {
+function normalizeQbitActionError(message) {
+  return {
+    success: false,
+    error: { userMessage: message || "qBittorrent request failed." },
+  };
+}
+
+async function hasHostPermissionForServerUrl(url) {
+  try {
+    const origin = `${new URL(url).origin}/`;
+    return await chrome.permissions.contains({ origins: [origin] });
+  } catch {
+    return false;
+  }
+}
+
+async function runQbitServerAction(serverId, fn) {
+  const { servers = [] } = await chrome.storage.local.get("servers");
+  const server = servers.find((s) => s.id === serverId);
+  if (!server || server.clientType !== "qbittorrent") {
+    return normalizeQbitActionError("qBittorrent server not found.");
+  }
+  const api = await getClientApi("qbittorrent");
+  if (!api) {
+    return normalizeQbitActionError("qBittorrent handler unavailable.");
+  }
+  try {
+    return await fn(api, server);
+  } catch (e) {
+    return normalizeQbitActionError(e.message || String(e));
+  }
+}
+
+async function searchTorrents(query, limit = 20, options = {}) {
   const {
     searchProvider = "none",
     searchApiUrl = "",
     searchApiKey = "",
+    qbitSearchPlugins = "enabled",
+    qbitSearchCategory = "all",
+    activeServerId = "",
+    servers = [],
   } = await chrome.storage.local.get([
     "searchProvider",
     "searchApiUrl",
     "searchApiKey",
+    "qbitSearchPlugins",
+    "qbitSearchCategory",
+    "activeServerId",
+    "servers",
   ]);
-  if (searchProvider === "none" || !searchApiUrl) {
+  if (searchProvider === "none") {
     return { success: false, error: "Search provider is not configured." };
   }
   try {
+    if (searchProvider === "qbittorrent") {
+      const serverId = options.serverId || activeServerId;
+      const server = (servers || []).find((s) => s.id === serverId);
+      if (!server || server.clientType !== "qbittorrent") {
+        return {
+          success: false,
+          error: {
+            userMessage:
+              "Select an active qBittorrent server in the popup, or test search from a qBittorrent profile in Options.",
+          },
+        };
+      }
+      if (!(await hasHostPermissionForServerUrl(server.url))) {
+        return {
+          success: false,
+          error: {
+            userMessage:
+              "Host permission not granted for this qBittorrent URL. Open Options, save the server profile, and allow access when prompted.",
+          },
+        };
+      }
+      const api = await getClientApi("qbittorrent");
+      if (!api || typeof api.searchTorrentsQbit !== "function") {
+        return { success: false, error: "qBittorrent search is unavailable." };
+      }
+      return api.searchTorrentsQbit(server, {
+        pattern: query,
+        limit,
+        plugins: options.plugins || qbitSearchPlugins || "enabled",
+        category: options.category || qbitSearchCategory || "all",
+      });
+    }
+    if (!searchApiUrl) {
+      return { success: false, error: "Search API URL is not configured." };
+    }
     if (searchProvider === "jackett") {
       const params = new URLSearchParams({
         apikey: searchApiKey || "",

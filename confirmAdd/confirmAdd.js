@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qbittorrentOptions = document.getElementById('qbittorrentOptions');
     const contentLayoutInput = document.getElementById('contentLayoutInput');
     const forceStartInput = document.getElementById('forceStartInput');
+    const skipCheckingInput = document.getElementById('skipCheckingInput');
+    const sequentialDownloadInput = document.getElementById('sequentialDownloadInput');
+    const firstLastPiecePrioInput = document.getElementById('firstLastPiecePrioInput');
+    const renameInput = document.getElementById('renameInput');
+    const qbitFreeSpaceHint = document.getElementById('qbitFreeSpaceHint');
     const transmissionOptions = document.getElementById('transmissionOptions');
     const bandwidthPriorityInput = document.getElementById('bandwidthPriorityInput');
     const delugeOptions = document.getElementById('delugeOptions');
@@ -167,7 +172,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectedCategory && labelDirectoryMap[selectedCategory]) {
             directoryInput.value = labelDirectoryMap[selectedCategory];
         }
+        updateQbitFreeSpaceHint();
     });
+
+    function webApiAtLeast(version, min) {
+        if (!version) return false;
+        const a = String(version).split('.').map((n) => parseInt(n, 10) || 0);
+        const b = min.split('.').map((n) => parseInt(n, 10) || 0);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            const x = a[i] || 0;
+            const y = b[i] || 0;
+            if (x > y) return true;
+            if (x < y) return false;
+        }
+        return true;
+    }
+
+    let freeSpaceTimer = null;
+    function updateQbitFreeSpaceHint() {
+        if (!qbitFreeSpaceHint || !activeServer || activeServer.clientType !== 'qbittorrent') return;
+        const path = directoryInput.value.trim();
+        if (!path) {
+            qbitFreeSpaceHint.style.display = 'none';
+            return;
+        }
+        if (!activeServer.webApiVersion) {
+            qbitFreeSpaceHint.textContent =
+                'Free space: run Test connection in Options to detect Web API version.';
+            qbitFreeSpaceHint.style.display = 'block';
+            return;
+        }
+        if (!webApiAtLeast(activeServer.webApiVersion, '2.15.2')) {
+            qbitFreeSpaceHint.textContent =
+                'Free space requires qBittorrent Web API 2.15.2+ (upgrade qBittorrent or check version).';
+            qbitFreeSpaceHint.style.display = 'block';
+            return;
+        }
+        clearTimeout(freeSpaceTimer);
+        freeSpaceTimer = setTimeout(() => {
+            chrome.runtime.sendMessage(
+                { action: 'getQbitFreeSpace', serverId: activeServer.id, path },
+                (response) => {
+                    if (response?.success && typeof response.freeSpace === 'number') {
+                        qbitFreeSpaceHint.textContent = `Free space at path: ${formatBytes(response.freeSpace)}`;
+                        qbitFreeSpaceHint.style.display = 'block';
+                    } else {
+                        qbitFreeSpaceHint.style.display = 'none';
+                    }
+                }
+            );
+        }, 400);
+    }
+    directoryInput.addEventListener('input', updateQbitFreeSpaceHint);
+
+    async function renderFileListFromMetadata(files) {
+        if (!files.length) {
+            fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">No file list in metadata.</p>';
+            return;
+        }
+        fileListContainer.innerHTML = files.map((file) => `
+            <div class="py-1">
+                <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 p-1 rounded">
+                    <input type="checkbox" 
+                           class="art-file-select-checkbox h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500" 
+                           data-file-index="${file.index}" 
+                           data-file-path="${escapeHtml(file.name)}" 
+                           checked>
+                    <span class="truncate" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                    <span class="ml-auto text-gray-500 dark:text-gray-400 whitespace-nowrap">(${formatBytes(file.size)})</span>
+                </label>
+            </div>
+        `).join('');
+    }
 
     selectFilesToggle.addEventListener('change', async () => {
         if (selectFilesToggle.checked && !isMagnetLink) {
@@ -272,8 +348,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             } catch (error) {
                 debug.error("Error fetching, parsing, or displaying .torrent file list:", error);
-                fileListContainer.innerHTML = `<p class="text-xs text-red-500 dark:text-red-400">Error: Could not load torrent file details. ${error.message}</p>`;
-                fileActionsContainer.style.display = 'none'; // Hide actions if error
+                if (activeServer && activeServer.clientType === 'qbittorrent') {
+                    fileListContainer.innerHTML = '<p class="text-xs text-gray-500 dark:text-gray-400">Trying qBittorrent metadata API…</p>';
+                    chrome.runtime.sendMessage(
+                        { action: 'fetchQbitTorrentMetadata', serverId: activeServer.id, url: torrentUrl },
+                        (response) => {
+                            if (response?.success && response.files?.length) {
+                                renderFileListFromMetadata(response.files);
+                                fileActionsContainer.style.display = 'block';
+                            } else {
+                                const errText =
+                                    response?.error?.userMessage || response?.error || error.message;
+                                fileListContainer.innerHTML = `<p class="text-xs text-red-500 dark:text-red-400">Could not load file list. ${escapeHtml(errText)}</p>`;
+                                fileActionsContainer.style.display = 'none';
+                            }
+                        }
+                    );
+                } else {
+                    fileListContainer.innerHTML = `<p class="text-xs text-red-500 dark:text-red-400">Error: Could not load torrent file details. ${error.message}</p>`;
+                    fileActionsContainer.style.display = 'none';
+                }
             }
 
         } else {
@@ -323,6 +417,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             moveCompleted: moveCompletedInput.checked,
             moveCompletedPath: moveCompletedPathInput.value,
             forceStart: forceStartInput.checked,
+            skipChecking: skipCheckingInput?.checked || false,
+            sequentialDownload: sequentialDownloadInput?.checked || false,
+            firstLastPiecePrio: firstLastPiecePrioInput?.checked || false,
+            rename: renameInput?.value?.trim() || '',
         };
         
         chrome.runtime.sendMessage({ action: 'addTorrentWithCustomParams', params: finalParams }, (response) => {

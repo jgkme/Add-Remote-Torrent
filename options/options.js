@@ -48,6 +48,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qbittorrentApiKeyGroup = document.getElementById('qbittorrentApiKeyGroup');
     const qbittorrentApiKeyInput = document.getElementById('qbittorrentApiKey');
     const qbittorrentApiKeyClearInput = document.getElementById('qbittorrentApiKeyClear');
+    const qbittorrentToolsGroup = document.getElementById('qbittorrentToolsGroup');
+    const syncQbitCategoriesBtn = document.getElementById('syncQbitCategoriesBtn');
+    const importQbitCategoriesBtn = document.getElementById('importQbitCategoriesBtn');
+    const syncQbitTagsBtn = document.getElementById('syncQbitTagsBtn');
+    const syncQbitSavePathBtn = document.getElementById('syncQbitSavePathBtn');
+    const qbitImportPushToServer = document.getElementById('qbitImportPushToServer');
+    const qbitCategoriesPaste = document.getElementById('qbitCategoriesPaste');
+    const qbitCategoriesFile = document.getElementById('qbitCategoriesFile');
+    const refreshQbitSearchPluginsBtn = document.getElementById('refreshQbitSearchPluginsBtn');
+    const qbitSearchPluginsList = document.getElementById('qbitSearchPluginsList');
+    const qbitSearchHint = document.getElementById('qbitSearchHint');
+    const searchApiUrlGroup = document.getElementById('searchApiUrlGroup');
+    const searchApiKeyGroup = document.getElementById('searchApiKeyGroup');
     const transmissionDownloadDirGroup = document.getElementById('transmissionDownloadDirGroup');
     const transmissionDownloadDirInput = document.getElementById('transmissionDownloadDir');
     const transmissionSpeedLimitGroup = document.getElementById('transmissionSpeedLimitGroup');
@@ -121,6 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const registerDelayInput = document.getElementById('registerDelayInput');
     const enableSoundNotificationsToggle = document.getElementById('enableSoundNotificationsToggle');
     const enableTextNotificationsToggle = document.getElementById('enableTextNotificationsToggle');
+    const enableReviewPromptsToggle = document.getElementById('enableReviewPromptsToggle');
     const enableCompletionNotificationsToggle = document.getElementById('enableCompletionNotificationsToggle');
     const forceTorrentDownloadToggle = document.getElementById('forceTorrentDownloadToggle');
     const enableServerSpecificContextMenuToggle = document.getElementById('enableServerSpecificContextMenuToggle'); 
@@ -222,6 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         registerDelay: 0,
         enableSoundNotifications: false,
         enableTextNotifications: false,
+        enableReviewPrompts: true,
         enableCompletionNotifications: true, // Default to true
         forceTorrentDownload: false,
         enableServerSpecificContextMenu: false,
@@ -234,6 +249,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         searchProvider: 'none',
         searchApiUrl: '',
         searchApiKey: '',
+        qbitSearchPlugins: 'enabled',
+        qbitSearchCategory: 'all',
         contentDebugEnabled: ['error'], // Default error logging enabled in content scripts
         bgDebugEnabled: ['log', 'warn', 'error'] // Default to all enabled in background
     };
@@ -415,6 +432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
         if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'none';
         if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'none';
+        if(qbittorrentToolsGroup) qbittorrentToolsGroup.style.display = 'none';
         if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'none';
         if(transmissionSpeedLimitGroup) transmissionSpeedLimitGroup.style.display = 'none';
         if(transmissionSeedingLimitGroup) transmissionSeedingLimitGroup.style.display = 'none';
@@ -446,6 +464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'qbittorrent':
                 if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
                 if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'block';
+                if(qbittorrentToolsGroup) qbittorrentToolsGroup.style.display = 'block';
                 break;
             case 'transmission':
                 if(rpcPathGrp) rpcPathGrp.style.display = 'block';
@@ -1148,6 +1167,197 @@ document.addEventListener('DOMContentLoaded', async () => {
         URL.revokeObjectURL(url);
         displayFormStatus(`Exported profile for "${server.name}".`, 'success');
     }
+    function qbitActionErrorMessage(response) {
+        if (!response) return 'No response from extension.';
+        const err = response.error;
+        if (typeof err === 'string') return err;
+        return err?.userMessage || 'Request failed.';
+    }
+
+    function applyQbitProfileFields(profileFields) {
+        if (!profileFields) return;
+        if (profileFields.categories !== undefined) categoriesInput.value = profileFields.categories;
+        if (profileFields.labelDirectoryMap !== undefined) {
+            labelDirectoryMapInput.value = profileFields.labelDirectoryMap;
+        }
+    }
+
+    function updateSearchProviderUi() {
+        const provider = searchProviderInput.value;
+        const isQbit = provider === 'qbittorrent';
+        const isExternal = provider === 'jackett' || provider === 'prowlarr';
+        if (qbitSearchHint) qbitSearchHint.style.display = isQbit ? 'block' : 'none';
+        if (searchApiUrlGroup) searchApiUrlGroup.style.display = isExternal ? 'block' : 'none';
+        if (searchApiKeyGroup) searchApiKeyGroup.style.display = isExternal ? 'block' : 'none';
+    }
+
+    function requireSavedQbitServerId() {
+        const id = serverIdInput.value.trim();
+        if (!id) {
+            displayFormStatus('Save this qBittorrent server profile first, then run sync/import.', 'error');
+            return null;
+        }
+        if (clientTypeSelect.value !== 'qbittorrent') {
+            displayFormStatus('Switch client type to qBittorrent.', 'error');
+            return null;
+        }
+        return id;
+    }
+
+    if (syncQbitCategoriesBtn) {
+        syncQbitCategoriesBtn.addEventListener('click', () => {
+            const serverId = requireSavedQbitServerId();
+            if (!serverId) return;
+            displayFormStatus('Syncing categories from qBittorrent…', '');
+            chrome.runtime.sendMessage({ action: 'syncQbitCategories', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                applyQbitProfileFields(response.profileFields);
+                displayFormStatus(
+                    `Synced ${response.categories?.length || 0} categories. Click Save Server to keep changes.`,
+                    'success'
+                );
+            });
+        });
+    }
+
+    if (importQbitCategoriesBtn) {
+        importQbitCategoriesBtn.addEventListener('click', () => {
+            qbitCategoriesFile.click();
+        });
+        qbitCategoriesFile.addEventListener('change', () => {
+            const file = qbitCategoriesFile.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => runQbitCategoriesImport(e.target.result);
+            reader.readAsText(file);
+            qbitCategoriesFile.value = '';
+        });
+    }
+
+    function runQbitCategoriesImport(jsonText) {
+        const serverId = requireSavedQbitServerId();
+        if (!serverId || !jsonText?.trim()) return;
+        displayFormStatus('Importing categories…', '');
+        chrome.runtime.sendMessage(
+            {
+                action: 'importQbitCategories',
+                serverId,
+                jsonText,
+                pushToServer: qbitImportPushToServer?.checked !== false,
+                merge: true,
+            },
+            (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                applyQbitProfileFields(response.profileFields);
+                const s = response.summary;
+                displayFormStatus(
+                    `Import done: ${s?.created || 0} created, ${s?.updated || 0} updated, ${s?.skipped || 0} skipped. Click Save Server to keep changes.`,
+                    'success'
+                );
+            }
+        );
+    }
+
+    if (qbitCategoriesPaste) {
+        const pasteBtn = document.createElement('button');
+        pasteBtn.type = 'button';
+        pasteBtn.className = 'mt-1 px-3 py-1 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded-md';
+        pasteBtn.textContent = 'Import pasted JSON';
+        pasteBtn.addEventListener('click', () => runQbitCategoriesImport(qbitCategoriesPaste.value));
+        qbitCategoriesPaste.parentElement?.appendChild(pasteBtn);
+    }
+
+    if (syncQbitTagsBtn) {
+        syncQbitTagsBtn.addEventListener('click', () => {
+            const serverId = requireSavedQbitServerId();
+            if (!serverId) return;
+            displayFormStatus('Syncing tags…', '');
+            chrome.runtime.sendMessage({ action: 'syncQbitTags', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                defaultTagsInput.value = response.defaultTags || '';
+                displayFormStatus(
+                    `Synced ${response.tags?.length || 0} tags. Click Save Server to keep changes.`,
+                    'success'
+                );
+            });
+        });
+    }
+
+    if (syncQbitSavePathBtn) {
+        syncQbitSavePathBtn.addEventListener('click', () => {
+            const serverId = requireSavedQbitServerId();
+            if (!serverId) return;
+            displayFormStatus('Syncing default save path…', '');
+            chrome.runtime.sendMessage({ action: 'syncQbitDefaultSavePath', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                if (qbittorrentSavePathInput) qbittorrentSavePathInput.value = response.savePath || '';
+                displayFormStatus(
+                    `Default save path: ${response.savePath}. Click Save Server to keep changes.`,
+                    'success'
+                );
+            });
+        });
+    }
+
+    if (refreshQbitSearchPluginsBtn) {
+        refreshQbitSearchPluginsBtn.addEventListener('click', () => {
+            const serverId = requireSavedQbitServerId();
+            if (!serverId) return;
+            qbitSearchPluginsList.innerHTML = '<li>Loading…</li>';
+            chrome.runtime.sendMessage({ action: 'getQbitSearchPlugins', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    qbitSearchPluginsList.innerHTML = `<li>${escapeHtml(chrome.runtime.lastError.message)}</li>`;
+                    return;
+                }
+                if (!response?.success) {
+                    qbitSearchPluginsList.innerHTML = `<li>${escapeHtml(qbitActionErrorMessage(response))}</li>`;
+                    return;
+                }
+                const plugins = response.plugins || [];
+                if (plugins.length === 0) {
+                    qbitSearchPluginsList.innerHTML =
+                        '<li>No plugins — enable Search in qBittorrent and install plugins.</li>';
+                    return;
+                }
+                qbitSearchPluginsList.innerHTML = plugins
+                    .map((p) => {
+                        const label = escapeHtml(p.fullName || p.name);
+                        const id = escapeHtml(p.name);
+                        return `<li>${p.enabled ? '✓' : '○'} ${label} (${id})</li>`;
+                    })
+                    .join('');
+            });
+        });
+    }
+
     testConnectionButton.addEventListener('click', () => {
         const apiKeyForTest =
             clientTypeSelect.value === 'qbittorrent'
@@ -1256,6 +1466,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.enableTextNotifications = enableTextNotificationsToggle.checked;
         chrome.storage.local.set({ enableTextNotifications: globalSettings.enableTextNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    enableReviewPromptsToggle.addEventListener('change', () => {
+        globalSettings.enableReviewPrompts = enableReviewPromptsToggle.checked;
+        chrome.storage.local.set({ enableReviewPrompts: globalSettings.enableReviewPrompts }, () => { displayFormStatus('Global settings updated.', 'success'); });
+    });
     enableCompletionNotificationsToggle.addEventListener('change', () => {
         globalSettings.enableCompletionNotifications = enableCompletionNotificationsToggle.checked;
         chrome.storage.local.set({ enableCompletionNotifications: globalSettings.enableCompletionNotifications }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -1302,6 +1516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     searchProviderInput.addEventListener('change', () => {
         globalSettings.searchProvider = searchProviderInput.value || 'none';
+        updateSearchProviderUi();
         chrome.storage.local.set({ searchProvider: globalSettings.searchProvider }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
     searchApiUrlInput.addEventListener('change', () => {
@@ -1357,6 +1572,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         const provider = searchProviderInput.value;
         if (provider === 'none') {
             testSearchProviderStatus.textContent = 'Provider disabled.';
+            return;
+        }
+        if (provider === 'qbittorrent') {
+            const serverId = requireSavedQbitServerId();
+            if (!serverId) {
+                testSearchProviderStatus.textContent = 'Save a qBittorrent profile first.';
+                return;
+            }
+            testSearchProviderStatus.textContent = 'Testing...';
+            chrome.runtime.sendMessage(
+                { action: 'searchTorrents', query: 'ubuntu', limit: 3, serverId },
+                (response) => {
+                    if (chrome.runtime.lastError) {
+                        testSearchProviderStatus.textContent = `Error: ${chrome.runtime.lastError.message}`;
+                        return;
+                    }
+                    if (!response?.success) {
+                        testSearchProviderStatus.textContent = `Failed: ${response?.error?.userMessage || response?.error || 'No response'}`;
+                        return;
+                    }
+                    testSearchProviderStatus.textContent = `OK: ${response.results?.length || 0} results`;
+                }
+            );
             return;
         }
         testSearchProviderStatus.textContent = 'Testing...';
@@ -1424,6 +1662,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         searchProvider: importedSettings.searchProvider || 'none',
                         searchApiUrl: importedSettings.searchApiUrl || '',
                         searchApiKey: importedSettings.searchApiKey || '',
+                        qbitSearchPlugins: importedSettings.qbitSearchPlugins || 'enabled',
+                        qbitSearchCategory: importedSettings.qbitSearchCategory || 'all',
                         trackerUrlRules: importedSettings.trackerUrlRules || [],
                         linkCatchingPatterns: importedSettings.linkCatchingPatterns || [],
                         contentDebugEnabled: Array.isArray(importedSettings.contentDebugEnabled) && importedSettings.contentDebugEnabled || ['error'],
@@ -1482,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.get([
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
-            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
+            'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableReviewPrompts', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
             'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', qbittorrentApiKey: s.qbittorrentApiKey || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
@@ -1534,6 +1774,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             enableSoundNotificationsToggle.checked = globalSettings.enableSoundNotifications;
             globalSettings.enableTextNotifications = result.enableTextNotifications || false;
             enableTextNotificationsToggle.checked = globalSettings.enableTextNotifications;
+            globalSettings.enableReviewPrompts = result.enableReviewPrompts !== false;
+            enableReviewPromptsToggle.checked = globalSettings.enableReviewPrompts;
             globalSettings.enableCompletionNotifications = result.enableCompletionNotifications !== false; // Default to true if undefined
             enableCompletionNotificationsToggle.checked = globalSettings.enableCompletionNotifications;
             globalSettings.forceTorrentDownload = result.forceTorrentDownload || false;
@@ -1558,6 +1800,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             searchApiUrlInput.value = globalSettings.searchApiUrl;
             globalSettings.searchApiKey = result.searchApiKey || '';
             searchApiKeyInput.value = globalSettings.searchApiKey;
+            globalSettings.qbitSearchPlugins = result.qbitSearchPlugins || 'enabled';
+            globalSettings.qbitSearchCategory = result.qbitSearchCategory || 'all';
+            updateSearchProviderUi();
             trackerUrlRules = result.trackerUrlRules || [];
             if (activeServerId && !servers.find(s => s.id === activeServerId)) activeServerId = servers.length > 0 ? servers[0].id : null;
             if (!activeServerId && servers.length > 0) activeServerId = servers[0].id;

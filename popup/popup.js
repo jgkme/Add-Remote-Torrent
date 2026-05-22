@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openDashboardButton = document.getElementById('openDashboardButton');
     const openOptionsButton = document.getElementById('openOptionsButton');
     const reportIssueButton = document.getElementById('reportIssueButton');
+    const reviewPromptRow = document.getElementById('reviewPromptRow');
+    const reviewPromptLink = document.getElementById('reviewPromptLink');
+    const reviewPromptNotNowButton = document.getElementById('reviewPromptNotNowButton');
+    const reviewPromptNeverButton = document.getElementById('reviewPromptNeverButton');
+    const reviewsPageUrl = `https://chromewebstore.google.com/detail/${chrome.runtime.id}/reviews`;
 
     // Active server details display elements
     const activeServerDetailsDiv = document.getElementById('activeServerDetails');
@@ -35,6 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
+    const searchSectionLabel = document.getElementById('searchSectionLabel');
+    const qbitSearchPluginSelect = document.getElementById('qbitSearchPluginSelect');
     const popupOnboardingHint = document.getElementById('popupOnboardingHint');
 
     let servers = [];
@@ -120,6 +127,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayActiveServerDetails(currentActiveServerId);
     }
 
+
+    function updateReviewPromptVisibility(show) {
+        if (!reviewPromptRow) return;
+        if (show) {
+            reviewPromptRow.classList.remove('hidden');
+        } else {
+            reviewPromptRow.classList.add('hidden');
+        }
+    }
+
+    function loadReviewPromptState() {
+        chrome.storage.local.get(['showReviewPromptInPopup'], (result) => {
+            updateReviewPromptVisibility(!!result.showReviewPromptInPopup);
+        });
+    }
+
+    if (reviewPromptLink) {
+        reviewPromptLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            chrome.storage.local.set({ reviewPromptOpenedReview: true, showReviewPromptInPopup: false }, () => {
+                updateReviewPromptVisibility(false);
+                chrome.tabs.create({ url: reviewsPageUrl });
+            });
+        });
+    }
+    if (reviewPromptNotNowButton) {
+        reviewPromptNotNowButton.addEventListener('click', () => {
+            chrome.storage.local.set({ reviewPromptLastShownAt: Date.now(), showReviewPromptInPopup: false }, () => {
+                updateReviewPromptVisibility(false);
+            });
+        });
+    }
+    if (reviewPromptNeverButton) {
+        reviewPromptNeverButton.addEventListener('click', () => {
+            chrome.storage.local.set({ reviewPromptDismissedPermanent: true, showReviewPromptInPopup: false }, () => {
+                updateReviewPromptVisibility(false);
+            });
+        });
+    }
+
     function loadPopupData() {
         chrome.storage.local.get(['servers', 'activeServerId', 'lastActionStatus'], (result) => {
             servers = (result.servers || []).map(s => ({
@@ -148,6 +195,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             refreshPopupServerStats();
             refreshTorrentList();
+            loadReviewPromptState();
+            loadQbitSearchPlugins();
         });
     }
 
@@ -157,8 +206,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (newActiveServerId) {
             currentActiveServerId = newActiveServerId;
             chrome.storage.local.set({ activeServerId: newActiveServerId }, () => {
-                // debug.log('Active server changed to:', newActiveServerId);
                 displayActiveServerDetails(newActiveServerId);
+                loadQbitSearchPlugins();
             });
         }
     });
@@ -181,6 +230,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (changes.lastActionStatus) {
                 lastActionStatusSpan.textContent = changes.lastActionStatus.newValue || 'N/A';
+            }
+            if (changes.showReviewPromptInPopup) {
+                updateReviewPromptVisibility(!!changes.showReviewPromptInPopup.newValue);
             }
 
             if(needsUIRefresh) {
@@ -299,13 +351,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    async function updateSearchUi() {
+        const { searchProvider = 'none' } = await chrome.storage.local.get('searchProvider');
+        const labels = {
+            none: 'Search (disabled in Options)',
+            jackett: 'Search (Jackett)',
+            prowlarr: 'Search (Prowlarr)',
+            qbittorrent: 'Search (qBittorrent)',
+        };
+        if (searchSectionLabel) {
+            searchSectionLabel.textContent = labels[searchProvider] || 'Search';
+        }
+        if (qbitSearchPluginSelect) {
+            qbitSearchPluginSelect.style.display = searchProvider === 'qbittorrent' ? 'block' : 'none';
+        }
+    }
+
+    async function loadQbitSearchPlugins() {
+        const { searchProvider, activeServerId } = await chrome.storage.local.get([
+            'searchProvider',
+            'activeServerId',
+        ]);
+        if (searchProvider !== 'qbittorrent' || !qbitSearchPluginSelect || !activeServerId) return;
+        chrome.runtime.sendMessage(
+            { action: 'getQbitSearchPlugins', serverId: activeServerId },
+            (response) => {
+                if (!response?.success || !response.plugins?.length) return;
+                qbitSearchPluginSelect.innerHTML =
+                    '<option value="enabled">All enabled plugins</option>' +
+                    response.plugins
+                        .filter((p) => p.enabled)
+                        .map((p) => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.fullName || p.name)}</option>`)
+                        .join('');
+            }
+        );
+    }
+
     function triggerSearch() {
         const query = searchInput.value.trim();
         if (!query) return;
         searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">Searching...</p>';
-        chrome.runtime.sendMessage({ action: 'searchTorrents', query }, (response) => {
+        chrome.storage.local.get(['searchProvider', 'activeServerId'], ({ searchProvider, activeServerId }) => {
+            const payload = {
+                action: 'searchTorrents',
+                query,
+                limit: 20,
+                serverId: searchProvider === 'qbittorrent' ? activeServerId : undefined,
+                plugins:
+                    searchProvider === 'qbittorrent' && qbitSearchPluginSelect
+                        ? qbitSearchPluginSelect.value
+                        : undefined,
+            };
+            chrome.runtime.sendMessage(payload, (response) => {
+            if (chrome.runtime.lastError) {
+                searchResultsContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(chrome.runtime.lastError.message)}</p>`;
+                return;
+            }
+            const errMsg =
+                typeof response?.error === 'string'
+                    ? response.error
+                    : response?.error?.userMessage || response?.error || 'Search failed';
             if (!response?.success) {
-                searchResultsContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(response?.error || 'Search failed')}</p>`;
+                searchResultsContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(errMsg)}</p>`;
                 return;
             }
             const items = response.results || [];
@@ -313,18 +420,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 searchResultsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No results this time. Try broader terms or a different indexer filter.</p>';
                 return;
             }
-            searchResultsContainer.innerHTML = items.map((item) => `
+            const partialNote = response.timedOut
+                ? '<p class="text-[10px] text-amber-600 dark:text-amber-300 mb-2">Search timed out; showing partial results.</p>'
+                : '';
+            searchResultsContainer.innerHTML = partialNote + items.map((item) => `
                 <div class="border border-gray-200 dark:border-gray-600 rounded p-2">
                     <p class="font-medium truncate" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</p>
                     <p class="text-[10px] text-gray-600 dark:text-gray-300">Seeders: ${item.seeders ?? 'N/A'} | Size: ${item.size ? formatBytes(item.size) : 'N/A'}</p>
                     <button class="search-add-btn mt-1 px-2.5 py-1 text-xs bg-blue-600 text-white rounded" style="min-height:44px" data-link="${encodeDataAttr(item.link)}">Add</button>
                 </div>
             `).join('');
+            });
         });
     }
 
     // Initial load
+    updateSearchUi();
     loadPopupData();
+    loadReviewPromptState();
     readClipboard();
 
     reportIssueButton.addEventListener('click', () => {

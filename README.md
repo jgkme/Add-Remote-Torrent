@@ -136,6 +136,8 @@ A: Chrome's Enhanced Safe Browsing shows this warning for new extensions or exte
 A:
 
 - **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature. If you use **several qBittorrent server profiles**, each logs in separately (v0.4.39+). On **qBittorrent 5.2+**, you can optionally generate a **Web API key** in the same Web UI settings and enter it in the extension’s server profile when cookie-based API access still fails—it is **not** required for normal username/password login.
+- **qBittorrent categories:** In Options, use **Sync categories** / **Import categories** on a qBittorrent profile to pull category names and save paths from the server, or paste/import a `categories.json` export (works best on 5.2+). The extension uses the Web API (`torrents/categories`, `createCategory`)—it cannot read files directly on the server.
+- **Search:** Besides Jackett/Prowlarr, you can set **Search provider** to **qBittorrent Search** (5.2+ recommended) to search via installed qBittorrent Search plugins using your active server from the popup.
 - **ruTorrent:** For the best results, enter the full URL to your ruTorrent installation in the **"Server URL"** field (e.g., `https://your-server.com/rutorrent`) and leave the **"ruTorrent Relative Path"** field blank. Alternatively, you can enter the base URL (e.g., `https://your-server.com`) and the path (e.g., `/rutorrent`) in their respective fields.
 
 **Q: A torrent link didn't get added correctly.**

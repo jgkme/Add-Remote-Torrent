@@ -236,6 +236,513 @@ function getApiUrl(baseUrl, apiPath) {
   return `${base}/api/v2/${apiPath}`;
 }
 
+/** @param {string} minimum e.g. "2.14.0" */
+export function compareWebApiVersion(serverConfig, minimum) {
+  const v = ((serverConfig && serverConfig.webApiVersion) || '').trim();
+  if (!v) return false;
+  const parts = (s) => s.split('.').map((n) => parseInt(n, 10) || 0);
+  const a = parts(v);
+  const b = parts(minimum);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const ai = a[i] || 0;
+    const bi = b[i] || 0;
+    if (ai > bi) return true;
+    if (ai < bi) return false;
+  }
+  return true;
+}
+
+function normalizeCategorySavePath(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  const p = entry.savePath ?? entry.save_path ?? '';
+  return typeof p === 'string' ? p.trim() : '';
+}
+
+/** @returns {{ name: string, savePath: string }[]} */
+export function parseCategoriesJson(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error('Invalid categories JSON. Check the file or pasted text and try again.');
+  }
+  const entries = [];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (!item || typeof item !== 'object') continue;
+      const name = String(item.name || '').trim();
+      const savePath = normalizeCategorySavePath(item);
+      if (name) entries.push({ name, savePath });
+    }
+  } else if (data && typeof data === 'object') {
+    for (const [key, val] of Object.entries(data)) {
+      const nameFromKey = String(key || '').trim();
+      if (!nameFromKey) continue;
+      if (typeof val === 'string') {
+        entries.push({ name: nameFromKey, savePath: val.trim() });
+      } else if (val && typeof val === 'object') {
+        const name = String(val.name || nameFromKey).trim();
+        const savePath = normalizeCategorySavePath(val);
+        if (name) entries.push({ name, savePath });
+      }
+    }
+  }
+  return entries;
+}
+
+export function profileFieldsFromCategories(categories) {
+  const sorted = [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    categories: sorted.map((c) => c.name).join(', '),
+    labelDirectoryMap: sorted
+      .filter((c) => c.savePath)
+      .map((c) => `${c.name}=${c.savePath}`)
+      .join('\n'),
+  };
+}
+
+async function postForm(serverConfig, apiPath, fields) {
+  const formData = new FormData();
+  for (const [k, v] of Object.entries(fields)) {
+    if (v !== undefined && v !== null) formData.append(k, String(v));
+  }
+  const apiUrl = getApiUrl(serverConfig.url, apiPath);
+  return qbitSession.fetch(apiUrl, { method: 'POST', body: formData }, serverConfig);
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function mapMetadataFiles(meta) {
+  if (!meta || typeof meta !== 'object') return [];
+  const info = meta.torrent_info || meta.torrentinfo || meta;
+  const inner = info.info || info;
+  const filesArr = inner.files || info.files || [];
+  const files = [];
+  if (Array.isArray(filesArr)) {
+    filesArr.forEach((file, idx) => {
+      const name =
+        file.name ||
+        file.file_path ||
+        file.path ||
+        (typeof file === 'string' ? file : '') ||
+        `File ${idx}`;
+      const size = Number(file.size ?? file.length ?? file.file_size ?? 0);
+      files.push({ name: String(name), size, index: idx });
+    });
+  }
+  return files;
+}
+
+export async function getCategories(serverConfig) {
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'torrents/categories');
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (!response.ok) {
+      throw new Error(`Failed to get categories: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    const categories = [];
+    if (data && typeof data === 'object') {
+      for (const [key, val] of Object.entries(data)) {
+        const name = val && val.name ? String(val.name).trim() : String(key).trim();
+        const savePath = normalizeCategorySavePath(val);
+        if (name) categories.push({ name, savePath });
+      }
+    }
+    return { success: true, categories };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function importCategories(serverConfig, entries, options = {}) {
+  const { pushToServer = true, merge = true } = options;
+  const summary = { created: 0, updated: 0, skipped: 0, failed: 0, errors: [] };
+  if (!entries || entries.length === 0) {
+    return { success: false, error: { userMessage: 'No categories to import.' } };
+  }
+  try {
+    let existing = {};
+    if (pushToServer) {
+      const existingResp = await getCategories(serverConfig);
+      if (!existingResp.success) return existingResp;
+      for (const c of existingResp.categories) {
+        existing[c.name] = c.savePath;
+      }
+    }
+    if (!pushToServer) {
+      const profileFields = profileFieldsFromCategories(
+        entries.map((e) => ({ name: e.name, savePath: e.savePath || '' }))
+      );
+      return {
+        success: true,
+        summary: { ...summary, skipped: entries.length },
+        categories: entries,
+        profileFields,
+      };
+    }
+    for (const entry of entries) {
+      const name = entry.name;
+      const savePath = entry.savePath || '';
+      if (!existing[name]) {
+        const fd = { category: name };
+        if (savePath) fd.savePath = savePath;
+        const resp = await postForm(serverConfig, 'torrents/createCategory', fd);
+        if (resp.ok) {
+          summary.created++;
+          existing[name] = savePath;
+        } else {
+          summary.failed++;
+          if (summary.errors.length < 3) {
+            summary.errors.push(`${name}: create failed (${resp.status})`);
+          }
+        }
+      } else if (merge && savePath && existing[name] !== savePath) {
+        const resp = await postForm(serverConfig, 'torrents/editCategory', {
+          category: name,
+          savePath,
+        });
+        if (resp.ok) {
+          summary.updated++;
+          existing[name] = savePath;
+        } else {
+          summary.failed++;
+          if (summary.errors.length < 3) {
+            summary.errors.push(`${name}: edit failed (${resp.status})`);
+          }
+        }
+      } else {
+        summary.skipped++;
+      }
+    }
+    const refreshed = await getCategories(serverConfig);
+    if (!refreshed.success) return refreshed;
+    return {
+      success: true,
+      summary,
+      categories: refreshed.categories,
+      profileFields: profileFieldsFromCategories(refreshed.categories),
+    };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getTags(serverConfig) {
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'torrents/tags');
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (!response.ok) {
+      throw new Error(`Failed to get tags: ${response.status} ${response.statusText}`);
+    }
+    const tags = await response.json();
+    return { success: true, tags: Array.isArray(tags) ? tags.map(String) : [] };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function syncTagsToServer(serverConfig, tagNames) {
+  try {
+    const existing = await getTags(serverConfig);
+    if (!existing.success) return existing;
+    const missing = tagNames.filter((t) => t && !existing.tags.includes(t));
+    if (missing.length === 0) {
+      return { success: true, tags: existing.tags, created: 0 };
+    }
+    const resp = await postForm(serverConfig, 'torrents/createTags', {
+      tags: missing.join(','),
+    });
+    if (!resp.ok) {
+      throw new Error(`createTags failed: ${resp.status}`);
+    }
+    const refreshed = await getTags(serverConfig);
+    return refreshed.success
+      ? { success: true, tags: refreshed.tags, created: missing.length }
+      : refreshed;
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getDefaultSavePath(serverConfig) {
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'app/defaultSavePath');
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (response.ok) {
+      const path = (await response.text()).trim();
+      if (path) return { success: true, savePath: path };
+    }
+    const mainDataUrl = getApiUrl(serverConfig.url, 'sync/maindata');
+    const mainResp = await qbitSession.fetch(mainDataUrl, {}, serverConfig);
+    if (mainResp.ok) {
+      const mainData = await mainResp.json();
+      const sp = mainData.server_state?.save_path;
+      if (sp) return { success: true, savePath: String(sp) };
+    }
+    throw new Error('Could not determine default save path');
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getFreeSpaceAtPath(serverConfig, path) {
+  if (!compareWebApiVersion(serverConfig, '2.15.2')) {
+    return { success: false, error: { userMessage: 'Free space API requires Web API 2.15.2+.' } };
+  }
+  try {
+    const apiUrl = getApiUrl(
+      serverConfig.url,
+      `app/getFreeSpaceAtPath?path=${encodeURIComponent(path)}`
+    );
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (!response.ok) {
+      throw new Error(`getFreeSpaceAtPath failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return { success: true, freeSpace: Number(data.free_space_on_disk ?? data.freeSpace ?? 0) };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function parseTorrentMetadata(serverConfig, torrentBase64, fileName = 'file.torrent') {
+  try {
+    const blob = base64ToBlob(torrentBase64);
+    const formData = new FormData();
+    formData.append('torrents', blob, fileName);
+    const apiUrl = getApiUrl(serverConfig.url, 'torrents/parseMetadata');
+    const response = await qbitSession.fetch(
+      apiUrl,
+      { method: 'POST', body: formData },
+      serverConfig
+    );
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error(`parseMetadata failed: ${response.status} ${t}`);
+    }
+    const data = await response.json();
+    const metaList = Array.isArray(data) ? data : [data];
+    const files = mapMetadataFiles(metaList[0]);
+    return { success: true, files, totalFileCount: files.length };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function fetchTorrentMetadataFromUrl(serverConfig, torrentUrl) {
+  try {
+    const response = await fetch(torrentUrl, { credentials: 'include' });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch torrent: ${response.status}`);
+    }
+    const buf = await response.arrayBuffer();
+    const base64 = arrayBufferToBase64(buf);
+    let fileName = 'file.torrent';
+    try {
+      const p = new URL(torrentUrl).pathname;
+      const n = p.substring(p.lastIndexOf('/') + 1);
+      if (n.toLowerCase().endsWith('.torrent')) fileName = n;
+    } catch (_) { /* ignore */ }
+    return parseTorrentMetadata(serverConfig, base64, fileName);
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        userMessage: 'Could not fetch or parse torrent metadata.',
+        technicalDetail: error.message,
+      },
+    };
+  }
+}
+
+export async function getSearchPlugins(serverConfig) {
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'search/plugins');
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (!response.ok) {
+      throw new Error(`search/plugins failed: ${response.status}`);
+    }
+    const plugins = await response.json();
+    return { success: true, plugins: Array.isArray(plugins) ? plugins : [] };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+function searchJobMatchesId(job, searchId) {
+  if (!job || searchId === undefined || searchId === null) return false;
+  return String(job.id) === String(searchId);
+}
+
+async function fetchSearchResults(serverConfig, searchId, limit) {
+  const resultsUrl = getApiUrl(
+    serverConfig.url,
+    `search/results?id=${searchId}&limit=${limit}&offset=${-limit}`
+  );
+  const resultsResp = await qbitSession.fetch(resultsUrl, {}, serverConfig);
+  if (!resultsResp.ok) {
+    const t = await resultsResp.text();
+    throw new Error(`search/results failed: ${resultsResp.status} ${t}`);
+  }
+  const resultsData = await resultsResp.json();
+  const raw = resultsData.results || [];
+  return raw
+    .map((r) => ({
+      title: r.fileName || 'Unknown',
+      link: r.fileUrl || '',
+      seeders: r.nbSeeders ?? null,
+      size: r.fileSize >= 0 ? r.fileSize : null,
+      descrLink: r.descrLink,
+      siteUrl: r.siteUrl,
+    }))
+    .filter((r) => r.link);
+}
+
+export async function searchTorrentsQbit(serverConfig, options = {}) {
+  const {
+    pattern,
+    plugins = 'enabled',
+    category = 'all',
+    limit = 20,
+  } = options;
+  let searchId = null;
+  try {
+    const startResp = await postForm(serverConfig, 'search/start', {
+      pattern,
+      plugins,
+      category,
+    });
+    if (startResp.status === 409) {
+      return {
+        success: false,
+        error: {
+          userMessage:
+            'qBittorrent has too many searches running. Stop some in the Search tab and try again.',
+        },
+      };
+    }
+    if (!startResp.ok) {
+      const t = await startResp.text();
+      throw new Error(`search/start failed: ${startResp.status} ${t}`);
+    }
+    const startData = await startResp.json();
+    searchId = startData.id;
+    if (searchId === undefined || searchId === null) {
+      throw new Error('search/start returned no job id');
+    }
+
+    const deadline = Date.now() + 20000;
+    let status = 'Running';
+    let timedOut = false;
+    while (Date.now() < deadline) {
+      const statusUrl = getApiUrl(serverConfig.url, `search/status?id=${searchId}`);
+      const statusResp = await qbitSession.fetch(statusUrl, {}, serverConfig);
+      if (statusResp.ok) {
+        const statusData = await statusResp.json();
+        const job = Array.isArray(statusData)
+          ? statusData.find((j) => searchJobMatchesId(j, searchId)) || statusData[0]
+          : statusData;
+        status = job?.status || status;
+        if (status === 'Stopped') break;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (status !== 'Stopped') {
+      timedOut = true;
+    }
+
+    const results = await fetchSearchResults(serverConfig, searchId, limit);
+    if (timedOut && results.length === 0) {
+      return {
+        success: false,
+        error: {
+          userMessage:
+            'qBittorrent search is still running or returned no results yet. Try again or narrow your query.',
+        },
+        status,
+        timedOut: true,
+      };
+    }
+
+    return { success: true, results, status, timedOut: timedOut || undefined };
+  } catch (error) {
+    const msg = error && error.message ? error.message : String(error);
+    return {
+      success: false,
+      error: {
+        userMessage:
+          'qBittorrent search failed. Enable Search (Python 3) and install plugins in qBittorrent Preferences → Search.',
+        technicalDetail: msg,
+      },
+    };
+  } finally {
+    if (searchId !== null) {
+      try {
+        await postForm(serverConfig, 'search/delete', { id: searchId });
+      } catch (e) {
+        debug.warn('search/delete failed:', e);
+      }
+    }
+  }
+}
+
+async function resolveHashAfterAdd(serverConfig, classified, initialHashes, fetchTorrentListHashes) {
+  const pending = Number(classified.json?.pending_count || 0) > 0;
+  const ids = (classified.json?.added_torrent_ids || []).map(String);
+
+  if (compareWebApiVersion(serverConfig, '2.14.0') && ids.length > 0) {
+    const maxAttempts = pending ? 20 : 8;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const torrentsInfoUrl = getApiUrl(serverConfig.url, 'torrents/info');
+      const response = await qbitSession.fetch(torrentsInfoUrl, {}, serverConfig);
+      if (response.ok) {
+        const torrents = await response.json();
+        for (const id of ids) {
+          const idLow = id.toLowerCase();
+          const found = torrents.find(
+            (t) =>
+              (t.hash && t.hash.toLowerCase() === idLow) ||
+              (t.infohash_v2 && String(t.infohash_v2).toLowerCase() === idLow) ||
+              (t.infohash_v1 && String(t.infohash_v1).toLowerCase() === idLow)
+          );
+          if (found) return found.hash;
+        }
+      }
+      if (!pending && attempt >= 2) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+
+  const maxAttempts = pending ? 20 : 4;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise((r) =>
+      setTimeout(r, pending ? 500 : attempt === 0 ? 800 : 400)
+    );
+    const currentHashes = await fetchTorrentListHashes();
+    const newHash = currentHashes.find((h) => !initialHashes.includes(h));
+    if (newHash) return newHash;
+  }
+  return null;
+}
+
+function buildFilePrioritiesParam(totalFileCount, selectedFileIndices) {
+  const selected = new Set(selectedFileIndices);
+  const priorities = [];
+  for (let i = 0; i < totalFileCount; i++) {
+    priorities.push(selected.has(i) ? '1' : '0');
+  }
+  return priorities.join(',');
+}
+
 async function getQbittorrentVersion(serverConfig) {
     const versionApiUrl = getApiUrl(serverConfig.url, 'app/version');
     const response = await qbitSession.fetch(versionApiUrl, {}, serverConfig);
@@ -263,7 +770,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     originalTorrentUrl,
     localFileName,
     forceStart,
-    downloadDir: torrentOptionsDownloadDir // Use alias to avoid conflict
+    downloadDir: torrentOptionsDownloadDir,
+    skipChecking,
+    sequentialDownload,
+    firstLastPiecePrio,
+    rename,
   } = torrentOptions;
 
   // Determine the final save path. Priority:
@@ -385,6 +896,22 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
     }
 
+    if (skipChecking) addTorrentFormData.append('skip_checking', 'true');
+    if (sequentialDownload) addTorrentFormData.append('sequentialDownload', 'true');
+    if (firstLastPiecePrio) addTorrentFormData.append('firstLastPiecePrio', 'true');
+    if (rename && String(rename).trim()) addTorrentFormData.append('rename', String(rename).trim());
+
+    let usedAddTimeFilePriorities = false;
+    if (
+      useFileSelection &&
+      torrentFileContentBase64 &&
+      compareWebApiVersion(serverConfig, '2.11.9')
+    ) {
+      const prioStr = buildFilePrioritiesParam(totalFileCount, selectedFileIndices);
+      addTorrentFormData.append('filePriorities', prioStr);
+      usedAddTimeFilePriorities = true;
+    }
+
     const version = await getQbittorrentVersion(serverConfig);
     const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
     
@@ -415,24 +942,31 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         return { success: false, error: { userMessage: "Failed to add torrent to qBittorrent.", technicalDetail: classified.detail || addResponseText, errorCode: "ADD_FAILED" } };
     }
 
-    // After successful addition, find the new hash
     let newHash = null;
+    let pendingWarning = null;
     try {
-        // Wait a moment for the torrent to appear in the list
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const currentHashes = await _fetchTorrentListHashes();
-        newHash = currentHashes.find(h => !initialHashes.includes(h));
+        if (classified.json && Number(classified.json.pending_count) > 0) {
+            pendingWarning = 'Torrent add is still pending on the server.';
+        }
+        newHash = await resolveHashAfterAdd(
+          serverConfig,
+          classified,
+          initialHashes,
+          _fetchTorrentListHashes
+        );
     } catch (e) {
         debug.error("Failed to fetch torrent list to identify new hash:", e);
-        // Return success but with a warning and no hash
-        return { success: true, data: { warning: "Torrent added, but could not confirm its hash for tracking." } };
+        return {
+          success: true,
+          data: { warning: "Torrent added, but could not confirm its hash for tracking." },
+        };
     }
 
     if (newHash) {
         debug.log(`qBittorrent: New torrent hash identified: ${newHash}`);
         
         try {
-            if (useFileSelection) {
+            if (useFileSelection && !usedAddTimeFilePriorities) {
                 const allFileIndices = Array.from({ length: totalFileCount }, (_, i) => i);
                 const deselectedFileIndices = allFileIndices.filter(i => !selectedFileIndices.includes(i));
 
@@ -455,8 +989,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
                     debug.warn(`qBittorrent: Failed to set force start for ${newHash}: ${forceError.message}`);
                 }
             }
-            // Return success with the identified hash
-            return { success: true, hash: newHash };
+            return {
+              success: true,
+              hash: newHash,
+              data: pendingWarning ? { warning: pendingWarning } : undefined,
+            };
         } catch (postAddError) {
             debug.error(`qBittorrent: Error during post-add operations for hash ${newHash}:`, postAddError);
             // Return success since the torrent was added, but with a warning about post-add operations
@@ -632,6 +1169,12 @@ export async function testConnection(serverConfig) {
     const version = await getQbittorrentVersion(serverConfig);
     const buildInfo = await getBuildInfo(serverConfig);
 
+    let categoryCount = null;
+    try {
+      const cats = await getCategories(serverConfig);
+      if (cats.success) categoryCount = cats.categories.length;
+    } catch (_) { /* non-fatal */ }
+
     return {
         success: true,
         data: {
@@ -639,6 +1182,7 @@ export async function testConnection(serverConfig) {
             version: version,
             webApiVersion: buildInfo.webUIVersion,
             freeSpace: buildInfo.freeSpace,
+            categoryCount,
             torrentsInfo: {
                 total: buildInfo.total_torrents,
                 downloadSpeed: buildInfo.dl_info_speed,

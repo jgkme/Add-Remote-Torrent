@@ -27,6 +27,11 @@ github.pub
 # Local agent / design notes (not for GitHub)
 /memory-bank/
 /screenshots/
+/docs/local/
+
+# Legacy paths (moved to docs/local/)
+/CHROMEWEBSTORE.md
+/WEBSTORE_COPY.md
 
 # IDE specific files
 .vscode/
