@@ -9,6 +9,15 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.48 (2026-05-25)
+
+- **Feat (qBittorrent):** **RSS Reader** page (`rss/rss.html`) — feed tree with selection, article table from `rss/items?withData=true`, double-click add torrent, download rules editor (`rss/rules`).
+- **Feat (qBittorrent):** Import RSS feed URLs (and rule filters) from the client into extension storage.
+- **Feat:** Per-server `deleteTorrentWithFiles` for torrent delete in popup/dashboard (qBittorrent, Transmission, Deluge, rTorrent).
+- **Feat (Options):** RSS feed manager cards; RSS Reader link from popup and Options.
+- **Fix (rTorrent):** Delete uses `d.delete` when not deleting data.
+- **Build:** Generated release artifacts for `v0.4.48`.
+
 ### 0.4.47 (2026-05-25)
 
 - **Fix (MV3):** Background service worker ships as a single bundle—no lazy `importScripts` chunks or DOM loaders—fixing `document is not defined`, missing `231.js`, and broken Options/Popup after reload. Build verifies `dist/background.js` and full options bundle size.

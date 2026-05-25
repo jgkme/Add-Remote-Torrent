@@ -204,6 +204,10 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.48 (2026-05-25):**
+  - **Feat (qBittorrent):** **RSS Reader** — feeds, articles, double-click add, download rules on server; import feeds to extension auto-add.
+  - **Feat:** Per-server delete torrent **with files** (qBittorrent, Transmission, Deluge, rTorrent).
+  - **Build:** Release artifacts for `v0.4.48`.
 - **v0.4.47 (2026-05-25):**
   - **Fix (MV3):** One background bundle—no broken lazy chunks; Options/Popup load correctly after reload.
   - **Fix (qBittorrent):** v5+ **start/stop** API for pause/resume after add.

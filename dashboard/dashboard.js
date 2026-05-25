@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let clearHistoryResetTimer = null;
     const expandedTorrentPanels = new Set();
     let torrentListMode = 'recent';
+    let serversCache = [];
 
     function escapeHtml(unsafe) {
         if (unsafe === null || typeof unsafe === 'undefined') return '';
@@ -285,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderServerStatus(servers) {
+        serversCache = servers || [];
         serverStatusContainer.innerHTML = '';
         if (!servers || servers.length === 0) {
             serverStatusContainer.innerHTML = `
@@ -363,10 +365,11 @@ document.addEventListener('DOMContentLoaded', () => {
     serverStatusContainer.addEventListener('click', (event) => {
         const button = event.target.closest('.torrent-action-btn');
         if (!button) return;
-        if (button.dataset.action === 'delete' && !confirm('Delete this torrent from the client?')) {
-            return;
-        }
         const serverId = button.dataset.serverId;
+        if (button.dataset.action === 'delete') {
+            const server = serversCache.find((s) => s.id === serverId);
+            if (!confirm(TorrentUI.deleteTorrentConfirmMessage(server))) return;
+        }
         const hash = TorrentUI.decodeDataAttr(button.dataset.hash);
         chrome.runtime.sendMessage(
             {

@@ -175,7 +175,15 @@
     `;
   }
 
+  function deleteTorrentConfirmMessage(server) {
+    if (server?.deleteTorrentWithFiles) {
+      return 'Delete this torrent and its downloaded files from the client?';
+    }
+    return 'Remove this torrent from the client? Downloaded files will be kept on disk.';
+  }
+
   global.TorrentUI = {
+    deleteTorrentConfirmMessage,
     humanizeTorrentState,
     statusBadgeClasses,
     torrentActionVisibility,

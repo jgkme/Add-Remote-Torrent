@@ -417,7 +417,7 @@ export async function torrentAction(serverConfig, actionType, hash) {
 	}
 	try {
 		const args = actionType === 'delete'
-			? { ids: [hash], "delete-local-data": false }
+			? { ids: [hash], "delete-local-data": !!serverConfig.deleteTorrentWithFiles }
 			: { ids: [hash] };
 		await makeRpcCall(rpcUrl, method, args, serverConfig);
 		return { success: true };

@@ -478,6 +478,83 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse(result);
     })();
     return true;
+  } else if (request.action === "syncQbitRssFeeds" && request.serverId) {
+    (async () => {
+      const { rssFeeds = [] } = await chrome.storage.local.get("rssFeeds");
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.importRssFeedsFromQbit(server, rssFeeds, {
+          merge: request.merge !== false,
+          assignServerId: request.serverId,
+        })
+      );
+      if (result?.success && Array.isArray(result.feeds)) {
+        await chrome.storage.local.set({ rssFeeds: result.feeds });
+      }
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "getQbitRssViewerData" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.getRssViewerData(server)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "refreshQbitRssItem" && request.serverId && request.itemPath) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.refreshRssItem(server, request.itemPath)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "markQbitRssRead" && request.serverId && request.itemPath) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.markRssAsRead(server, request.itemPath, request.articleId)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "setQbitRssRule" && request.serverId && request.ruleName) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.setRssRule(server, request.ruleName, request.ruleDef)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "removeQbitRssRule" && request.serverId && request.ruleName) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.removeRssRule(server, request.ruleName)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "addTorrentFromRss" && request.serverId && request.url) {
+    (async () => {
+      try {
+        const { servers = [] } = await chrome.storage.local.get("servers");
+        const server = servers.find((s) => s.id === request.serverId);
+        if (!server) {
+          sendResponse({ success: false, error: "Server not found." });
+          return;
+        }
+        await addTorrentToClient(request.url, server);
+        if (request.itemPath && request.articleId) {
+          const api = await getClientApi("qbittorrent");
+          if (api?.markRssAsRead) {
+            await api.markRssAsRead(server, request.itemPath, request.articleId);
+          }
+        }
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({ success: false, error: error?.message || String(error) });
+      }
+    })();
+    return true;
   } else if (request.action === "fetchQbitTorrentMetadata" && request.serverId) {
     (async () => {
       const result = await runQbitServerAction(request.serverId, async (api, server) => {

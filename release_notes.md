@@ -1,3 +1,12 @@
+### v0.4.48 (2026-05-25)
+
+*   **Feat (qBittorrent):** **RSS Reader** — browse feeds and latest articles from the client, double-click to add a torrent, single-click to mark read, refresh feeds, and edit **download rules** on the server (must contain, affected feeds, save path, etc.). Open from the popup or Options.
+*   **Feat (qBittorrent):** **Import RSS feeds** from qBittorrent into the extension’s optional auto-add list (merge by URL).
+*   **Feat:** Per-server **delete torrent with downloaded files** for qBittorrent, Transmission, Deluge, and rTorrent (Options server profile).
+*   **Feat (Options):** Inline editable RSS auto-add feed cards; extension RSS settings collapsed under optional section with RSS Reader promoted.
+*   **Fix (rTorrent):** Delete action respects “with files” setting (`d.erase` vs `d.delete`).
+*   **Build:** Generated release artifacts for `v0.4.48`.
+
 ### v0.4.47 (2026-05-25)
 
 *   **Fix (MV3):** Single background bundle—fixes service worker `document is not defined`, missing chunk files, and Options/Popup failing to load handlers after extension reload. Reload unpacked from **`dist/`** after updating.

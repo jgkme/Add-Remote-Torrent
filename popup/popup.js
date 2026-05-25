@@ -2,7 +2,7 @@ import { debug } from '../debug';
 import '../js/torrent-ui.js';
 import '../js/torrent-list.js';
 
-const { decodeDataAttr, encodeDataAttr, renderTorrentCardHtml } = globalThis.TorrentUI;
+const { decodeDataAttr, encodeDataAttr, renderTorrentCardHtml, deleteTorrentConfirmMessage } = globalThis.TorrentUI;
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const manualUrlInput = document.getElementById('manualUrlInput');
     const manualAddButton = document.getElementById('manualAddButton');
     const openDashboardButton = document.getElementById('openDashboardButton');
+    const openRssReaderButton = document.getElementById('openRssReaderButton');
     const openOptionsButton = document.getElementById('openOptionsButton');
     const reportIssueButton = document.getElementById('reportIssueButton');
     const reviewPromptRow = document.getElementById('reviewPromptRow');
@@ -267,6 +268,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Open dashboard page
     openDashboardButton.addEventListener('click', () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+    });
+
+    openRssReaderButton?.addEventListener('click', () => {
+        const serverId = currentActiveServerId || '';
+        const qs = serverId ? `?serverId=${encodeURIComponent(serverId)}` : '';
+        chrome.tabs.create({ url: chrome.runtime.getURL(`rss/rss.html${qs}`) });
     });
 
     async function refreshPopupServerStats() {
@@ -565,8 +572,9 @@ Add any other context about the problem here. Please double-check that you have 
     torrentListContainer.addEventListener('click', (event) => {
         const button = event.target.closest('.torrent-action-btn');
         if (!button) return;
-        if (button.dataset.action === 'delete' && !confirm('Delete this torrent from the client?')) {
-            return;
+        if (button.dataset.action === 'delete') {
+            const server = servers.find((s) => s.id === currentActiveServerId);
+            if (!confirm(deleteTorrentConfirmMessage(server))) return;
         }
         const payload = { actionType: button.dataset.action, hash: decodeDataAttr(button.dataset.hash) };
         chrome.runtime.sendMessage({ action: 'torrentAction', payload }, (response) => {

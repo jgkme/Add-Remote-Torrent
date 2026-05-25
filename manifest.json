@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.47",
+  "version": "0.4.48",
   "description": "Add magnets and .torrent URLs to remote clients. Multi-server, local-only settings.",
   "permissions": [
     "storage",
@@ -70,7 +70,9 @@
         "add/add.html",
         "add/add.js",
         "dashboard/dashboard.html",
-        "dashboard/dashboard.js"
+        "dashboard/dashboard.js",
+        "rss/rss.html",
+        "rss/rss.js"
       ],
       "matches": [
         "<all_urls>"

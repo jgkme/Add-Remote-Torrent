@@ -346,7 +346,7 @@ export async function torrentAction(serverConfig, actionType, hash) {
 
     let params;
     if (actionType === 'delete') {
-        params = [[hash], false];
+        params = [[hash], !!serverConfig.deleteTorrentWithFiles];
     } else {
         params = [[hash]];
     }

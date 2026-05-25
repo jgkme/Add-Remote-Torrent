@@ -1,4 +1,5 @@
 import { debug } from '../debug';
+import { generateLocalId } from '../utils.js';
 
 // qBittorrent API Handler
 // This file will contain the logic for interacting with the qBittorrent WebUI API.
@@ -1335,7 +1336,7 @@ export async function torrentAction(serverConfig, actionType, hash) {
   const formData = new FormData();
   formData.append("hashes", hash);
   if (actionType === "delete") {
-    formData.append("deleteFiles", "false");
+    formData.append("deleteFiles", serverConfig.deleteTorrentWithFiles ? "true" : "false");
   }
   const response = await qbitSession.fetch(
     apiUrl,
@@ -1417,6 +1418,399 @@ async function getBuildInfo(serverConfig) {
         up_info_speed: serverState.up_info_speed,
         total_torrents: mainData.torrents ? Object.keys(mainData.torrents).length : 0,
     };
+}
+
+function normalizeRssFeedUrl(url) {
+  try {
+    const u = new URL(String(url).trim());
+    u.hash = '';
+    return u.href.replace(/\/$/, '');
+  } catch (_) {
+    return String(url || '').trim();
+  }
+}
+
+function isQbitRssFeedNode(value) {
+  if (typeof value === 'string') return /^https?:\/\//i.test(value.trim());
+  return Boolean(
+    value && typeof value === 'object' && !Array.isArray(value) && typeof value.url === 'string'
+  );
+}
+
+function normalizeQbitRssFeedNode(value) {
+  if (typeof value === 'string') {
+    return { url: value.trim(), articles: [] };
+  }
+  return {
+    url: String(value.url || '').trim(),
+    title: value.title,
+    uid: value.uid,
+    isLoading: !!value.isLoading,
+    hasError: !!value.hasError,
+    articles: Array.isArray(value.articles) ? value.articles : [],
+  };
+}
+
+function parseQbitArticleDate(dateStr) {
+  if (!dateStr) return 0;
+  const t = Date.parse(dateStr);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function normalizeQbitRssArticles(articles, feedPath, feedUrl) {
+  return (articles || [])
+    .map((article) => {
+      const torrentURL = String(article.torrentURL || article.torrentUrl || '').trim();
+      const link = String(article.link || '').trim();
+      return {
+        id: String(article.id || ''),
+        title: String(article.title || '(no title)'),
+        date: article.date || '',
+        torrentURL,
+        link,
+        downloadUrl: torrentURL || link,
+        isRead: !!article.isRead,
+        author: String(article.author || ''),
+        description: String(article.description || ''),
+        feedPath,
+        feedUrl,
+      };
+    })
+    .sort((a, b) => parseQbitArticleDate(b.date) - parseQbitArticleDate(a.date));
+}
+
+/** Flatten qBittorrent `rss/items` tree (folders = nested objects, feeds = URL or feed objects). */
+export function flattenQbitRssItems(node, pathParts = []) {
+  const feeds = [];
+  if (!node || typeof node !== 'object' || Array.isArray(node)) {
+    return feeds;
+  }
+  for (const [key, value] of Object.entries(node)) {
+    if (isQbitRssFeedNode(value)) {
+      const feed = normalizeQbitRssFeedNode(value);
+      const itemPath = [...pathParts, key].join('\\');
+      feeds.push({ url: feed.url, itemPath, name: key });
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      feeds.push(...flattenQbitRssItems(value, [...pathParts, key]));
+    }
+  }
+  return feeds;
+}
+
+/** Parse `rss/items?withData=true` into feeds with articles for the RSS viewer. */
+export function parseQbitRssViewerFeeds(node, pathParts = []) {
+  const feeds = [];
+  if (!node || typeof node !== 'object' || Array.isArray(node)) {
+    return feeds;
+  }
+  for (const [name, value] of Object.entries(node)) {
+    const itemPath = [...pathParts, name].join('\\');
+    if (isQbitRssFeedNode(value)) {
+      const feed = normalizeQbitRssFeedNode(value);
+      feeds.push({
+        name,
+        itemPath,
+        url: feed.url,
+        title: feed.title || name,
+        isLoading: feed.isLoading,
+        hasError: feed.hasError,
+        unreadCount: feed.articles.filter((a) => !a.isRead).length,
+        articles: normalizeQbitRssArticles(feed.articles, itemPath, feed.url),
+      });
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      feeds.push(...parseQbitRssViewerFeeds(value, [...pathParts, name]));
+    }
+  }
+  return feeds;
+}
+
+export function buildQbitRssTreeNodes(node, pathParts = []) {
+  const nodes = [];
+  if (!node || typeof node !== 'object' || Array.isArray(node)) {
+    return nodes;
+  }
+  for (const [name, value] of Object.entries(node)) {
+    const itemPath = [...pathParts, name].join('\\');
+    if (isQbitRssFeedNode(value)) {
+      const feed = normalizeQbitRssFeedNode(value);
+      const unread = feed.articles.filter((a) => !a.isRead).length;
+      nodes.push({
+        type: 'feed',
+        name,
+        itemPath,
+        url: feed.url,
+        unreadCount: unread,
+        isLoading: feed.isLoading,
+        hasError: feed.hasError,
+      });
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      nodes.push({
+        type: 'folder',
+        name,
+        itemPath,
+        children: buildQbitRssTreeNodes(value, [...pathParts, name]),
+      });
+    }
+  }
+  return nodes;
+}
+
+/** Map qBittorrent RSS auto-download rules to an extension regex filter (best-effort). */
+export function patternFromQbitRssRules(feedUrl, rules) {
+  const normalizedFeed = normalizeRssFeedUrl(feedUrl);
+  const parts = [];
+  for (const rule of Object.values(rules || {})) {
+    if (!rule || rule.enabled === false) continue;
+    const affected = rule.affectedFeeds || [];
+    const matchesFeed = affected.some((f) => {
+      const af = String(f).trim();
+      if (!af) return false;
+      if (af === feedUrl || normalizeRssFeedUrl(af) === normalizedFeed) return true;
+      return normalizedFeed.includes(af) || af.includes(normalizedFeed);
+    });
+    if (!matchesFeed) continue;
+    const mustContain = String(rule.mustContain || '').trim();
+    if (!mustContain) continue;
+    if (rule.useRegex) {
+      parts.push(mustContain);
+    } else {
+      const escaped = mustContain.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+      parts.push(escaped);
+    }
+  }
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return parts.map((p) => `(?:${p})`).join('|');
+}
+
+export function mergeExtensionRssFeeds(existingFeeds, incomingFeeds, options = {}) {
+  const { serverId, merge = true } = options;
+  const byUrl = new Map();
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const feed of existingFeeds || []) {
+    if (feed?.url) {
+      byUrl.set(normalizeRssFeedUrl(feed.url), { ...feed });
+    }
+  }
+
+  for (const imp of incomingFeeds || []) {
+    if (!imp?.url) continue;
+    const key = normalizeRssFeedUrl(imp.url);
+    const existing = byUrl.get(key);
+    if (existing) {
+      if (!merge) {
+        skipped += 1;
+        continue;
+      }
+      const next = {
+        ...existing,
+        serverId: serverId || existing.serverId,
+        qbitItemPath: imp.qbitItemPath ?? existing.qbitItemPath,
+        qbitSourceServerId: serverId || existing.qbitSourceServerId,
+      };
+      if (imp.pattern) {
+        next.pattern = imp.pattern;
+      }
+      byUrl.set(key, next);
+      updated += 1;
+    } else {
+      byUrl.set(key, {
+        id: generateLocalId('feed'),
+        url: imp.url,
+        pattern: imp.pattern || '',
+        serverId: serverId || undefined,
+        qbitItemPath: imp.qbitItemPath,
+        qbitSourceServerId: serverId,
+      });
+      added += 1;
+    }
+  }
+
+  return {
+    feeds: Array.from(byUrl.values()),
+    added,
+    updated,
+    skipped,
+  };
+}
+
+export async function getRssItems(serverConfig, withData = false) {
+  try {
+    let apiUrl = getApiUrl(serverConfig.url, 'rss/items');
+    if (withData) {
+      apiUrl += apiUrl.includes('?') ? '&withData=true' : '?withData=true';
+    }
+    const response = await qbitSession.fetch(apiUrl, { method: 'GET' }, serverConfig);
+    if (!response.ok) {
+      const hint =
+        response.status === 404
+          ? 'RSS may be unavailable on this qBittorrent build. Enable RSS in qBittorrent and add at least one feed.'
+          : `Failed to read RSS feeds: ${response.status} ${response.statusText}`;
+      throw new Error(hint);
+    }
+    const data = await response.json();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { success: true, items: {} };
+    }
+    return { success: true, items: data };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getRssRules(serverConfig) {
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'rss/rules');
+    const response = await qbitSession.fetch(apiUrl, { method: 'GET' }, serverConfig);
+    if (!response.ok) {
+      throw new Error(`Failed to read RSS rules: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return { success: true, rules: data && typeof data === 'object' ? data : {} };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getRssFeedsForImport(serverConfig) {
+  const itemsResp = await getRssItems(serverConfig, false);
+  if (!itemsResp.success) return itemsResp;
+  const rulesResp = await getRssRules(serverConfig);
+  const rules = rulesResp.success ? rulesResp.rules : {};
+  const flat = flattenQbitRssItems(itemsResp.items);
+  const feeds = flat.map((entry) => ({
+    url: entry.url,
+    pattern: patternFromQbitRssRules(entry.url, rules),
+    qbitItemPath: entry.itemPath,
+  }));
+  return { success: true, feeds, rulesAvailable: rulesResp.success };
+}
+
+export async function importRssFeedsFromQbit(serverConfig, existingFeeds = [], options = {}) {
+  const { merge = true, assignServerId } = options;
+  const pull = await getRssFeedsForImport(serverConfig);
+  if (!pull.success) return pull;
+  const merged = mergeExtensionRssFeeds(existingFeeds, pull.feeds, {
+    serverId: assignServerId,
+    merge,
+  });
+  return {
+    success: true,
+    feeds: merged.feeds,
+    added: merged.added,
+    updated: merged.updated,
+    skipped: merged.skipped,
+    importedFromQbit: pull.feeds.length,
+    rulesAvailable: pull.rulesAvailable,
+  };
+}
+
+export async function getRssViewerData(serverConfig) {
+  const itemsResp = await getRssItems(serverConfig, true);
+  if (!itemsResp.success) return itemsResp;
+  const rulesResp = await getRssRules(serverConfig);
+  const feeds = parseQbitRssViewerFeeds(itemsResp.items);
+  const tree = buildQbitRssTreeNodes(itemsResp.items);
+  const rules = [];
+  if (rulesResp.success && rulesResp.rules) {
+    for (const [name, def] of Object.entries(rulesResp.rules)) {
+      rules.push({ name, ...(def && typeof def === 'object' ? def : {}) });
+    }
+    rules.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return {
+    success: true,
+    feeds,
+    tree,
+    rules,
+    rulesAvailable: rulesResp.success,
+    articleCount: feeds.reduce((n, f) => n + f.articles.length, 0),
+  };
+}
+
+export async function refreshRssItem(serverConfig, itemPath) {
+  if (!itemPath) {
+    return { success: false, error: { userMessage: 'Missing RSS item path.' } };
+  }
+  try {
+    const response = await postForm(serverConfig, 'rss/refreshItem', { itemPath });
+    if (!response.ok) {
+      throw new Error(`Refresh failed: ${response.status} ${response.statusText}`);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function markRssAsRead(serverConfig, itemPath, articleId) {
+  if (!itemPath) {
+    return { success: false, error: { userMessage: 'Missing RSS item path.' } };
+  }
+  try {
+    const fields = { itemPath };
+    if (articleId) fields.articleId = articleId;
+    const response = await postForm(serverConfig, 'rss/markAsRead', fields);
+    if (!response.ok) {
+      throw new Error(`Mark as read failed: ${response.status} ${response.statusText}`);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function setRssRule(serverConfig, ruleName, ruleDef) {
+  if (!ruleName || !ruleDef) {
+    return { success: false, error: { userMessage: 'Rule name and definition are required.' } };
+  }
+  try {
+    const response = await postForm(serverConfig, 'rss/setRule', {
+      ruleName,
+      ruleDef: JSON.stringify(ruleDef),
+    });
+    if (!response.ok) {
+      throw new Error(`Save rule failed: ${response.status} ${response.statusText}`);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function removeRssRule(serverConfig, ruleName) {
+  if (!ruleName) {
+    return { success: false, error: { userMessage: 'Rule name is required.' } };
+  }
+  try {
+    const response = await postForm(serverConfig, 'rss/removeRule', { ruleName });
+    if (!response.ok) {
+      throw new Error(`Remove rule failed: ${response.status} ${response.statusText}`);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getRssMatchingArticles(serverConfig, ruleName) {
+  if (!ruleName) {
+    return { success: false, error: { userMessage: 'Rule name is required.' } };
+  }
+  try {
+    const apiUrl = `${getApiUrl(serverConfig.url, 'rss/matchingArticles')}?ruleName=${encodeURIComponent(ruleName)}`;
+    const response = await qbitSession.fetch(apiUrl, { method: 'GET' }, serverConfig);
+    if (!response.ok) {
+      throw new Error(`Matching articles failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return { success: true, matches: data && typeof data === 'object' ? data : {} };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
 }
 
 export async function testConnection(serverConfig) {

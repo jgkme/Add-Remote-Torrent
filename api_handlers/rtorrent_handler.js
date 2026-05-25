@@ -400,7 +400,7 @@ export async function torrentAction(serverConfig, actionType, hash) {
     const actionMap = {
         pause: 'd.stop',
         resume: 'd.start',
-        delete: 'd.erase',
+        delete: serverConfig.deleteTorrentWithFiles ? 'd.erase' : 'd.delete',
     };
     const method = actionMap[actionType];
     if (!method) {

@@ -309,7 +309,9 @@
           <button type="button" id="importQbitCategoriesBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Import categories…</button>
           <button type="button" id="syncQbitTagsBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync tags</button>
           <button type="button" id="syncQbitSavePathBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync default save path</button>
+          <button type="button" id="syncQbitRssFromProfileBtn" class="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Import RSS feeds to extension</button>
         </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Import RSS copies feed URLs (and filters from auto-download rules) into the extension RSS manager — one-way; does not change feeds in qBittorrent.</p>
         <label class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
           <input type="checkbox" id="qbitImportPushToServer" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600" checked>
           <span>Push imported categories to qBittorrent (uncheck for extension profile only)</span>
@@ -408,6 +410,13 @@
       <div class="form-group mt-4 flex items-center space-x-2">
         <input type="checkbox" id="forceStart" name="forceStart" class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
         <label for="forceStart" class="text-sm font-medium text-gray-700 dark:text-gray-300">Force Start by default (qBittorrent)</label>
+      </div>
+      <div id="torrentActionsGroup" class="form-group mt-4 flex items-start space-x-2" style="display:none;">
+        <input type="checkbox" id="deleteTorrentWithFiles" name="deleteTorrentWithFiles" class="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:checked:bg-blue-500">
+        <div>
+          <label for="deleteTorrentWithFiles" class="text-sm font-medium text-gray-700 dark:text-gray-300">When deleting torrents, also delete downloaded files</label>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Applies to Delete in the popup and dashboard (qBittorrent, Transmission, Deluge, rTorrent). Off = remove torrent only, keep data on disk.</p>
+        </div>
       </div>
       <div class="form-group mt-4">
         <label for="labelDirectoryMap" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Label-to-Directory Mapping (one per line: label=/path)</label>
@@ -592,33 +601,51 @@
                 <label for="rssAutoAddEnabledToggle" class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable RSS auto-add polling</label>
             </div>
             <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RSS Feed Manager</label>
-                <div class="space-y-3 rounded-md border border-gray-300 dark:border-gray-600 p-3">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RSS</label>
+                <div class="mb-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 p-3">
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100">qBittorrent RSS Reader</p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-300">Browse feeds, articles, and download rules like the qBittorrent client. Double-click an article to add the torrent.</p>
+                    <a href="../rss/rss.html" target="_blank" rel="noopener" class="inline-block mt-2 px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Open RSS Reader</a>
+                </div>
+                <details class="rounded-md border border-gray-300 dark:border-gray-600 p-3">
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">Extension auto-add feeds (optional)</summary>
+                    <div class="space-y-3 mt-3">
                     <p class="text-xs text-gray-600 dark:text-gray-300">
-                        Add feeds to auto-send matching torrents to your active or selected server.
+                        Separate from qBittorrent’s RSS: the extension can poll these URLs and auto-add matching torrents. Use <strong>Import from qBittorrent</strong> to copy feed URLs from the client.
                     </p>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="syncQbitRssFeedsBtn" class="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Import from qBittorrent</button>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Pick a qBittorrent server in the target dropdown below, or import from an open qBittorrent server profile. Re-import merges by feed URL (updates filters and paths).</p>
                     <div class="flex items-center justify-between text-xs">
                         <span id="rssFeedCount" class="text-gray-600 dark:text-gray-300">0 feeds</span>
-                        <span id="rssEditNotice" class="hidden px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">Editing feed</span>
                     </div>
-                    <div id="rssFeedsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <input id="rssFeedUrlInput" type="text" placeholder="Feed URL (https://...)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
-                        <input id="rssFeedPatternInput" type="text" placeholder="Regex filter (optional)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <select id="rssFeedServerSelect" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
-                            <option value="">Use active server</option>
-                        </select>
-                        <button id="addRssFeedButton" type="button" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm transition-transform duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0">Add RSS Feed</button>
-                        <button id="cancelRssEditButton" type="button" class="px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:text-gray-200 rounded-md text-sm dark:bg-gray-600 dark:hover:bg-gray-700 hidden transition-colors">Cancel Edit</button>
-                    </div>
+                    <div id="rssFeedsList" class="space-y-3 max-h-[28rem] overflow-y-auto pr-1" role="list" aria-label="RSS feeds"></div>
+                    <article id="rssFeedNewCard" class="rounded-lg border border-dashed border-indigo-300 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 space-y-3">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Add feed</h4>
+                        <div class="space-y-2">
+                            <label for="rssNewFeedUrl" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Feed URL</label>
+                            <input id="rssNewFeedUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com/rss.xml" class="rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="rssNewFeedPattern" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Filter <span class="font-normal text-gray-500 dark:text-gray-400">(regex, optional)</span></label>
+                            <input id="rssNewFeedPattern" type="text" autocomplete="off" placeholder="e.g. 1080p|2160p" class="rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm font-mono text-xs">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="rssNewFeedServerSelect" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Target server</label>
+                            <select id="rssNewFeedServerSelect" class="rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+                                <option value="">Use active server</option>
+                            </select>
+                        </div>
+                        <button id="addRssFeedButton" type="button" class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium">Add feed</button>
+                    </article>
                     <details class="rounded-md border border-gray-200 dark:border-gray-700 p-2">
                         <summary class="cursor-pointer text-xs text-gray-600 dark:text-gray-300">Advanced JSON editor</summary>
                         <textarea id="rssFeedsInput" rows="3" placeholder='[{"id":"feed-1","url":"https://example/rss","pattern":"linux"}]' class="mt-2 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-xs"></textarea>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Raw JSON fallback (auto-syncs with manager).</p>
                     </details>
-                </div>
+                    </div>
+                </details>
             </div>
             <div class="form-group">
                 <label for="searchProviderInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Provider</label>

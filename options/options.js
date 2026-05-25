@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const importQbitCategoriesBtn = document.getElementById('importQbitCategoriesBtn');
     const syncQbitTagsBtn = document.getElementById('syncQbitTagsBtn');
     const syncQbitSavePathBtn = document.getElementById('syncQbitSavePathBtn');
+    const syncQbitRssFeedsBtn = document.getElementById('syncQbitRssFeedsBtn');
+    const syncQbitRssFromProfileBtn = document.getElementById('syncQbitRssFromProfileBtn');
     const qbitImportPushToServer = document.getElementById('qbitImportPushToServer');
     const qbitCategoriesPaste = document.getElementById('qbitCategoriesPaste');
     const qbitCategoriesFile = document.getElementById('qbitCategoriesFile');
@@ -124,6 +126,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const downloadDirectoriesInput = document.getElementById('downloadDirectories');
     const addPausedInput = document.getElementById('addPaused');
     const forceStartInput = document.getElementById('forceStart');
+    const torrentActionsGroup = document.getElementById('torrentActionsGroup');
+    const deleteTorrentWithFilesInput = document.getElementById('deleteTorrentWithFiles');
+    const CLIENTS_WITH_TORRENT_ACTIONS = new Set(['qbittorrent', 'transmission', 'deluge', 'rtorrent']);
     const labelDirectoryMapInput = document.getElementById('labelDirectoryMap');
     const askForLabelDirOnPageInput = document.getElementById('askForLabelDirOnPage'); 
     const saveServerButton = document.getElementById('saveServerButton');
@@ -157,13 +162,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rssAutoAddEnabledToggle = document.getElementById('rssAutoAddEnabledToggle');
     const rssFeedsInput = document.getElementById('rssFeedsInput');
     const rssFeedsList = document.getElementById('rssFeedsList');
-    const rssFeedUrlInput = document.getElementById('rssFeedUrlInput');
-    const rssFeedPatternInput = document.getElementById('rssFeedPatternInput');
-    const rssFeedServerSelect = document.getElementById('rssFeedServerSelect');
+    const rssNewFeedUrl = document.getElementById('rssNewFeedUrl');
+    const rssNewFeedPattern = document.getElementById('rssNewFeedPattern');
+    const rssNewFeedServerSelect = document.getElementById('rssNewFeedServerSelect');
+    const rssFeedServerSelect = rssNewFeedServerSelect;
     const addRssFeedButton = document.getElementById('addRssFeedButton');
-    const cancelRssEditButton = document.getElementById('cancelRssEditButton');
     const rssFeedCount = document.getElementById('rssFeedCount');
-    const rssEditNotice = document.getElementById('rssEditNotice');
     const searchProviderInput = document.getElementById('searchProviderInput');
     const searchApiUrlInput = document.getElementById('searchApiUrlInput');
     const searchApiKeyInput = document.getElementById('searchApiKeyInput');
@@ -269,7 +273,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let urlToServerMappings = [];
     let trackerUrlRules = [];
     let linkCatchingPatterns = [];
-    let editingRssFeedId = null;
 
     // --- Utility Functions ---
     const generateId = (prefix = 'server') => generateLocalId(prefix);
@@ -309,21 +312,236 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function resetRssFeedEditor() {
-        editingRssFeedId = null;
-        rssFeedUrlInput.value = '';
-        rssFeedPatternInput.value = '';
-        rssFeedServerSelect.value = '';
-        addRssFeedButton.textContent = 'Add RSS Feed';
-        cancelRssEditButton.classList.add('hidden');
-        rssEditNotice.classList.add('hidden');
+    function resetRssNewFeedForm() {
+        if (rssNewFeedUrl) rssNewFeedUrl.value = '';
+        if (rssNewFeedPattern) rssNewFeedPattern.value = '';
+        if (rssNewFeedServerSelect) rssNewFeedServerSelect.value = '';
     }
 
-    function highlightRssSaveFeedback() {
-        addRssFeedButton.classList.add('ring-2', 'ring-green-400', 'dark:ring-green-500');
+    function highlightRssSaveFeedback(element) {
+        const target = element || addRssFeedButton;
+        if (!target) return;
+        target.classList.add('ring-2', 'ring-green-400', 'dark:ring-green-500');
         setTimeout(() => {
-            addRssFeedButton.classList.remove('ring-2', 'ring-green-400', 'dark:ring-green-500');
+            target.classList.remove('ring-2', 'ring-green-400', 'dark:ring-green-500');
         }, 850);
+    }
+
+    function rssFeedDisplayTitle(feed) {
+        if (feed?.qbitItemPath) {
+            return String(feed.qbitItemPath).replace(/\\/g, ' › ');
+        }
+        if (feed?.url) {
+            try {
+                return new URL(feed.url).hostname;
+            } catch {
+                /* fall through */
+            }
+        }
+        return 'RSS feed';
+    }
+
+    function validateRssFeedFields(url, pattern) {
+        if (!url) return 'Feed URL is required.';
+        try {
+            new URL(url);
+        } catch {
+            return 'RSS feed URL is invalid.';
+        }
+        if (pattern) {
+            try {
+                // eslint-disable-next-line no-new
+                new RegExp(pattern, 'i');
+            } catch {
+                return 'Filter regex is invalid.';
+            }
+        }
+        return null;
+    }
+
+    function readRssFieldsFromCard(card) {
+        return {
+            url: card.querySelector('.rss-feed-field-url')?.value.trim() || '',
+            pattern: card.querySelector('.rss-feed-field-pattern')?.value.trim() || '',
+            serverId: card.querySelector('.rss-feed-field-server')?.value.trim() || '',
+        };
+    }
+
+    function buildRssServerSelect(selectedServerId) {
+        const select = document.createElement('select');
+        select.className =
+            'rss-feed-field-server rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = 'Use active server';
+        select.appendChild(defaultOpt);
+        servers.forEach((server) => {
+            const opt = document.createElement('option');
+            opt.value = server.id;
+            opt.textContent = server.name;
+            if (server.id === selectedServerId) opt.selected = true;
+            select.appendChild(opt);
+        });
+        return select;
+    }
+
+    function persistRssFeeds(successMessage) {
+        chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
+            renderRssFeedsList();
+            populateRssFeedServerSelect();
+            if (successMessage) displayFormStatus(successMessage, 'success');
+        });
+    }
+
+    function saveRssFeedFromCard(card, feedId) {
+        const fields = readRssFieldsFromCard(card);
+        const validationError = validateRssFeedFields(fields.url, fields.pattern);
+        if (validationError) {
+            displayFormStatus(validationError, 'error');
+            return;
+        }
+        const feeds = globalSettings.rssFeeds || [];
+        const index = feeds.findIndex((f) => f.id === feedId);
+        if (index < 0) return;
+        const existing = feeds[index];
+        feeds[index] = {
+            ...existing,
+            url: fields.url,
+            pattern: fields.pattern,
+            serverId: fields.serverId || undefined,
+        };
+        globalSettings.rssFeeds = feeds;
+        card.classList.remove('ring-2', 'ring-amber-400', 'dark:ring-amber-500');
+        persistRssFeeds('RSS feed saved.');
+        highlightRssSaveFeedback(card.querySelector('.rss-feed-save'));
+    }
+
+    function createRssFeedCardElement(feed) {
+        const serverName = feed.serverId
+            ? servers.find((s) => s.id === feed.serverId)?.name || 'Unknown server'
+            : 'Active server';
+        const article = document.createElement('article');
+        article.className =
+            'rss-feed-card rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/80 p-3 shadow-sm';
+        article.dataset.feedId = feed.id;
+        article.setAttribute('role', 'listitem');
+
+        const header = document.createElement('div');
+        header.className = 'flex flex-wrap items-start justify-between gap-2 mb-3';
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'min-w-0 flex-1';
+        const title = document.createElement('h4');
+        title.className = 'text-sm font-semibold text-gray-900 dark:text-gray-100 truncate';
+        title.textContent = rssFeedDisplayTitle(feed);
+        title.title = rssFeedDisplayTitle(feed);
+        titleWrap.appendChild(title);
+        if (feed.qbitItemPath && feed.url) {
+            const subtitle = document.createElement('p');
+            subtitle.className = 'mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 truncate';
+            try {
+                subtitle.textContent = new URL(feed.url).hostname;
+            } catch {
+                subtitle.textContent = feed.url.slice(0, 64);
+            }
+            titleWrap.appendChild(subtitle);
+        }
+        header.appendChild(titleWrap);
+
+        const badges = document.createElement('div');
+        badges.className = 'flex flex-wrap gap-1 shrink-0';
+        if (feed.qbitSourceServerId || feed.qbitItemPath) {
+            const qbitBadge = document.createElement('span');
+            qbitBadge.className =
+                'inline-flex items-center rounded-full bg-teal-100 dark:bg-teal-900/40 px-2 py-0.5 text-[10px] font-medium text-teal-800 dark:text-teal-200';
+            qbitBadge.textContent = 'qBittorrent';
+            qbitBadge.title = feed.qbitItemPath || 'Imported from qBittorrent';
+            badges.appendChild(qbitBadge);
+        }
+        const serverBadge = document.createElement('span');
+        serverBadge.className =
+            'inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-[10px] font-medium text-indigo-800 dark:text-indigo-200';
+        serverBadge.textContent = serverName;
+        badges.appendChild(serverBadge);
+        header.appendChild(badges);
+        article.appendChild(header);
+
+        const fields = document.createElement('div');
+        fields.className = 'space-y-2.5';
+
+        const urlGroup = document.createElement('div');
+        urlGroup.className = 'space-y-1';
+        const urlLabel = document.createElement('label');
+        urlLabel.className = 'block text-xs font-medium text-gray-700 dark:text-gray-300';
+        urlLabel.textContent = 'Feed URL';
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.inputMode = 'url';
+        urlInput.autocomplete = 'off';
+        urlInput.className =
+            'rss-feed-field-url rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm';
+        urlInput.value = feed.url || '';
+        urlGroup.appendChild(urlLabel);
+        urlGroup.appendChild(urlInput);
+        fields.appendChild(urlGroup);
+
+        const patternGroup = document.createElement('div');
+        patternGroup.className = 'space-y-1';
+        const patternLabel = document.createElement('label');
+        patternLabel.className = 'block text-xs font-medium text-gray-700 dark:text-gray-300';
+        patternLabel.innerHTML =
+            'Filter <span class="font-normal text-gray-500 dark:text-gray-400">(regex, optional)</span>';
+        const patternInput = document.createElement('input');
+        patternInput.type = 'text';
+        patternInput.autocomplete = 'off';
+        patternInput.placeholder = 'e.g. 1080p|2160p';
+        patternInput.className =
+            'rss-feed-field-pattern rss-feed-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm font-mono text-xs';
+        patternInput.value = feed.pattern || '';
+        patternGroup.appendChild(patternLabel);
+        patternGroup.appendChild(patternInput);
+        fields.appendChild(patternGroup);
+
+        const serverGroup = document.createElement('div');
+        serverGroup.className = 'space-y-1';
+        const serverLabel = document.createElement('label');
+        serverLabel.className = 'block text-xs font-medium text-gray-700 dark:text-gray-300';
+        serverLabel.textContent = 'Target server';
+        serverGroup.appendChild(serverLabel);
+        serverGroup.appendChild(buildRssServerSelect(feed.serverId || ''));
+        fields.appendChild(serverGroup);
+
+        article.appendChild(fields);
+
+        const actions = document.createElement('div');
+        actions.className = 'mt-3 flex flex-wrap gap-2';
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className =
+            'rss-feed-save px-3 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md';
+        saveBtn.textContent = 'Save';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className =
+            'rss-feed-delete px-3 py-1.5 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-md';
+        deleteBtn.textContent = 'Remove';
+        const revertBtn = document.createElement('button');
+        revertBtn.type = 'button';
+        revertBtn.className =
+            'rss-feed-revert px-3 py-1.5 text-sm font-medium bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-100 rounded-md';
+        revertBtn.textContent = 'Revert';
+        actions.appendChild(saveBtn);
+        actions.appendChild(revertBtn);
+        actions.appendChild(deleteBtn);
+        article.appendChild(actions);
+
+        const markDirty = () => {
+            article.classList.add('ring-2', 'ring-amber-400', 'dark:ring-amber-500');
+        };
+        urlInput.addEventListener('input', markDirty);
+        patternInput.addEventListener('input', markDirty);
+        article.querySelector('.rss-feed-field-server')?.addEventListener('change', markDirty);
+
+        return article;
     }
 
     function displayFormStatus(message, type) {
@@ -467,6 +685,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(ruTorrentPathGroup) ruTorrentPathGroup.style.display = 'none';
         if(document.getElementById('utorrentRelativePathGroup')) document.getElementById('utorrentRelativePathGroup').style.display = 'none';
         if(ruTorrentOptions) ruTorrentOptions.style.display = 'none';
+        if(torrentActionsGroup) {
+            torrentActionsGroup.style.display = CLIENTS_WITH_TORRENT_ACTIONS.has(clientType) ? 'flex' : 'none';
+        }
         if(userGroup) userGroup.style.display = 'block'; 
         if(passGroup) passGroup.style.display = 'block'; 
         
@@ -637,6 +858,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             downloadDirectoriesInput.value = server.downloadDirectories || '';
             addPausedInput.checked = server.addPaused || false;
             forceStartInput.checked = server.forceStart || false;
+            if (deleteTorrentWithFilesInput) {
+                deleteTorrentWithFilesInput.checked = !!server.deleteTorrentWithFiles;
+            }
             labelDirectoryMapInput.value = server.labelDirectoryMap || '';
             askForLabelDirOnPageInput.checked = server.askForLabelDirOnPage || false;
         } else {
@@ -690,6 +914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             downloadDirectoriesInput.value = '';
             addPausedInput.checked = false;
             forceStartInput.checked = false;
+            if (deleteTorrentWithFilesInput) deleteTorrentWithFilesInput.checked = false;
             labelDirectoryMapInput.value = '';
             askForLabelDirOnPageInput.checked = false;
         }
@@ -845,82 +1070,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function populateRssFeedServerSelect() {
-        if (!rssFeedServerSelect) return;
-        const selected = rssFeedServerSelect.value;
-        rssFeedServerSelect.innerHTML = '<option value="">Use active server</option>';
+        if (!rssNewFeedServerSelect) return;
+        const selected = rssNewFeedServerSelect.value;
+        rssNewFeedServerSelect.innerHTML = '<option value="">Use active server</option>';
         servers.forEach((server) => {
             const option = document.createElement('option');
             option.value = server.id;
             option.textContent = server.name;
-            rssFeedServerSelect.appendChild(option);
+            rssNewFeedServerSelect.appendChild(option);
         });
-        if (selected) rssFeedServerSelect.value = selected;
+        if (selected) rssNewFeedServerSelect.value = selected;
     }
 
     function renderRssFeedsList() {
         if (!rssFeedsList) return;
         const feeds = Array.isArray(globalSettings.rssFeeds) ? globalSettings.rssFeeds : [];
-        rssFeedsInput.value = JSON.stringify(feeds, null, 2);
+        if (rssFeedsInput) rssFeedsInput.value = JSON.stringify(feeds, null, 2);
         rssFeedsList.innerHTML = '';
         rssFeedCount.textContent = `${feeds.length} feed${feeds.length === 1 ? '' : 's'}`;
         if (feeds.length === 0) {
-            rssFeedsList.innerHTML = `
-                <div class="rounded-md border border-dashed border-gray-300 dark:border-gray-600 p-3 text-xs">
-                    <p class="font-medium text-gray-700 dark:text-gray-200">No RSS feeds yet.</p>
-                    <p class="mt-1 text-gray-600 dark:text-gray-300">Quick start:</p>
-                    <ol class="mt-1 list-decimal list-inside text-gray-600 dark:text-gray-300 space-y-0.5">
-                        <li>Paste a feed URL.</li>
-                        <li>Optional: add a regex filter like <code>1080p|2160p</code>.</li>
-                        <li>Choose a target server and click <strong>Add RSS Feed</strong>.</li>
-                    </ol>
-                    <button type="button" class="rss-feed-add-example mt-2 px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white">Use Example Feed</button>
-                </div>
+            const empty = document.createElement('div');
+            empty.className =
+                'rounded-md border border-dashed border-gray-300 dark:border-gray-600 p-4 text-xs';
+            empty.innerHTML = `
+                <p class="font-medium text-gray-700 dark:text-gray-200">No RSS feeds yet.</p>
+                <p class="mt-1 text-gray-600 dark:text-gray-300">Add one below, or import from qBittorrent.</p>
+                <button type="button" class="rss-feed-add-example mt-3 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-sm">Load example into Add feed</button>
             `;
+            rssFeedsList.appendChild(empty);
             return;
         }
         feeds.forEach((feed) => {
-            const serverName = feed.serverId ? (servers.find((s) => s.id === feed.serverId)?.name || 'Unknown server') : 'Active server';
-            const item = document.createElement('div');
-            item.className = 'rounded border border-gray-200 dark:border-gray-600 p-2 text-xs bg-gray-50 dark:bg-gray-700/40 transition-shadow hover:shadow-sm';
-            item.innerHTML = `
-                <p class="font-medium text-gray-800 dark:text-gray-100 break-all">${escapeHtml(feed.url)}</p>
-                <div class="mt-1 flex flex-wrap gap-1">
-                    <span class="inline-flex items-center rounded-full bg-gray-200 dark:bg-gray-600 px-2 py-0.5 text-[10px] text-gray-700 dark:text-gray-200">Pattern: ${escapeHtml(feed.pattern || 'none')}</span>
-                    <span class="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 px-2 py-0.5 text-[10px] text-indigo-700 dark:text-indigo-200">Target: ${escapeHtml(serverName)}</span>
-                </div>
-                <div class="mt-2 flex gap-1">
-                    <button type="button" class="rss-feed-edit px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Edit</button>
-                    <button type="button" class="rss-feed-delete px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded" data-id="${encodeDataAttr(feed.id)}">Delete</button>
-                </div>
-            `;
-            rssFeedsList.appendChild(item);
+            rssFeedsList.appendChild(createRssFeedCardElement(feed));
         });
-        rssFeedsList.querySelectorAll('.rss-feed-edit').forEach((button) => {
-            button.addEventListener('click', () => {
-                const id = decodeDataAttr(button.dataset.id);
-                const feed = (globalSettings.rssFeeds || []).find((entry) => entry.id === id);
+    }
+
+    if (rssFeedsList) {
+        rssFeedsList.addEventListener('click', (event) => {
+            const saveBtn = event.target.closest('.rss-feed-save');
+            const deleteBtn = event.target.closest('.rss-feed-delete');
+            const revertBtn = event.target.closest('.rss-feed-revert');
+            const exampleBtn = event.target.closest('.rss-feed-add-example');
+            if (exampleBtn) {
+                if (rssNewFeedUrl) rssNewFeedUrl.value = 'https://nyaa.si/?page=rss';
+                if (rssNewFeedPattern) rssNewFeedPattern.value = '1080p|2160p';
+                if (rssNewFeedServerSelect) rssNewFeedServerSelect.value = '';
+                document.getElementById('rssFeedNewCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                displayFormStatus('Example loaded into Add feed.', 'info');
+                return;
+            }
+            const card = event.target.closest('.rss-feed-card');
+            if (!card?.dataset.feedId) return;
+            const feedId = card.dataset.feedId;
+            if (saveBtn) {
+                saveRssFeedFromCard(card, feedId);
+                return;
+            }
+            if (revertBtn) {
+                const feed = (globalSettings.rssFeeds || []).find((f) => f.id === feedId);
                 if (!feed) return;
-                editingRssFeedId = feed.id;
-                rssFeedUrlInput.value = feed.url || '';
-                rssFeedPatternInput.value = feed.pattern || '';
-                rssFeedServerSelect.value = feed.serverId || '';
-                addRssFeedButton.textContent = 'Save RSS Feed';
-                cancelRssEditButton.classList.remove('hidden');
-                rssEditNotice.classList.remove('hidden');
-            });
-        });
-        rssFeedsList.querySelectorAll('.rss-feed-delete').forEach((button) => {
-            button.addEventListener('click', () => {
-                const id = decodeDataAttr(button.dataset.id);
-                globalSettings.rssFeeds = (globalSettings.rssFeeds || []).filter((feed) => feed.id !== id);
-                chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
-                    renderRssFeedsList();
-                    if (editingRssFeedId === id) {
-                        resetRssFeedEditor();
-                    }
-                    displayFormStatus('RSS feed removed.', 'success');
-                });
-            });
+                const fresh = createRssFeedCardElement(feed);
+                card.replaceWith(fresh);
+                displayFormStatus('Changes reverted.', 'info');
+                return;
+            }
+            if (deleteBtn) {
+                const feed = (globalSettings.rssFeeds || []).find((f) => f.id === feedId);
+                const title = feed ? rssFeedDisplayTitle(feed) : 'this feed';
+                if (!confirm(`Remove RSS feed “${title}”?`)) return;
+                globalSettings.rssFeeds = (globalSettings.rssFeeds || []).filter((f) => f.id !== feedId);
+                persistRssFeeds('RSS feed removed.');
+            }
         });
     }
 
@@ -1062,6 +1282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             downloadDirectories,
             addPaused,
             forceStart,
+            deleteTorrentWithFiles: deleteTorrentWithFilesInput?.checked || false,
             labelDirectoryMap,
             askForLabelDirOnPage,
             ruTorrentrelativepath,
@@ -1255,6 +1476,77 @@ document.addEventListener('DOMContentLoaded', async () => {
             return null;
         }
         return id;
+    }
+
+    function resolveQbitServerIdForRssImport(preferredServerId) {
+        if (preferredServerId) {
+            const server = servers.find((s) => s.id === preferredServerId);
+            if (!server) {
+                displayFormStatus('Selected server not found.', 'error');
+                return null;
+            }
+            if (server.clientType !== 'qbittorrent') {
+                displayFormStatus('RSS import requires a qBittorrent server profile.', 'error');
+                return null;
+            }
+            return server.id;
+        }
+        const dropdownId = rssFeedServerSelect?.value?.trim();
+        if (dropdownId) {
+            const server = servers.find((s) => s.id === dropdownId);
+            if (!server) {
+                displayFormStatus('Selected server not found.', 'error');
+                return null;
+            }
+            if (server.clientType !== 'qbittorrent') {
+                displayFormStatus('Choose a qBittorrent server in the RSS target dropdown.', 'error');
+                return null;
+            }
+            return server.id;
+        }
+        const firstQbit = servers.find((s) => s.clientType === 'qbittorrent');
+        if (firstQbit) return firstQbit.id;
+        displayFormStatus('Add a qBittorrent server profile or select one in the RSS target dropdown.', 'error');
+        return null;
+    }
+
+    function runSyncQbitRssFeeds(serverId) {
+        if (!serverId) return;
+        displayFormStatus('Importing RSS feeds from qBittorrent…', '');
+        chrome.runtime.sendMessage({ action: 'syncQbitRssFeeds', serverId, merge: true }, (response) => {
+            if (chrome.runtime.lastError) {
+                displayFormStatus(chrome.runtime.lastError.message, 'error');
+                return;
+            }
+            if (!response?.success) {
+                displayFormStatus(qbitActionErrorMessage(response), 'error');
+                return;
+            }
+            globalSettings.rssFeeds = response.feeds || [];
+            renderRssFeedsList();
+            populateRssFeedServerSelect();
+            const rulesNote = response.rulesAvailable === false
+                ? ' (RSS rules unavailable — filters may be empty)'
+                : '';
+            displayFormStatus(
+                `Imported ${response.importedFromQbit || 0} feed(s) from qBittorrent: ${response.added || 0} added, ${response.updated || 0} updated${rulesNote}.`,
+                'success'
+            );
+        });
+    }
+
+    if (syncQbitRssFeedsBtn) {
+        syncQbitRssFeedsBtn.addEventListener('click', () => {
+            const serverId = resolveQbitServerIdForRssImport(null);
+            runSyncQbitRssFeeds(serverId);
+        });
+    }
+
+    if (syncQbitRssFromProfileBtn) {
+        syncQbitRssFromProfileBtn.addEventListener('click', () => {
+            const serverId = requireSavedQbitServerId();
+            runSyncQbitRssFeeds(serverId);
+        });
     }
 
     if (syncQbitCategoriesBtn) {
@@ -1688,46 +1980,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.searchApiKey = searchApiKeyInput.value;
         chrome.storage.local.set({ searchApiKey: globalSettings.searchApiKey }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
-    rssFeedsList.addEventListener('click', (event) => {
-        const button = event.target.closest('.rss-feed-add-example');
-        if (!button) return;
-        rssFeedUrlInput.value = 'https://nyaa.si/?page=rss';
-        rssFeedPatternInput.value = '1080p|2160p';
-        rssFeedServerSelect.value = '';
-        displayFormStatus('Example feed loaded. Adjust and click Add RSS Feed.', 'info');
-    });
     addRssFeedButton.addEventListener('click', () => {
-        const url = rssFeedUrlInput.value.trim();
-        const pattern = rssFeedPatternInput.value.trim();
-        const serverId = rssFeedServerSelect.value || '';
-        if (!url) {
-            displayFormStatus('RSS feed URL is required.', 'error');
-            return;
-        }
-        try {
-            new URL(url);
-        } catch (error) {
-            displayFormStatus('RSS feed URL is invalid.', 'error');
+        const url = rssNewFeedUrl?.value.trim() || '';
+        const pattern = rssNewFeedPattern?.value.trim() || '';
+        const serverId = rssNewFeedServerSelect?.value.trim() || '';
+        const validationError = validateRssFeedFields(url, pattern);
+        if (validationError) {
+            displayFormStatus(validationError, 'error');
             return;
         }
         const newFeed = {
-            id: editingRssFeedId || generateLocalId('feed'),
+            id: generateLocalId('feed'),
             url,
             pattern,
-            serverId: serverId || undefined
+            serverId: serverId || undefined,
         };
-        const withoutExisting = (globalSettings.rssFeeds || []).filter((feed) => feed.id !== newFeed.id);
-        globalSettings.rssFeeds = [...withoutExisting, newFeed];
+        globalSettings.rssFeeds = [...(globalSettings.rssFeeds || []), newFeed];
         chrome.storage.local.set({ rssFeeds: globalSettings.rssFeeds }, () => {
-            resetRssFeedEditor();
+            resetRssNewFeedForm();
             renderRssFeedsList();
-            highlightRssSaveFeedback();
-            displayFormStatus('Nice! RSS feed saved.', 'success');
+            populateRssFeedServerSelect();
+            highlightRssSaveFeedback(addRssFeedButton);
+            displayFormStatus('RSS feed added.', 'success');
+            const addedCard = rssFeedsList?.querySelector(`[data-feed-id="${newFeed.id}"]`);
+            addedCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
-    });
-    cancelRssEditButton.addEventListener('click', () => {
-        resetRssFeedEditor();
-        displayFormStatus('RSS feed edit canceled.', 'info');
     });
     testSearchProviderButton.addEventListener('click', () => {
         const provider = searchProviderInput.value;

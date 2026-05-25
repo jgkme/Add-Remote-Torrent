@@ -106,6 +106,7 @@ module.exports = (env, argv) => {
               ),
           },
           { from: 'dashboard', to: 'dashboard' },
+          { from: 'rss', to: 'rss' },
           { from: 'js/theme.js', to: 'js/theme.js' },
           { from: 'js/torrent-ui.js', to: 'js/torrent-ui.js' },
           { from: 'js/torrent-list.js', to: 'js/torrent-list.js' },
