@@ -644,7 +644,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function toggleClientSpecificFields(clientType) {
         const clientHintDiv = document.getElementById('clientSpecificHint');
-        const hintText = clientHints[clientType] || clientHints.default;
+        const hintText = Object.prototype.hasOwnProperty.call(clientHints, clientType)
+            ? clientHints[clientType]
+            : clientHints.default;
+        // Static hint copy only (not user/network input).
         clientHintDiv.innerHTML = hintText;
         clientHintDiv.style.display = 'none'; // Always hide hint on change, user must click icon to see it.
 

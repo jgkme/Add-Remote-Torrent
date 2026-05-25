@@ -233,12 +233,29 @@
       tr.dataset.articleId = article.id;
       tr.dataset.itemPath = article.feedPath;
       tr.dataset.downloadUrl = article.downloadUrl || '';
-      tr.innerHTML = `
-        <td class="max-w-0"><span class="block truncate" title="${escapeHtml(article.title)}">${escapeHtml(article.title)}</span></td>
-        <td class="text-gray-600 dark:text-gray-400 truncate" title="${escapeHtml(article.feedName)}">${escapeHtml(article.feedName)}</td>
-        <td class="text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums">${escapeHtml(parseArticleDate(article.date))}</td>
-        <td class="text-gray-500 dark:text-gray-400">${article.isRead ? 'Read' : 'Unread'}</td>
-      `;
+
+      const titleTd = document.createElement('td');
+      titleTd.className = 'max-w-0';
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'block truncate';
+      titleSpan.textContent = article.title;
+      titleSpan.title = article.title;
+      titleTd.appendChild(titleSpan);
+
+      const feedTd = document.createElement('td');
+      feedTd.className = 'text-gray-600 dark:text-gray-400 truncate';
+      feedTd.textContent = article.feedName;
+      feedTd.title = article.feedName;
+
+      const dateTd = document.createElement('td');
+      dateTd.className = 'text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums';
+      dateTd.textContent = parseArticleDate(article.date);
+
+      const statusTd = document.createElement('td');
+      statusTd.className = 'text-gray-500 dark:text-gray-400';
+      statusTd.textContent = article.isRead ? 'Read' : 'Unread';
+
+      tr.append(titleTd, feedTd, dateTd, statusTd);
       rssArticlesBody.appendChild(tr);
     }
   }
@@ -255,11 +272,16 @@
       card.type = 'button';
       card.className = `rss-rule-card w-full text-left${activeRuleName === rule.name ? ' rss-rule-card--active' : ''}`;
       const feedsCount = (rule.affectedFeeds || []).length;
-      card.innerHTML = `
-        <span class="font-semibold block truncate">${escapeHtml(rule.name)}</span>
-        <span class="text-gray-500 dark:text-gray-400">${rule.enabled === false ? 'Disabled' : 'Enabled'} · ${feedsCount} feed(s)</span>
-        <span class="block truncate text-gray-600 dark:text-gray-300 mt-0.5 font-mono text-[10px]">${escapeHtml(rule.mustContain || '—')}</span>
-      `;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'font-semibold block truncate';
+      nameSpan.textContent = rule.name;
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'text-gray-500 dark:text-gray-400';
+      metaSpan.textContent = `${rule.enabled === false ? 'Disabled' : 'Enabled'} · ${feedsCount} feed(s)`;
+      const filterSpan = document.createElement('span');
+      filterSpan.className = 'block truncate text-gray-600 dark:text-gray-300 mt-0.5 font-mono text-[10px]';
+      filterSpan.textContent = rule.mustContain || '—';
+      card.append(nameSpan, metaSpan, filterSpan);
       card.addEventListener('click', () => loadRuleIntoForm(rule));
       rssRulesList.appendChild(card);
     }

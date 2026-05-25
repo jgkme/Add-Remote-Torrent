@@ -1,0 +1,7 @@
+name: "Add Remote Torrent (extension JS)"
+paths-ignore:
+  - dist
+  - node_modules
+  - "**/*.zip"
+  - "**/*.crx"
+  - "**/*.sha256"
