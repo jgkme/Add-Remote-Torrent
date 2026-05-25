@@ -3,7 +3,28 @@ import { debug } from '../debug';
 // Transmission API Handler
 // Improved for robust session ID negotiation, file selection, directory/label support, and error feedback.
 
-let transmissionSessionId = null;
+const transmissionSessions = new Map();
+
+function transmissionSessionKey(serverConfig) {
+	if (!serverConfig) return 'unknown';
+	const id = serverConfig.id;
+	if (id !== undefined && id !== null && String(id).trim() !== '') {
+		return `id:${String(id).trim()}`;
+	}
+	const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+	const username = (serverConfig.username || '').trim();
+	return `cfg:${url}|${username}`;
+}
+
+function getTransmissionSessionId(serverConfig) {
+	return transmissionSessions.get(transmissionSessionKey(serverConfig)) || null;
+}
+
+function setTransmissionSessionId(serverConfig, sessionId) {
+	if (sessionId) {
+		transmissionSessions.set(transmissionSessionKey(serverConfig), sessionId);
+	}
+}
 
 // b64_encode function provided by user
 function b64_encode(input) {
@@ -40,8 +61,9 @@ async function fetchWithAuth(url, options, serverConfig) {
 	if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
 		headers['Authorization'] = `Basic ${btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`)}`;
 	}
-	if (transmissionSessionId) {
-		headers['X-Transmission-Session-Id'] = transmissionSessionId;
+	const existingSid = getTransmissionSessionId(serverConfig);
+	if (existingSid) {
+		headers['X-Transmission-Session-Id'] = existingSid;
 	}
 	const finalOptions = { ...options, headers };
 	const response = await fetch(url, finalOptions);
@@ -49,7 +71,7 @@ async function fetchWithAuth(url, options, serverConfig) {
 		const newSessionId = response.headers.get('X-Transmission-Session-Id');
 		if (newSessionId) {
 			debug.log(`Transmission: Got 409, retrying with session ID: ${newSessionId.substring(0, 8)}...`);
-			transmissionSessionId = newSessionId;
+			setTransmissionSessionId(serverConfig, newSessionId);
 			headers['X-Transmission-Session-Id'] = newSessionId;
 			const retryOptions = { ...options, headers, retryAttempted: true };
 			const retryResponse = await fetch(url, retryOptions);
@@ -269,6 +291,42 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 	}
 }
 
+export async function getTorrentsInfo(serverConfig, hashes) {
+	if (!hashes || hashes.length === 0) return [];
+	const path = serverConfig.rpcPath || '/transmission/rpc';
+	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
+	const hashSet = new Set(hashes.map((h) => String(h).toLowerCase()));
+	try {
+		const result = await makeRpcCall(
+			rpcUrl,
+			'torrent-get',
+			{
+				fields: ['hashString', 'name', 'percentDone', 'status', 'isFinished'],
+				ids: hashes,
+			},
+			serverConfig
+		);
+		const torrents = result.torrents || [];
+		return torrents
+			.filter((t) => {
+				const h = (t.hashString || '').toLowerCase();
+				return h && hashSet.has(h);
+			})
+			.map((torrent) => ({
+				hash: torrent.hashString,
+				name: torrent.name,
+				progress: Number(torrent.percentDone || 0),
+				isCompleted:
+					torrent.isFinished === true ||
+					Number(torrent.percentDone || 0) >= 1 ||
+					torrent.status === 6,
+			}));
+	} catch (error) {
+		debug.error('Transmission getTorrentsInfo failed:', error);
+		return [];
+	}
+}
+
 export async function getCompletedTorrents(serverConfig, notifiedTorrents) {
 	const path = serverConfig.rpcPath || '/transmission/rpc';
 	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
@@ -326,12 +384,10 @@ export async function getActiveTorrents(serverConfig) {
 	const path = serverConfig.rpcPath || '/transmission/rpc';
 	const rpcUrl = `${serverConfig.url.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`;
 	const getArgs = {
-		fields: ["id", "hashString", "name", "percentDone", "status", "eta", "rateDownload", "rateUpload"]
+		fields: ["id", "hashString", "name", "percentDone", "status", "eta", "rateDownload", "rateUpload", "addedDate"]
 	};
 	const result = await makeRpcCall(rpcUrl, 'torrent-get', getArgs, serverConfig);
-	const torrents = (result.torrents || [])
-		.slice(0, 20)
-		.map((torrent) => ({
+	const torrents = (result.torrents || []).map((torrent) => ({
 			hash: torrent.hashString || String(torrent.id),
 			name: torrent.name || "Unknown",
 			progress: Number(torrent.percentDone || 0),
@@ -339,6 +395,7 @@ export async function getActiveTorrents(serverConfig) {
 			eta: Number(torrent.eta || 0),
 			dlspeed: Number(torrent.rateDownload || 0),
 			upspeed: Number(torrent.rateUpload || 0),
+			added_on: Number(torrent.addedDate || 0),
 		}));
 	return torrents;
 }

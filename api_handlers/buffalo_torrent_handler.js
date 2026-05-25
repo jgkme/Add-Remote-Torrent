@@ -3,14 +3,33 @@ import { debug } from '../debug';
 // Buffalo LinkStation (BitTorrent Client) API Handler
 // Assumed to be a modified uTorrent WebUI.
 
-let buffaloToken = null;
-let lastTokenFetchTimeBuffalo = 0;
-const TOKEN_CACHE_DURATION_BUFFALO = 5 * 60 * 1000; // Cache token for 5 minutes
+const buffaloTokenBuckets = new Map();
+const TOKEN_CACHE_DURATION_BUFFALO = 5 * 60 * 1000;
+
+function buffaloSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${username}`;
+}
+
+function getBuffaloTokenBucket(serverConfig) {
+    const key = buffaloSessionKey(serverConfig);
+    if (!buffaloTokenBuckets.has(key)) {
+        buffaloTokenBuckets.set(key, { token: null, lastFetchTime: 0 });
+    }
+    return buffaloTokenBuckets.get(key);
+}
 
 async function getCsrfTokenBuffalo(serverConfig) {
+    const bucket = getBuffaloTokenBucket(serverConfig);
     const now = Date.now();
-    if (buffaloToken && (now - lastTokenFetchTimeBuffalo < TOKEN_CACHE_DURATION_BUFFALO)) {
-        return buffaloToken;
+    if (bucket.token && now - bucket.lastFetchTime < TOKEN_CACHE_DURATION_BUFFALO) {
+        return bucket.token;
     }
 
     const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/token.html`;
@@ -28,15 +47,15 @@ async function getCsrfTokenBuffalo(serverConfig) {
         const html = await response.text();
         const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
         if (match && match[1]) {
-            buffaloToken = match[1];
-            lastTokenFetchTimeBuffalo = now;
-            return buffaloToken;
+            bucket.token = match[1];
+            bucket.lastFetchTime = now;
+            return bucket.token;
         } else {
             throw new Error('Buffalo CSRF token not found in response.');
         }
     } catch (error) {
         debug.error('Error fetching Buffalo CSRF token:', error);
-        buffaloToken = null; 
+        bucket.token = null;
         throw new Error(`TokenFetchErrorBuffalo: ${error.message}`);
     }
 }

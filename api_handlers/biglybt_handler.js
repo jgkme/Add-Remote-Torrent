@@ -2,7 +2,18 @@ import { debug } from '../debug';
 
 // BiglyBT API Handler (using Transmission RPC)
 
-let sessionId = null;
+const biglybtSessions = new Map();
+
+function biglybtSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${username}`;
+}
 
 async function makeRpcRequest(serverConfig, method, args = {}) {
     const url = `${serverConfig.url.replace(/\/$/, '')}/transmission/rpc`;
@@ -11,6 +22,7 @@ async function makeRpcRequest(serverConfig, method, args = {}) {
         'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`
     };
 
+    const sessionId = biglybtSessions.get(biglybtSessionKey(serverConfig));
     if (sessionId) {
         headers['X-Transmission-Session-Id'] = sessionId;
     }
@@ -28,8 +40,11 @@ async function makeRpcRequest(serverConfig, method, args = {}) {
         });
 
         if (response.status === 409) {
-            sessionId = response.headers.get('X-Transmission-Session-Id');
-            headers['X-Transmission-Session-Id'] = sessionId;
+            const newSid = response.headers.get('X-Transmission-Session-Id');
+            if (newSid) {
+                biglybtSessions.set(biglybtSessionKey(serverConfig), newSid);
+                headers['X-Transmission-Session-Id'] = newSid;
+            }
             response = await fetch(url, {
                 method: 'POST',
                 headers: headers,

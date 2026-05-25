@@ -1,8 +1,10 @@
 // console.log("[ART Background] Service worker script loaded and running! (Minimal test)");
 // const ART_BACKGROUND_LOADED = true; // Add a non-console statement
 
+import bencode from "bencode";
 import { debug } from "./debug";
 import { getClientApi } from "./api_handlers/api_client_factory.js";
+import { parseCategoriesJson } from "./api_handlers/qbittorrent_handler.js";
 import {
   syncLinkCatchingContentScript,
   syncLinkCatchingFromStorage,
@@ -12,16 +14,32 @@ import {
   initReviewPromptListeners,
   recordSuccessfulAddAndMaybePrompt,
 } from "./review_prompt.js";
+import "./js/torrent-list.js";
+
+const { applyTorrentListMode } = globalThis.TorrentList;
 
 initReviewPromptListeners();
 
-let bencodeModulePromise = null;
-async function getBencode() {
-  if (!bencodeModulePromise) {
-    bencodeModulePromise = import("bencode");
-  }
-  const module = await bencodeModulePromise;
-  return module.default || module;
+async function enrichTorrentsWithTrackedAdds(torrents, serverId) {
+  const { trackedTorrents = [] } = await chrome.storage.local.get("trackedTorrents");
+  return torrents.map((t) => {
+    const addedOn = Number(t.added_on || 0);
+    if (addedOn > 0) return t;
+    const tracked = trackedTorrents.find(
+      (x) => x.hash === t.hash && x.serverId === serverId
+    );
+    if (tracked?.added) {
+      return {
+        ...t,
+        added_on: Math.floor(new Date(tracked.added).getTime() / 1000),
+      };
+    }
+    return t;
+  });
+}
+
+function getBencode() {
+  return bencode.default || bencode;
 }
 
 // Global manager for the offscreen document
@@ -330,25 +348,55 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ server: activeServer });
     })();
     return true;
-  } else if (request.action === "getPopupTorrents") {
+  } else if (
+    request.action === "getPopupTorrents" ||
+    (request.action === "getServerTorrents" && request.serverId)
+  ) {
     (async () => {
       const { servers = [], activeServerId } = await chrome.storage.local.get([
         "servers",
         "activeServerId",
       ]);
-      const server = servers.find((s) => s.id === activeServerId);
+      const targetId =
+        request.action === "getServerTorrents"
+          ? request.serverId
+          : activeServerId;
+      const server = servers.find((s) => s.id === targetId);
       if (!server) {
-        sendResponse({ torrents: [], error: "No active server configured." });
+        sendResponse({
+          torrents: [],
+          error:
+            request.action === "getServerTorrents"
+              ? "Server not found."
+              : "No active server configured.",
+        });
         return;
       }
       const apiClient = await getClientApi(server.clientType);
       if (!apiClient || typeof apiClient.getActiveTorrents !== "function") {
-        sendResponse({ torrents: [], error: "Client does not support torrent listing." });
+        sendResponse({
+          torrents: [],
+          error: "Client does not support torrent listing.",
+          supportsActions: false,
+        });
         return;
       }
       try {
-        const torrents = await apiClient.getActiveTorrents(server);
-        sendResponse({ torrents });
+        const rawTorrents = await apiClient.getActiveTorrents(server);
+        const enriched = await enrichTorrentsWithTrackedAdds(rawTorrents, server.id);
+        const listMode = request.listMode || "recent";
+        const { torrents, total, mode, limit } = applyTorrentListMode(
+          enriched,
+          listMode,
+          request.limit
+        );
+        sendResponse({
+          torrents,
+          total,
+          listMode: mode,
+          listLimit: limit,
+          supportsActions: typeof apiClient.torrentAction === "function",
+        });
       } catch (error) {
         sendResponse({ torrents: [], error: error.message });
       }
@@ -356,12 +404,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   } else if (request.action === "torrentAction" && request.payload) {
     (async () => {
-      const { actionType, hash } = request.payload;
+      const { actionType, hash, serverId: payloadServerId } = request.payload;
       const { servers = [], activeServerId } = await chrome.storage.local.get([
         "servers",
         "activeServerId",
       ]);
-      const server = servers.find((s) => s.id === activeServerId);
+      const server = servers.find(
+        (s) => s.id === (payloadServerId || activeServerId)
+      );
       const apiClient = await getClientApi(server?.clientType);
       if (!server || !apiClient || typeof apiClient.torrentAction !== "function") {
         sendResponse({ success: false, error: "Torrent actions unsupported for active server." });
@@ -386,7 +436,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   } else if (request.action === "importQbitCategories" && request.serverId) {
     (async () => {
-      const qbit = await import("./api_handlers/qbittorrent_handler.js");
       const { servers = [] } = await chrome.storage.local.get("servers");
       const server = servers.find((s) => s.id === request.serverId);
       if (!server || server.clientType !== "qbittorrent") {
@@ -397,7 +446,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
       try {
-        const entries = qbit.parseCategoriesJson(request.jsonText || "");
+        const entries = parseCategoriesJson(request.jsonText || "");
         const api = await getClientApi("qbittorrent");
         const result = await api.importCategories(server, entries, {
           pushToServer: request.pushToServer !== false,
@@ -459,6 +508,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
       const result = await runQbitServerAction(request.serverId, (api, server) =>
         api.getSearchPlugins(server)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "qbitRotateApiKey" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.rotateWebApiKey(server)
+      );
+      sendResponse(result);
+    })();
+    return true;
+  } else if (request.action === "qbitDeleteApiKeyOnServer" && request.serverId) {
+    (async () => {
+      const result = await runQbitServerAction(request.serverId, (api, server) =>
+        api.deleteWebApiKeyOnServer(server)
       );
       sendResponse(result);
     })();
@@ -672,6 +737,9 @@ async function runServerStatusCheck() {
           freeSpace: result.success
             ? (result.data?.freeSpace ?? server.freeSpace)
             : server.freeSpace,
+          globalSpeedLimits: result.success
+            ? (result.data?.globalSpeedLimits ?? server.globalSpeedLimits)
+            : server.globalSpeedLimits,
           torrents: result.data?.torrentsInfo?.total,
           uploadSpeed: result.data?.torrentsInfo?.uploadSpeed,
           downloadSpeed: result.data?.torrentsInfo?.downloadSpeed,
@@ -1636,7 +1704,7 @@ async function addTorrentToClient(
       "[ART Background] Applying tracker URL rules for .torrent file..."
     );
     try {
-      const bencode = await getBencode();
+      const bencode = getBencode();
       const torrentDataBuffer = Uint8Array.from(
         atob(torrentOptions.torrentFileContentBase64),
         (c) => c.charCodeAt(0)

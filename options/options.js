@@ -45,9 +45,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const scgiPathInput = document.getElementById('scgiPath');
     const qbittorrentSavePathGroup = document.getElementById('qbittorrentSavePathGroup');
     const qbittorrentSavePathInput = document.getElementById('qbittorrentSavePath');
+    const qbittorrentAuthModeGroup = document.getElementById('qbittorrentAuthModeGroup');
+    const qbittorrentAuthModeSelect = document.getElementById('qbittorrentAuthMode');
     const qbittorrentApiKeyGroup = document.getElementById('qbittorrentApiKeyGroup');
     const qbittorrentApiKeyInput = document.getElementById('qbittorrentApiKey');
     const qbittorrentApiKeyClearInput = document.getElementById('qbittorrentApiKeyClear');
+    const qbitRotateApiKeyBtn = document.getElementById('qbitRotateApiKeyBtn');
+    const qbitDeleteApiKeyOnServerBtn = document.getElementById('qbitDeleteApiKeyOnServerBtn');
     const qbittorrentToolsGroup = document.getElementById('qbittorrentToolsGroup');
     const syncQbitCategoriesBtn = document.getElementById('syncQbitCategoriesBtn');
     const importQbitCategoriesBtn = document.getElementById('importQbitCategoriesBtn');
@@ -61,6 +65,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qbitSearchHint = document.getElementById('qbitSearchHint');
     const searchApiUrlGroup = document.getElementById('searchApiUrlGroup');
     const searchApiKeyGroup = document.getElementById('searchApiKeyGroup');
+    const synologyDownloadStationGroup = document.getElementById('synologyDownloadStationGroup');
+    const synologyAuthApiVersionSelect = document.getElementById('synologyAuthApiVersion');
+    const synologyTaskApiVersionSelect = document.getElementById('synologyTaskApiVersion');
+    const synologyAutoResumeInput = document.getElementById('synologyAutoResume');
+    const porlaOptionsGroup = document.getElementById('porlaOptionsGroup');
+    const porlaPresetInput = document.getElementById('porlaPreset');
+    const floodOptionsGroup = document.getElementById('floodOptionsGroup');
+    const floodSequentialDownloadInput = document.getElementById('floodSequentialDownload');
     const transmissionDownloadDirGroup = document.getElementById('transmissionDownloadDirGroup');
     const transmissionDownloadDirInput = document.getElementById('transmissionDownloadDir');
     const transmissionSpeedLimitGroup = document.getElementById('transmissionSpeedLimitGroup');
@@ -397,14 +409,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const clientHints = {
-        qbittorrent: 'For versions 4.3.0+, you may need to disable "CSRF Protection" in the Web UI. qBittorrent 5.2+ uses Web API 2.14+ (the extension supports both legacy and new responses). Optional: generate an API key under Preferences → Web UI → API Key and paste it below—useful when cookie login fails.',
+        qbittorrent: 'For versions 4.3.0+, you may need to disable "CSRF Protection" in the Web UI. qBittorrent 5.2+ uses Web API 2.14+ (legacy and JSON add responses). Auth: cookie login (default), Web API Basic (2.15+), or optional API key (Bearer). Test connection stores Web API version for fetchMetadata file lists, free-space hints, and global speed limits (2.16+).',
         transmission: 'The default RPC path is usually <strong>/transmission/rpc</strong>. Ensure your server\'s URL is correct (e.g., http://localhost:9091).',
         deluge: 'The password for the Deluge WebUI is often separate from the daemon password and is managed in the WebUI plugin settings. It may be blank by default.',
         utorrent: 'This handler is for modern uTorrent WebUI versions. Ensure the "Relative Path" is correct (e.g., /gui/). The extension will try to auto-detect this.',
         utorrent_old: 'Use this for very old versions of uTorrent (e.g., v2.0.4) that do not use a CSRF token for authentication.',
         rtorrent: 'This requires a web server with an XML-RPC endpoint configured (like ruTorrent). For direct connection, provide the full SCGI/HTTPRPC URL.',
         rutorrent: 'Enter the full URL to your ruTorrent dashboard (e.g., https://server.com/rutorrent). The relative path for plugins is usually not needed.',
-        synology_download_station: 'Use your Synology NAS login credentials. Ensure the Download Station application is installed and running.',
+        synology_download_station: 'Use your Synology NAS login credentials. SID-only auth (legacy-safe). Adjust API versions only if Test connection reports mismatches. Optional experimental auto-resume after add.',
         qnap_download_station: 'Use your QNAP NAS login credentials. Ensure the Download Station application is installed and running.',
         kodi_elementum: 'No username or password is required. The default URL is typically http://localhost:65220.',
         flood: 'Flood is a modern WebUI for rTorrent. Use your Flood login credentials.',
@@ -431,8 +443,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(rpcPathGrp) rpcPathGrp.style.display = 'none';
         if(scgiPathGrp) scgiPathGrp.style.display = 'none';
         if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'none';
+        if(qbittorrentAuthModeGroup) qbittorrentAuthModeGroup.style.display = 'none';
         if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'none';
         if(qbittorrentToolsGroup) qbittorrentToolsGroup.style.display = 'none';
+        if(synologyDownloadStationGroup) synologyDownloadStationGroup.style.display = 'none';
+        if(porlaOptionsGroup) porlaOptionsGroup.style.display = 'none';
+        if(floodOptionsGroup) floodOptionsGroup.style.display = 'none';
         if(transmissionDownloadDirGroup) transmissionDownloadDirGroup.style.display = 'none';
         if(transmissionSpeedLimitGroup) transmissionSpeedLimitGroup.style.display = 'none';
         if(transmissionSeedingLimitGroup) transmissionSeedingLimitGroup.style.display = 'none';
@@ -463,6 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         switch (clientType) {
             case 'qbittorrent':
                 if(qbittorrentSavePathGroup) qbittorrentSavePathGroup.style.display = 'block';
+                if(qbittorrentAuthModeGroup) qbittorrentAuthModeGroup.style.display = 'block';
                 if(qbittorrentApiKeyGroup) qbittorrentApiKeyGroup.style.display = 'block';
                 if(qbittorrentToolsGroup) qbittorrentToolsGroup.style.display = 'block';
                 break;
@@ -517,6 +534,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 serverUrlInput.placeholder = 'http://localhost:65220';
                 break;
             case 'synology_download_station':
+                if (synologyDownloadStationGroup) synologyDownloadStationGroup.style.display = 'block';
+                serverUrlInput.placeholder = 'http://<NAS_IP_OR_HOSTNAME>:<PORT>';
+                break;
             case 'qnap_download_station':
                 serverUrlInput.placeholder = 'http://<NAS_IP_OR_HOSTNAME>:<PORT>';
                 break;
@@ -527,12 +547,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 serverUrlInput.placeholder = 'http://localhost:8080';
                 break;
             case 'flood':
+                if (floodOptionsGroup) floodOptionsGroup.style.display = 'block';
                 serverUrlInput.placeholder = 'http://localhost:3000';
                 break;
             case 'vuze':
                 serverUrlInput.placeholder = 'http://localhost:9091';
                 break;
             case 'porla':
+                if (porlaOptionsGroup) porlaOptionsGroup.style.display = 'block';
                 serverUrlInput.placeholder = 'http://localhost:1337';
                 break;
             default:
@@ -561,6 +583,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             rpcPathInput.value = server.rpcPath || '';
             scgiPathInput.value = server.scgiPath || '';
             qbittorrentSavePathInput.value = server.qbittorrentSavePath || '';
+            if (qbittorrentAuthModeSelect) {
+                qbittorrentAuthModeSelect.value =
+                    server.qbittorrentAuthMode === 'basic' ? 'basic' : 'cookie';
+            }
             if (qbittorrentApiKeyInput) qbittorrentApiKeyInput.value = '';
             if (qbittorrentApiKeyClearInput) qbittorrentApiKeyClearInput.checked = false;
             transmissionDownloadDirInput.value = server.transmissionDownloadDir || '';
@@ -592,6 +618,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(document.getElementById('utorrentRelativePath')) document.getElementById('utorrentRelativePath').value = server.utorrentrelativepath || '';
             rutorrentdontaddnamepathInput.checked = server.rutorrentdontaddnamepath || false;
             rutorrentalwaysurlInput.checked = server.rutorrentalwaysurl || false;
+            if (synologyAuthApiVersionSelect) {
+                synologyAuthApiVersionSelect.value = server.authApiVersion || '6';
+            }
+            if (synologyTaskApiVersionSelect) {
+                synologyTaskApiVersionSelect.value = server.taskApiVersion || '3';
+            }
+            if (synologyAutoResumeInput) {
+                synologyAutoResumeInput.checked = !!server.synologyAutoResume;
+            }
+            if (porlaPresetInput) porlaPresetInput.value = server.porlaPreset || '';
+            if (floodSequentialDownloadInput) {
+                floodSequentialDownloadInput.checked = !!server.floodSequentialDownload;
+            }
             defaultTagsInput.value = server.tags || '';
             defaultCategoryInput.value = server.category || '';
             categoriesInput.value = server.categories || '';
@@ -1088,8 +1127,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverData.rtorrentUploadsMin = rtorrentUploadsMin;
         } else if (clientType === 'torrentflux') {
             serverData.torrentfluxRelativePath = torrentfluxRelativePath;
+        } else if (clientType === 'synology_download_station') {
+            serverData.authApiVersion =
+                synologyAuthApiVersionSelect?.value || '6';
+            serverData.taskApiVersion =
+                synologyTaskApiVersionSelect?.value || '3';
+            serverData.synologyAutoResume = !!synologyAutoResumeInput?.checked;
+        } else if (clientType === 'flood') {
+            serverData.floodSequentialDownload = !!floodSequentialDownloadInput?.checked;
+        } else if (clientType === 'porla') {
+            serverData.porlaPreset = porlaPresetInput?.value?.trim() || '';
         } else if (clientType === 'qbittorrent') {
             serverData.qbittorrentSavePath = qbittorrentSavePath;
+            serverData.qbittorrentAuthMode =
+                qbittorrentAuthModeSelect && qbittorrentAuthModeSelect.value === 'basic'
+                    ? 'basic'
+                    : 'cookie';
             const apiKeyTrim = qbittorrentApiKeyInput ? qbittorrentApiKeyInput.value.trim() : '';
             const removeApiKey = qbittorrentApiKeyClearInput && qbittorrentApiKeyClearInput.checked;
             if (removeApiKey) {
@@ -1327,6 +1380,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function getQbitServerIdForApiActions() {
+        return requireSavedQbitServerId();
+    }
+
+    if (qbitRotateApiKeyBtn) {
+        qbitRotateApiKeyBtn.addEventListener('click', () => {
+            const serverId = getQbitServerIdForApiActions();
+            if (!serverId) return;
+            if (
+                !confirm(
+                    'Generate a new Web API key on qBittorrent? The old key will stop working. You must Save Server after this to store the new key.'
+                )
+            ) {
+                return;
+            }
+            displayFormStatus('Rotating API key on server…', '');
+            chrome.runtime.sendMessage({ action: 'qbitRotateApiKey', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                if (qbittorrentApiKeyInput) {
+                    qbittorrentApiKeyInput.value = response.apiKey || '';
+                }
+                if (qbittorrentApiKeyClearInput) qbittorrentApiKeyClearInput.checked = false;
+                displayFormStatus(
+                    'New API key received. Click Save Server to store it in this profile.',
+                    'success'
+                );
+            });
+        });
+    }
+
+    if (qbitDeleteApiKeyOnServerBtn) {
+        qbitDeleteApiKeyOnServerBtn.addEventListener('click', () => {
+            const serverId = getQbitServerIdForApiActions();
+            if (!serverId) return;
+            if (
+                !confirm(
+                    'Delete the Web API key on qBittorrent? API access with the current key will stop until you generate a new one.'
+                )
+            ) {
+                return;
+            }
+            displayFormStatus('Deleting API key on server…', '');
+            chrome.runtime.sendMessage({ action: 'qbitDeleteApiKeyOnServer', serverId }, (response) => {
+                if (chrome.runtime.lastError) {
+                    displayFormStatus(chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+                if (!response?.success) {
+                    displayFormStatus(qbitActionErrorMessage(response), 'error');
+                    return;
+                }
+                if (qbittorrentApiKeyInput) qbittorrentApiKeyInput.value = '';
+                displayFormStatus(
+                    'API key deleted on server. Clear saved key on save or paste a new key.',
+                    'success'
+                );
+            });
+        });
+    }
+
     if (refreshQbitSearchPluginsBtn) {
         refreshQbitSearchPluginsBtn.addEventListener('click', () => {
             const serverId = requireSavedQbitServerId();
@@ -1387,6 +1507,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? qbittorrentSavePathInput.value.trim()
                     : undefined,
             qbittorrentApiKey: apiKeyForTest,
+            qbittorrentAuthMode:
+                clientTypeSelect.value === 'qbittorrent' && qbittorrentAuthModeSelect
+                    ? qbittorrentAuthModeSelect.value
+                    : 'cookie',
         };
         if (!serverConfig.url && clientTypeSelect.value !== 'rtorrent') { 
             displayFormStatus('Server URL is required to test connection.', 'error'); return;
@@ -1407,6 +1531,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } else if (response) {
                         if (response.success) {
                             let successMessage = response.data.message || 'Connection successful!';
+                            if (response.data.webApiVersion) {
+                                successMessage += ` Web API ${response.data.webApiVersion}.`;
+                            }
+                            if (response.data.globalSpeedLimits) {
+                                const gl = response.data.globalSpeedLimits;
+                                const fmt = (n) =>
+                                    n <= 0 ? 'unlimited' : `${Math.round(n / 1024)} KiB/s`;
+                                successMessage += ` Global limits: DL ${fmt(gl.dlLimit)}, UL ${fmt(gl.upLimit)}.`;
+                            }
                             displayFormStatus(successMessage, 'success');
 
                             // If we have an ID, it means we are editing an existing server.
@@ -1417,6 +1550,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     servers[serverIndex].version = response.data.version;
                                     servers[serverIndex].webApiVersion = response.data.webApiVersion;
                                     servers[serverIndex].freeSpace = response.data.freeSpace;
+                                    if (response.data.globalSpeedLimits) {
+                                        servers[serverIndex].globalSpeedLimits =
+                                            response.data.globalSpeedLimits;
+                                    }
+                                    if (clientTypeSelect.value === 'synology_download_station') {
+                                        if (response.data.synologyAuthApiMaxVersion && synologyAuthApiVersionSelect) {
+                                            const opt = synologyAuthApiVersionSelect.querySelector(
+                                                `option[value="${response.data.synologyAuthApiMaxVersion}"]`
+                                            );
+                                            if (!opt) {
+                                                const o = document.createElement('option');
+                                                o.value = response.data.synologyAuthApiMaxVersion;
+                                                o.textContent = `${response.data.synologyAuthApiMaxVersion} (detected)`;
+                                                synologyAuthApiVersionSelect.appendChild(o);
+                                            }
+                                        }
+                                        if (response.data.synologyTaskApiMaxVersion && synologyTaskApiVersionSelect) {
+                                            const opt = synologyTaskApiVersionSelect.querySelector(
+                                                `option[value="${response.data.synologyTaskApiMaxVersion}"]`
+                                            );
+                                            if (!opt) {
+                                                const o = document.createElement('option');
+                                                o.value = response.data.synologyTaskApiMaxVersion;
+                                                o.textContent = `${response.data.synologyTaskApiMaxVersion} (detected)`;
+                                                synologyTaskApiVersionSelect.appendChild(o);
+                                            }
+                                        }
+                                    }
                                     // Persist the updated server info
                                     chrome.storage.local.set({ servers }, () => {
                                         renderServerList(); // Re-render to show new info
@@ -1725,7 +1886,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableReviewPrompts', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
             'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
-            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', qbittorrentApiKey: s.qbittorrentApiKey || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
+            servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', qbittorrentAuthMode: s.qbittorrentAuthMode || 'cookie', qbittorrentApiKey: s.qbittorrentApiKey || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
             globalSettings.advancedAddDialog = (result.advancedAddDialog || result.showAdvancedAddDialog && 'manual' || 'never'); // Migrate showAdvancedAddDialog -> advancedAddDialog
             advancedAddDialogInput.value = globalSettings.advancedAddDialog;

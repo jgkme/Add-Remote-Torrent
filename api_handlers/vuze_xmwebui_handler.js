@@ -3,7 +3,18 @@ import { debug } from '../debug';
 // Vuze XML WebUI (xmwebui) API Handler, which is Transmission-compatible.
 // This is a copy of the BiglyBT handler, as they share the same RPC API.
 
-let sessionId = null;
+const vuzeXmSessions = new Map();
+
+function vuzeXmSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${username}`;
+}
 
 async function makeRpcRequest(serverConfig, method, args = {}) {
     const url = `${serverConfig.url.replace(/\/$/, '')}/transmission/rpc`;
@@ -12,6 +23,7 @@ async function makeRpcRequest(serverConfig, method, args = {}) {
         'Authorization': `Basic ${btoa(`${serverConfig.username}:${serverConfig.password}`)}`
     };
 
+    const sessionId = vuzeXmSessions.get(vuzeXmSessionKey(serverConfig));
     if (sessionId) {
         headers['X-Transmission-Session-Id'] = sessionId;
     }
@@ -29,8 +41,11 @@ async function makeRpcRequest(serverConfig, method, args = {}) {
         });
 
         if (response.status === 409) {
-            sessionId = response.headers.get('X-Transmission-Session-Id');
-            headers['X-Transmission-Session-Id'] = sessionId;
+            const newSid = response.headers.get('X-Transmission-Session-Id');
+            if (newSid) {
+                vuzeXmSessions.set(vuzeXmSessionKey(serverConfig), newSid);
+                headers['X-Transmission-Session-Id'] = newSid;
+            }
             response = await fetch(url, {
                 method: 'POST',
                 headers: headers,

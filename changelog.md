@@ -9,6 +9,33 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.47 (2026-05-25)
+
+- **Fix (MV3):** Background service worker ships as a single bundle—no lazy `importScripts` chunks or DOM loaders—fixing `document is not defined`, missing `231.js`, and broken Options/Popup after reload. Build verifies `dist/background.js` and full options bundle size.
+- **Fix (qBittorrent):** Web API v5+ uses `torrents/start` and `torrents/stop` (not resume/pause); adds use `stopped` on v5+ so post-add resume no longer fails with “Endpoint does not exist”.
+- **Fix (rTorrent):** XML escaping in the service worker without `document.createElement`.
+- **Feat:** Shared torrent list UI (status badges, progress, pause/resume/delete) on popup and dashboard; list modes **Recently added** (default), **Active**, and **All** with newest-first sort and tracked-add enrichment.
+- **Feat (Dashboard):** Per-server **Manage torrents** panel; responsive layout (expanded card spans full width); **Show details** fix.
+- **Fix (Dashboard):** Server list render crash from minified variable shadowing—dashboard script excluded from Terser mangling.
+- **Build:** Generated release artifacts for `v0.4.47`.
+
+### 0.4.46 (2026-05-22)
+
+- **Fix:** Per-server auth sessions for Transmission, Deluge, uTorrent/BitTorrent/Buffalo, QNAP, BiglyBT, and Vuze XM (no cross-profile token/SID bleed).
+- **Feat (Transmission):** `getTorrentsInfo` for download-complete notifications (legacy RPC).
+- **Feat (Flood):** `isSequential`, category→tags, cookies, duplicate detection; session cookies on API calls.
+- **Feat (Porla):** `category`, `tags`, `preset`, speed limits with graceful fallback when unsupported.
+- **Feat (Synology):** Options for Auth/Task API versions; optional experimental auto-resume (opt-in, SID-only auth unchanged).
+- **Fix (Hadouken):** Honor `paused` from confirm-add (was `isPaused` only).
+
+### 0.4.45 (2026-05-22)
+
+- **Feat (qBittorrent):** `torrents/fetchMetadata` for magnet/URL file lists in confirm-add (polls 202→200; falls back to browser fetch + `parseMetadata`).
+- **Feat (qBittorrent):** Web API **HTTP Basic** auth mode (2.15+) as an alternative to cookie login; API key (Bearer) still takes precedence.
+- **Feat (qBittorrent):** Options actions **Rotate API key on server** and **Delete API key on server** (Web API 2.14.1+).
+- **Feat (qBittorrent):** Test connection stores **global speed limits** from `transfer/getSpeedLimits` (2.16+); popup shows them for the active server.
+- **Docs:** README and Options copy updated for auth modes, metadata API, and API key management.
+
 ### 0.4.44 (2026-05-22)
 
 - **Feat (qBittorrent):** Sync/import categories, sync tags, sync default save path; optional `categories.json` import with Web API push.

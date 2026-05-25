@@ -1,3 +1,28 @@
+### v0.4.47 (2026-05-25)
+
+*   **Fix (MV3):** Single background bundle—fixes service worker `document is not defined`, missing chunk files, and Options/Popup failing to load handlers after extension reload. Reload unpacked from **`dist/`** after updating.
+*   **Fix (qBittorrent):** Pause/resume/delete use **start/stop** on Web API v5+ (e.g. qBittorrent 5.2); add-torrent flow aligned with `stopped` state.
+*   **Fix (rTorrent):** Safe XML escaping without DOM in the worker.
+*   **Feat:** Torrent rows show clearer status and actions in the popup; dashboard can list and control torrents per server with **Recently added** / **Active** / **All** filters.
+*   **Feat (Dashboard):** Wider layout when managing torrents; server cards render reliably again.
+*   **Build:** Generated release artifacts for `v0.4.47`.
+
+### v0.4.46 (2026-05-22)
+
+*   **Fix:** Per-server sessions for Transmission, Deluge, uTorrent family, QNAP, BiglyBT, and Vuze XM WebUI.
+*   **Feat (Transmission):** Download-complete notifications via legacy `torrent-get`.
+*   **Feat (Flood / Porla):** Richer add APIs (sequential, tags/category/preset, duplicate handling / param fallback).
+*   **Feat (Synology):** Manual API version overrides and opt-in auto-resume; SID-only auth preserved.
+*   **Fix (Hadouken):** `paused` option respected on add.
+
+### v0.4.45 (2026-05-22)
+
+*   **Feat (qBittorrent):** Confirm-add can load file lists for **magnets** via `torrents/fetchMetadata` (Web API 2.11.9+), with browser/`parseMetadata` fallback for `.torrent` URLs.
+*   **Feat (qBittorrent):** New **Web API HTTP Basic** authentication mode (2.15+) in Options when cookie login fails; optional **API key** still overrides both.
+*   **Feat (qBittorrent):** **Rotate** / **Delete API key on server** buttons (2.14.1+); rotate fills the profile field — save the server to persist.
+*   **Feat (qBittorrent):** **Test connection** reads global DL/UL speed limits (2.16+) and the popup shows them under active server details.
+*   **Docs:** Expanded qBittorrent FAQ in README and Options hints.
+
 ### v0.4.44 (2026-05-22)
 
 *   **Feat (qBittorrent):** **Sync/import categories**, **sync tags**, and **sync default save path** from Options; paste or import `categories.json` with optional push to the server via Web API.

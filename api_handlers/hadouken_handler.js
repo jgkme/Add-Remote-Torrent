@@ -44,14 +44,17 @@ async function makeRpcRequest(serverConfig, method, params) {
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const {
         torrentFileContentBase64,
+        paused,
         isPaused,
         labels,
         tags,
         sequential,
     } = torrentOptions;
 
+    const wantsPaused = typeof paused === 'boolean' ? paused : isPaused;
+
     const rpcOptions = {
-        paused: isPaused,
+        paused: wantsPaused,
         sequentialDownload: sequential,
         label: labels && labels.length > 0 ? labels[0] : undefined,
         tags: tags,

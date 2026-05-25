@@ -6,14 +6,33 @@ import { debug } from '../debug';
 
 // Re-use or adapt uTorrent's token logic if applicable.
 // For now, this will be a simplified placeholder.
-let bitTorrentToken = null; 
-let lastTokenFetchTimeBt = 0;
+const bitTorrentTokenBuckets = new Map();
 const TOKEN_CACHE_DURATION_BT = 5 * 60 * 1000;
 
+function bittorrentSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${username}`;
+}
+
+function getBittorrentTokenBucket(serverConfig) {
+    const key = bittorrentSessionKey(serverConfig);
+    if (!bitTorrentTokenBuckets.has(key)) {
+        bitTorrentTokenBuckets.set(key, { token: null, lastFetchTime: 0 });
+    }
+    return bitTorrentTokenBuckets.get(key);
+}
+
 async function getCsrfTokenBt(serverConfig) {
+    const bucket = getBittorrentTokenBucket(serverConfig);
     const now = Date.now();
-    if (bitTorrentToken && (now - lastTokenFetchTimeBt < TOKEN_CACHE_DURATION_BT)) {
-        return bitTorrentToken;
+    if (bucket.token && now - bucket.lastFetchTime < TOKEN_CACHE_DURATION_BT) {
+        return bucket.token;
     }
 
     const tokenUrl = `${serverConfig.url.replace(/\/$/, '')}/gui/token.html`;
@@ -31,16 +50,16 @@ async function getCsrfTokenBt(serverConfig) {
         const html = await response.text();
         const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
         if (match && match[1]) {
-            bitTorrentToken = match[1];
-            lastTokenFetchTimeBt = now;
-            return bitTorrentToken;
+            bucket.token = match[1];
+            bucket.lastFetchTime = now;
+            return bucket.token;
         } else {
             throw new Error('BitTorrent CSRF token not found in response.');
         }
     } catch (error) {
         debug.error('Error fetching BitTorrent CSRF token:', error);
-        bitTorrentToken = null;
-        throw new Error(`TokenFetchErrorBt: ${error.message}`); // Custom error for makeApiRequestBt to catch
+        bucket.token = null;
+        throw new Error(`TokenFetchErrorBt: ${error.message}`);
     }
 }
 

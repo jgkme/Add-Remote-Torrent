@@ -1,34 +1,55 @@
-// API Client Factory — lazy-loads client handlers to keep the service worker bundle small.
+// API Client Factory — all handlers are bundled into the MV3 service worker (no lazy chunks).
 
 import { debug } from '../debug';
+import * as qbittorrent from './qbittorrent_handler.js';
+import * as transmission from './transmission_handler.js';
+import * as deluge from './deluge_handler.js';
+import * as utorrent from './utorrent_handler.js';
+import * as utorrent_old from './utorrent_old_handler.js';
+import * as rtorrent from './rtorrent_handler.js';
+import * as rutorrent from './rutorrent_handler.js';
+import * as synology_download_station from './synology_download_station_handler.js';
+import * as qnap_download_station from './qnap_download_station_handler.js';
+import * as kodi_elementum from './kodi_elementum_handler.js';
+import * as bittorrent from './bittorrent_handler.js';
+import * as buffalo_torrent from './buffalo_torrent_handler.js';
+import * as vuze from './vuze_handler.js';
+import * as ttorrent from './ttorrent_handler.js';
+import * as hadouken from './hadouken_handler.js';
+import * as tixati from './tixati_handler.js';
+import * as torrentflux from './torrentflux_handler.js';
+import * as flood from './flood_handler.js';
+import * as tribler from './tribler_handler.js';
+import * as biglybt from './biglybt_handler.js';
+import * as porla from './porla_handler.js';
+import * as vuze_xmwebui from './vuze_xmwebui_handler.js';
 
-const HANDLER_LOADERS = {
-    qbittorrent: () => import('./qbittorrent_handler.js'),
-    transmission: () => import('./transmission_handler.js'),
-    deluge: () => import('./deluge_handler.js'),
-    utorrent: () => import('./utorrent_handler.js'),
-    utorrent_old: () => import('./utorrent_old_handler.js'),
-    rtorrent: () => import('./rtorrent_handler.js'),
-    rutorrent: () => import('./rutorrent_handler.js'),
-    synology_download_station: () => import('./synology_download_station_handler.js'),
-    qnap_download_station: () => import('./qnap_download_station_handler.js'),
-    kodi_elementum: () => import('./kodi_elementum_handler.js'),
-    bittorrent: () => import('./bittorrent_handler.js'),
-    buffalo_torrent: () => import('./buffalo_torrent_handler.js'),
-    vuze: () => import('./vuze_handler.js'),
-    ttorrent: () => import('./ttorrent_handler.js'),
-    hadouken: () => import('./hadouken_handler.js'),
-    tixati: () => import('./tixati_handler.js'),
-    torrentflux: () => import('./torrentflux_handler.js'),
-    flood: () => import('./flood_handler.js'),
-    tribler: () => import('./tribler_handler.js'),
-    biglybt: () => import('./biglybt_handler.js'),
-    porla: () => import('./porla_handler.js'),
-    vuze_xmwebui: () => import('./vuze_xmwebui_handler.js'),
+const HANDLERS = {
+    qbittorrent,
+    transmission,
+    deluge,
+    utorrent,
+    utorrent_old,
+    rtorrent,
+    rutorrent,
+    synology_download_station,
+    qnap_download_station,
+    kodi_elementum,
+    bittorrent,
+    buffalo_torrent,
+    vuze,
+    ttorrent,
+    hadouken,
+    tixati,
+    torrentflux,
+    flood,
+    tribler,
+    biglybt,
+    porla,
+    vuze_xmwebui,
 };
 
 const handlerCache = new Map();
-const handlerLoadPromises = new Map();
 
 function misconfiguredHandler(clientType, reason) {
     return {
@@ -61,34 +82,13 @@ export async function getClientApi(clientType) {
         return handlerCache.get(clientType);
     }
 
-    const loader = HANDLER_LOADERS[clientType];
-    if (!loader) {
+    const handler = HANDLERS[clientType];
+    if (!handler) {
         debug.error(`No API handler found for client type: ${clientType}`);
         return misconfiguredHandler(clientType, `Unsupported client type: ${clientType}`);
     }
 
-    if (!handlerLoadPromises.has(clientType)) {
-        handlerLoadPromises.set(
-            clientType,
-            loader()
-                .then((module) => {
-                    const handler = module.default || module;
-                    const validated = validateHandler(clientType, handler);
-                    handlerCache.set(clientType, validated);
-                    return validated;
-                })
-                .catch((error) => {
-                    handlerLoadPromises.delete(clientType);
-                    debug.error(`Failed to load API handler for ${clientType}:`, error);
-                    const fallback = misconfiguredHandler(
-                        clientType,
-                        `Failed to load handler for ${clientType}: ${error.message}`
-                    );
-                    handlerCache.set(clientType, fallback);
-                    return fallback;
-                })
-        );
-    }
-
-    return handlerLoadPromises.get(clientType);
+    const validated = validateHandler(clientType, handler);
+    handlerCache.set(clientType, validated);
+    return validated;
 }

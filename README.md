@@ -137,6 +137,8 @@ A:
 
 - **qBittorrent:** For versions 4.3.0 and newer (especially v5.1.0+), you may need to disable "CSRF Protection" in the WebUI options under the "Web UI" tab. Our extension needs to interact with the API in a way that can be blocked by this feature. If you use **several qBittorrent server profiles**, each logs in separately (v0.4.39+). On **qBittorrent 5.2+**, you can optionally generate a **Web API key** in the same Web UI settings and enter it in the extension’s server profile when cookie-based API access still fails—it is **not** required for normal username/password login.
 - **qBittorrent categories:** In Options, use **Sync categories** / **Import categories** on a qBittorrent profile to pull category names and save paths from the server, or paste/import a `categories.json` export (works best on 5.2+). The extension uses the Web API (`torrents/categories`, `createCategory`)—it cannot read files directly on the server.
+- **qBittorrent authentication:** Default is **Web UI cookie login**. If that fails (CSRF, proxies), try **Web API HTTP Basic** (qBittorrent 5.2+, Web API 2.15+) with the same username/password, or paste a **Web API key** (Bearer, 5.2+). Do not enable reverse-proxy Basic Auth in the extension at the same time as Web API Basic—they use the same HTTP header. **Rotate** / **Delete API key on server** (Options, 2.14.1+) call `app/rotateAPIKey` / `app/deleteAPIKey`; save the profile after rotate.
+- **qBittorrent metadata & file lists:** Run **Test connection** to store the Web API version. Confirm-add uses `torrents/fetchMetadata` for magnets (2.11.9+, may take up to ~45s) and `parseMetadata` / browser fetch for `.torrent` URLs when the page cannot supply a file list.
 - **Search:** Besides Jackett/Prowlarr, you can set **Search provider** to **qBittorrent Search** (5.2+ recommended) to search via installed qBittorrent Search plugins using your active server from the popup.
 - **ruTorrent:** For the best results, enter the full URL to your ruTorrent installation in the **"Server URL"** field (e.g., `https://your-server.com/rutorrent`) and leave the **"ruTorrent Relative Path"** field blank. Alternatively, you can enter the base URL (e.g., `https://your-server.com`) and the path (e.g., `/rutorrent`) in their respective fields.
 
@@ -202,6 +204,18 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.47 (2026-05-25):**
+  - **Fix (MV3):** One background bundle—no broken lazy chunks; Options/Popup load correctly after reload.
+  - **Fix (qBittorrent):** v5+ **start/stop** API for pause/resume after add.
+  - **Feat:** Torrent status/actions in popup; dashboard per-server torrent list and filters (recent/active/all).
+  - **Fix (Dashboard):** Server list and responsive manage-torrents layout.
+  - **Build:** Release artifacts for `v0.4.47`.
+- **v0.4.46 (2026-05-22):**
+  - **Fix:** Per-server sessions for major non-qBittorrent clients (multi-profile safe).
+  - **Feat:** Transmission completion notify; Flood/Porla richer adds; Synology API version + opt-in auto-resume.
+- **v0.4.45 (2026-05-22):**
+  - **Feat (qBittorrent):** `fetchMetadata` magnet file lists; Web API Basic auth; rotate/delete API key on server; global speed limits in popup (2.16+).
+  - **Docs:** README and Options hints for auth and metadata APIs.
 - **v0.4.44 (2026-05-22):**
   - **Feat (qBittorrent):** Options tools to **sync/import categories**, **sync tags**, and **sync default save path**; import `categories.json` locally with optional push via Web API.
   - **Feat (qBittorrent):** Popup **Search** provider using installed qBittorrent Search plugins (active server).

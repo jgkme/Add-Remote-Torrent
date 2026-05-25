@@ -3,7 +3,19 @@ import { debug } from '../debug';
 // Deluge API Handler
 // This file will contain the logic for interacting with the Deluge WebUI API (JSON-RPC).
 
-const delugeSessions = new Map(); // Stores session info keyed by server URL
+const delugeSessions = new Map();
+
+function delugeSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${username}`;
+}
+
 let delugeRequestId = 1;
 
 // Centralized RPC call function with session management and retry logic.
@@ -14,7 +26,7 @@ async function makeAuthenticatedRpcCall(serverConfig, method, params = []) {
     // 2. If it fails with an auth error, our session is invalid.
     if (result.status === 401 || result.status === 403) {
         debug.log(`Deluge: Session for ${serverConfig.url} is invalid or expired. Re-authenticating.`);
-        delugeSessions.delete(serverConfig.url); // Clear the invalid cookie
+        delugeSessions.delete(delugeSessionKey(serverConfig));
 
         // 3. Attempt to log in to get a new session.
         const loginSuccess = await _login(serverConfig);
@@ -68,7 +80,7 @@ async function _makeRpcRequest(serverConfig, method, params, isLogin = false) {
         headers['Authorization'] = `Basic ${authString}`;
     }
 
-    const sessionCookie = delugeSessions.get(serverConfig.url);
+    const sessionCookie = delugeSessions.get(delugeSessionKey(serverConfig));
     if (sessionCookie && !isLogin) {
         headers['Cookie'] = sessionCookie;
     }
@@ -86,7 +98,7 @@ async function _makeRpcRequest(serverConfig, method, params, isLogin = false) {
             if (rawCookies) {
                 const sessionCookiePart = rawCookies.split(';').find(part => part.trim().startsWith('_session_id='));
                 if (sessionCookiePart) {
-                    delugeSessions.set(serverConfig.url, sessionCookiePart.trim());
+                    delugeSessions.set(delugeSessionKey(serverConfig), sessionCookiePart.trim());
                     debug.log(`Deluge: Stored new session cookie for ${serverConfig.url}`);
                 }
             }
@@ -301,14 +313,12 @@ export async function getTorrentsInfo(serverConfig, hashes) {
 }
 
 export async function getActiveTorrents(serverConfig) {
-    const fields = ['name', 'progress', 'state', 'eta', 'download_payload_rate', 'upload_payload_rate'];
+    const fields = ['name', 'progress', 'state', 'eta', 'download_payload_rate', 'upload_payload_rate', 'time_added'];
     const getTorrentsResult = await makeAuthenticatedRpcCall(serverConfig, 'core.get_torrents_status', [{}, fields]);
     if (!getTorrentsResult.success || !getTorrentsResult.data) {
         return [];
     }
-    return Object.entries(getTorrentsResult.data)
-        .slice(0, 20)
-        .map(([hash, details]) => ({
+    return Object.entries(getTorrentsResult.data).map(([hash, details]) => ({
             hash: String(hash),
             name: details.name || "Unknown",
             progress: Number(details.progress || 0) / 100,
@@ -316,6 +326,7 @@ export async function getActiveTorrents(serverConfig) {
             eta: Number(details.eta || 0),
             dlspeed: Number(details.download_payload_rate || 0),
             upspeed: Number(details.upload_payload_rate || 0),
+            added_on: Number(details.time_added || 0),
         }));
 }
 

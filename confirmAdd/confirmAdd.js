@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         debug.log("[ART ConfirmAdd] Not a magnet link, showing file selection section.");
         fileSelectionSection.style.display = 'block';
     } else if (isMagnetLink) {
-        debug.log("[ART ConfirmAdd] Is a magnet link, file selection section remains hidden.");
+        debug.log("[ART ConfirmAdd] Magnet link — file selection available only via qBittorrent fetchMetadata.");
     }
 
 
@@ -141,6 +141,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (activeServer.clientType === 'qbittorrent') {
                 qbittorrentOptions.style.display = 'block';
                 forceStartInput.checked = !!activeServer.forceStart;
+                if (isMagnetLink && webApiAtLeast(activeServer.webApiVersion, '2.11.9')) {
+                    fileSelectionSection.style.display = 'block';
+                    const label = fileSelectionSection.querySelector('label[for="selectFilesToggle"]');
+                    if (label) {
+                        label.textContent =
+                            'Select files to download (qBittorrent metadata — may take a moment)';
+                    }
+                }
             } else if (activeServer.clientType === 'transmission') {
                 transmissionOptions.style.display = 'block';
                 // Set default value from server config if it exists
@@ -246,6 +254,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     selectFilesToggle.addEventListener('change', async () => {
+        if (selectFilesToggle.checked && isMagnetLink) {
+            if (
+                !activeServer ||
+                activeServer.clientType !== 'qbittorrent' ||
+                !webApiAtLeast(activeServer.webApiVersion, '2.11.9')
+            ) {
+                fileListContainer.innerHTML =
+                    '<p class="text-xs text-amber-600 dark:text-amber-400">Magnet file lists need qBittorrent Web API 2.11.9+. Run Test connection in Options.</p>';
+                fileListContainer.style.display = 'block';
+                fileActionsContainer.style.display = 'none';
+                selectFilesToggle.checked = false;
+                return;
+            }
+            fileActionsContainer.style.display = 'block';
+            fileListContainer.style.display = 'block';
+            fileListContainer.innerHTML =
+                '<p class="text-xs text-gray-500 dark:text-gray-400">Fetching metadata from qBittorrent (may take up to a minute)…</p>';
+            chrome.runtime.sendMessage(
+                { action: 'fetchQbitTorrentMetadata', serverId: activeServer.id, url: torrentUrl },
+                (response) => {
+                    if (response?.success && response.files?.length) {
+                        renderFileListFromMetadata(response.files);
+                    } else {
+                        const errText =
+                            response?.error?.userMessage || response?.error || 'Metadata fetch failed.';
+                        fileListContainer.innerHTML = `<p class="text-xs text-red-500 dark:text-red-400">${escapeHtml(errText)}</p>`;
+                        fileActionsContainer.style.display = 'none';
+                    }
+                }
+            );
+            return;
+        }
         if (selectFilesToggle.checked && !isMagnetLink) {
             fileActionsContainer.style.display = 'block'; // Show action buttons
             fileListContainer.style.display = 'block';

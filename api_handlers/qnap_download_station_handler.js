@@ -2,15 +2,31 @@ import { debug } from '../debug';
 
 // QNAP Download Station API Handler
 
-// Session ID (SID) for QNAP
-let qnapSid = null;
-let lastQnapLoginTime = 0;
-const QNAP_SID_CACHE_DURATION = 30 * 60 * 1000; // Cache SID for 30 minutes
+const qnapSidBuckets = new Map();
+const QNAP_SID_CACHE_DURATION = 30 * 60 * 1000;
+
+function qnapSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    return `url:${(serverConfig.url || '').trim().replace(/\/$/, '')}|${serverConfig.username || ''}`;
+}
+
+function getQnapSidBucket(serverConfig) {
+    const key = qnapSessionKey(serverConfig);
+    if (!qnapSidBuckets.has(key)) {
+        qnapSidBuckets.set(key, { sid: null, lastLoginTime: 0 });
+    }
+    return qnapSidBuckets.get(key);
+}
 
 async function getQnapSid(serverConfig) {
+    const bucket = getQnapSidBucket(serverConfig);
     const now = Date.now();
-    if (qnapSid && (now - lastQnapLoginTime < QNAP_SID_CACHE_DURATION)) {
-        return qnapSid;
+    if (bucket.sid && now - bucket.lastLoginTime < QNAP_SID_CACHE_DURATION) {
+        return bucket.sid;
     }
 
     // QNAP login mechanism needs verification. It might be:
@@ -80,10 +96,10 @@ async function getQnapSid(serverConfig) {
             }
         }
 
-        if (sidFromResponse) { 
-            qnapSid = sidFromResponse;
-            lastQnapLoginTime = now;
-            return qnapSid; // Success
+        if (sidFromResponse) {
+            bucket.sid = sidFromResponse;
+            bucket.lastLoginTime = now;
+            return bucket.sid;
         } else {
             debug.error("QNAP Login response (couldn't find SID/qtoken in XML or JSON):", responseText);
             // This error will be caught by the catch block below
@@ -91,8 +107,7 @@ async function getQnapSid(serverConfig) {
         }
     } catch (error) { // Catches fetch errors or errors thrown above
         debug.error('Error fetching QNAP SID:', error);
-        qnapSid = null;
-        // This error is thrown and expected to be caught by the caller (makeQnapApiRequest)
+        bucket.sid = null;
         throw new Error(`SIDFetchErrorQNAP: ${error.message}`);
     }
 }
@@ -150,7 +165,7 @@ async function makeQnapApiRequest(serverConfig, command, params = {}, httpMethod
                 const errorJson = JSON.parse(errorText);
                 if (errorJson && (errorJson.error_code === -6 || errorJson.error_code === -7 || String(errorJson.error_code) === "104") && !params.retriedWithNewSid) { // SID invalid/expired (104 is common for invalid SID)
                     debug.log('QNAP request failed, possibly stale SID. Refetching SID and retrying.');
-                    qnapSid = null; 
+                    getQnapSidBucket(serverConfig).sid = null;
                     params.retriedWithNewSid = true;
                     return makeQnapApiRequest(serverConfig, command, params, httpMethod); // Retry
                 }

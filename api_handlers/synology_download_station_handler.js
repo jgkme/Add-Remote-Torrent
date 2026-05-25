@@ -236,6 +236,45 @@ async function makeSynologyApiRequest(serverConfig, apiName, version, methodName
     }
 }
 
+async function listSynologyTaskIds(serverConfig) {
+    const listResult = await makeSynologyApiRequest(
+        serverConfig,
+        'SYNO.DownloadStation.Task',
+        serverConfig.taskApiVersion || '3',
+        'list',
+        { additional: '["detail"]' },
+        'GET'
+    );
+    if (!listResult.success || !listResult.data) {
+        return [];
+    }
+    const tasks = listResult.data.tasks;
+    if (!Array.isArray(tasks)) {
+        return [];
+    }
+    return tasks
+        .map((t) => t.id)
+        .filter((id) => id !== undefined && id !== null)
+        .map(String);
+}
+
+async function resumeSynologyTasks(serverConfig, taskIds) {
+    if (!taskIds.length) return;
+    for (const id of taskIds) {
+        const resumeResult = await makeSynologyApiRequest(
+            serverConfig,
+            'SYNO.DownloadStation.Task',
+            serverConfig.taskApiVersion || '3',
+            'resume',
+            { id },
+            'GET'
+        );
+        if (!resumeResult.success) {
+            debug.warn(`Synology: Failed to resume task ${id}:`, resumeResult.error);
+        }
+    }
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // serverConfig: { url, username, password, clientType }
     // torrentOptions: { downloadDir, paused, labels (not directly supported by 'create' task) }
@@ -254,35 +293,40 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     // Newer versions (e.g., v3) might have a 'create_as_resume' or similar parameter, but v1 does not.
     // If torrentOptions.paused is false, a subsequent 'resume' action is needed.
 
-    // API: SYNO.DownloadStation.Task
-    // Method: create
-    // Version: 1 as per initial analysis. Newer versions (e.g., 3) exist and might offer more.
-    // For now, sticking to v3 based on user's DSM 7.2 maxVersion.
+    const taskVersion = serverConfig.taskApiVersion || '3';
+    const beforeIds = serverConfig.synologyAutoResume ? await listSynologyTaskIds(serverConfig) : [];
+
     const result = await makeSynologyApiRequest(
         serverConfig,
         'SYNO.DownloadStation.Task',
-        serverConfig.taskApiVersion || '3', // Changed version
+        taskVersion,
         'create',
         params,
-        'POST' 
+        'POST'
     );
 
-    if (result.success && !torrentOptions.paused) {
-        // Auto-resume Challenge:
-        // The 'create' method (v1) does NOT return the task ID(s) of the newly created torrent.
-        // To resume, we would need to:
-        // 1. List tasks (SYNO.DownloadStation.Task, method 'list') before adding.
-        // 2. List tasks again after adding.
-        // 3. Diff the lists to find the new task ID(s) - this is unreliable if other tasks are added concurrently.
-        // 4. Alternatively, try to find the task by URI if 'list' supports filtering by URI (unlikely for magnets).
-        // 5. Once ID is found, call SYNO.DownloadStation.Task, method 'resume' with the ID.
-        // This is a complex multi-step process and prone to race conditions or identification issues.
-        // A future enhancement could attempt this, or users might need to manually resume.
-        debug.warn("Synology: Torrent added (likely paused by default by Synology API). Auto-resume if 'paused: false' is a complex feature not yet implemented due to API limitations in getting the new task ID directly from the 'create' call.");
+    if (
+        result.success &&
+        serverConfig.synologyAutoResume &&
+        torrentOptions.paused === false
+    ) {
+        const afterIds = await listSynologyTaskIds(serverConfig);
+        const beforeSet = new Set(beforeIds);
+        const newIds = afterIds.filter((id) => !beforeSet.has(id));
+        if (newIds.length > 0) {
+            await resumeSynologyTasks(serverConfig, newIds);
+        } else {
+            debug.warn(
+                'Synology: Auto-resume enabled but no new task id found (concurrent adds may prevent detection).'
+            );
+        }
+    } else if (result.success && !torrentOptions.paused && !serverConfig.synologyAutoResume) {
+        debug.log(
+            'Synology: Task created paused by default. Enable "Auto-resume after add" in Options to start immediately.'
+        );
     }
-    
-    // The 'create' task (v1) response 'data' is often empty or just true on success, not detailed torrent info.
-    return result; 
+
+    return result;
 }
 
 export async function testConnection(serverConfig) {
@@ -314,13 +358,22 @@ export async function testConnection(serverConfig) {
             freeSpace = statResult.data.download_shared_folder_free_space;
         }
 
+        const authInfo = infoResult.data['SYNO.API.Auth'];
+        const taskInfo = infoResult.data['SYNO.DownloadStation.Task'];
+
         return {
             success: true,
             data: {
                 message: 'Successfully connected to Synology Download Station.',
-                version: `API v${dsInfo.maxVersion}`, // Use API maxVersion as the version
+                version: `API v${dsInfo.maxVersion}`,
                 freeSpace: freeSpace,
-            }
+                synologyAuthApiMaxVersion: authInfo?.maxVersion
+                    ? String(authInfo.maxVersion)
+                    : null,
+                synologyTaskApiMaxVersion: taskInfo?.maxVersion
+                    ? String(taskInfo.maxVersion)
+                    : null,
+            },
         };
 
     } catch (error) {

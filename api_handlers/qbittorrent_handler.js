@@ -9,6 +9,18 @@ function usesQbittorrentApiKey(serverConfig) {
   return typeof k === 'string' && k.trim().length > 0;
 }
 
+/** Web API 2.15+: authenticate with HTTP Basic (qB username/password) instead of cookie login. */
+function usesWebApiBasicAuth(serverConfig) {
+  if (usesQbittorrentApiKey(serverConfig)) return false;
+  return serverConfig?.qbittorrentAuthMode === 'basic';
+}
+
+function qbitAuthModeLabel(serverConfig) {
+  if (usesQbittorrentApiKey(serverConfig)) return 'apikey';
+  if (usesWebApiBasicAuth(serverConfig)) return 'basic';
+  return 'cookie';
+}
+
 /**
  * Cookie login state must be per server profile. A single global session caused
  * requests to server B to skip login after server A was used → 401 and misleading
@@ -22,8 +34,40 @@ function qbittorrentSessionKey(serverConfig) {
   }
   const url = (serverConfig.url || '').trim();
   const username = (serverConfig.username || '').trim();
-  const bearer = usesQbittorrentApiKey(serverConfig) ? 'bearer' : 'cookie';
-  return `cfg:${url}|${username}|${bearer}`;
+  return `cfg:${url}|${username}|${qbitAuthModeLabel(serverConfig)}`;
+}
+
+/** Reverse-proxy Basic Auth (nginx, etc.) — not the same as Web API Basic (2.15+). */
+function usesReverseProxyBasicAuth(serverConfig) {
+  return Boolean(
+    serverConfig?.useBasicAuth &&
+      serverConfig.basicAuthUsername &&
+      serverConfig.basicAuthPassword &&
+      !usesWebApiBasicAuth(serverConfig)
+  );
+}
+
+function applyQbitAuthorization(headers, serverConfig) {
+  if (usesQbittorrentApiKey(serverConfig)) {
+    headers['Authorization'] = `Bearer ${serverConfig.qbittorrentApiKey.trim()}`;
+    return;
+  }
+  if (usesWebApiBasicAuth(serverConfig)) {
+    const user = serverConfig.username || '';
+    const pass = serverConfig.password || '';
+    headers['Authorization'] = `Basic ${btoa(`${user}:${pass}`)}`;
+    return;
+  }
+  if (usesReverseProxyBasicAuth(serverConfig)) {
+    const authString = btoa(
+      `${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`
+    );
+    headers['Authorization'] = `Basic ${authString}`;
+  }
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const qbitSessionBuckets = new Map();
@@ -114,7 +158,7 @@ function mapQbitFlowError(error) {
 const qbitSession = {
   login: async function(serverConfig) {
     const bucket = getQbitSessionBucket(serverConfig);
-    if (usesQbittorrentApiKey(serverConfig)) {
+    if (usesQbittorrentApiKey(serverConfig) || usesWebApiBasicAuth(serverConfig)) {
       bucket.isLoggedIn = true;
       return;
     }
@@ -130,7 +174,7 @@ const qbitSession = {
     }
   },
   _performLogin: async function(serverConfig, bucket) {
-    const { url, username, password, basicAuthUsername, basicAuthPassword, useBasicAuth } = serverConfig;
+    const { url, username, password } = serverConfig;
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
     const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -142,11 +186,7 @@ const qbitSession = {
         'Content-Type': 'application/x-www-form-urlencoded'
     };
 
-    // Add basic auth header if enabled
-    if (useBasicAuth && basicAuthUsername && basicAuthPassword) {
-      const authString = btoa(`${basicAuthUsername}:${basicAuthPassword}`);
-      loginHeaders['Authorization'] = `Basic ${authString}`;
-    }
+    applyQbitAuthorization(loginHeaders, serverConfig);
 
     const loginBodyParams = new URLSearchParams();
     loginBodyParams.append('username', username);
@@ -181,16 +221,21 @@ const qbitSession = {
   
   fetch: async function(apiUrl, options, serverConfig, isRetry = false) {
     const bucket = getQbitSessionBucket(serverConfig);
-    if (!usesQbittorrentApiKey(serverConfig) && !bucket.isLoggedIn && !isRetry) {
+    if (
+      !usesQbittorrentApiKey(serverConfig) &&
+      !usesWebApiBasicAuth(serverConfig) &&
+      !bucket.isLoggedIn &&
+      !isRetry
+    ) {
       await this.login(serverConfig);
     }
-    if (usesQbittorrentApiKey(serverConfig)) {
+    if (usesQbittorrentApiKey(serverConfig) || usesWebApiBasicAuth(serverConfig)) {
       bucket.isLoggedIn = true;
     }
 
     const finalOptions = {
       ...options,
-      credentials: 'include',
+      credentials: usesWebApiBasicAuth(serverConfig) ? 'omit' : 'include',
       headers: {
         ...options.headers,
         'Referer': new URL(serverConfig.url).href,
@@ -198,16 +243,16 @@ const qbitSession = {
       }
     };
 
-    if (usesQbittorrentApiKey(serverConfig)) {
-      finalOptions.headers['Authorization'] = `Bearer ${serverConfig.qbittorrentApiKey.trim()}`;
-    } else if (serverConfig.useBasicAuth && serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) {
-      const authString = btoa(`${serverConfig.basicAuthUsername}:${serverConfig.basicAuthPassword}`);
-      finalOptions.headers['Authorization'] = `Basic ${authString}`;
-    }
+    applyQbitAuthorization(finalOptions.headers, serverConfig);
 
     const response = await fetch(apiUrl, finalOptions);
 
-    if (response.status === 403 && !isRetry && !usesQbittorrentApiKey(serverConfig)) {
+    if (
+      response.status === 403 &&
+      !isRetry &&
+      !usesQbittorrentApiKey(serverConfig) &&
+      !usesWebApiBasicAuth(serverConfig)
+    ) {
       debug.log('qBittorrent session expired (403), re-authenticating...');
       bucket.isLoggedIn = false;
       return this.fetch(apiUrl, options, serverConfig, true); // Retry once after logging in
@@ -217,6 +262,38 @@ const qbitSession = {
   }
 };
 
+
+function parseQbittorrentAppVersion(versionText) {
+  const match = String(versionText || '')
+    .trim()
+    .match(/v?(\d+)\.(\d+)(?:\.(\d+))?/i);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3] || '0', 10),
+  };
+}
+
+/** qBittorrent 5.0+: Web API uses stop/start and stopped (not pause/resume). */
+function qbittorrentUsesStartStopApi(versionText) {
+  const parsed = parseQbittorrentAppVersion(versionText);
+  if (!parsed) return false;
+  return parsed.major >= 5;
+}
+
+function torrentPauseResumeApiPaths(versionText) {
+  return qbittorrentUsesStartStopApi(versionText)
+    ? { pause: 'torrents/stop', resume: 'torrents/start' }
+    : { pause: 'torrents/pause', resume: 'torrents/resume' };
+}
+
+async function resolveQbittorrentAppVersion(serverConfig) {
+  if (serverConfig?.version) {
+    return String(serverConfig.version).trim();
+  }
+  return getQbittorrentVersion(serverConfig);
+}
 
 // Helper function to construct full API URLs for qBittorrent v2 API
 function getApiUrl(baseUrl, apiPath) {
@@ -326,7 +403,7 @@ function mapMetadataFiles(meta) {
   const inner = info.info || info;
   const filesArr = inner.files || info.files || [];
   const files = [];
-  if (Array.isArray(filesArr)) {
+  if (Array.isArray(filesArr) && filesArr.length > 0) {
     filesArr.forEach((file, idx) => {
       const name =
         file.name ||
@@ -337,8 +414,164 @@ function mapMetadataFiles(meta) {
       const size = Number(file.size ?? file.length ?? file.file_size ?? 0);
       files.push({ name: String(name), size, index: idx });
     });
+  } else if (inner.name && typeof inner.length === 'number') {
+    files.push({
+      name: String(inner.name),
+      size: Number(inner.length),
+      index: 0,
+    });
   }
   return files;
+}
+
+/**
+ * Poll GET torrents/fetchMetadata (Web API 2.11.9+). 202 = still fetching; 200 = ready.
+ */
+export async function fetchTorrentMetadataFromSource(serverConfig, source) {
+  if (!compareWebApiVersion(serverConfig, '2.11.9')) {
+    return {
+      success: false,
+      error: {
+        userMessage: 'qBittorrent metadata fetch requires Web API 2.11.9+.',
+        errorCode: 'WEBAPI_VERSION_TOO_OLD',
+      },
+    };
+  }
+  const apiUrl = getApiUrl(
+    serverConfig.url,
+    `torrents/fetchMetadata?source=${encodeURIComponent(source)}`
+  );
+  const maxAttempts = 45;
+  try {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+      if (response.status === 200) {
+        const data = await response.json();
+        const files = mapMetadataFiles(data);
+        const cacheRef =
+          data.hash && String(data.hash).trim()
+            ? String(data.hash).trim()
+            : source.startsWith('magnet:')
+              ? source
+              : null;
+        return {
+          success: true,
+          files,
+          totalFileCount: files.length,
+          metadataSource: source,
+          qbitMetadataCacheRef: cacheRef,
+        };
+      }
+      if (response.status === 202) {
+        if (attempt === maxAttempts - 1) {
+          return {
+            success: false,
+            error: {
+              userMessage:
+                'qBittorrent is still fetching torrent metadata. Try again in a moment.',
+              errorCode: 'METADATA_TIMEOUT',
+            },
+          };
+        }
+        await sleepMs(1000);
+        continue;
+      }
+      const t = await response.text();
+      throw new Error(`fetchMetadata failed: ${response.status} ${t}`);
+    }
+    return {
+      success: false,
+      error: { userMessage: 'Metadata fetch timed out.', errorCode: 'METADATA_TIMEOUT' },
+    };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function rotateWebApiKey(serverConfig) {
+  if (!compareWebApiVersion(serverConfig, '2.14.1')) {
+    return {
+      success: false,
+      error: {
+        userMessage: 'API key rotation requires qBittorrent Web API 2.14.1+.',
+      },
+    };
+  }
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'app/rotateAPIKey');
+    const response = await qbitSession.fetch(
+      apiUrl,
+      { method: 'POST' },
+      serverConfig
+    );
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error(`rotateAPIKey failed: ${response.status} ${t}`);
+    }
+    const key = (await response.text()).trim();
+    if (!key) {
+      throw new Error('rotateAPIKey returned an empty key.');
+    }
+    return { success: true, apiKey: key };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function deleteWebApiKeyOnServer(serverConfig) {
+  if (!compareWebApiVersion(serverConfig, '2.14.1')) {
+    return {
+      success: false,
+      error: {
+        userMessage: 'API key deletion requires qBittorrent Web API 2.14.1+.',
+      },
+    };
+  }
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'app/deleteAPIKey');
+    const response = await qbitSession.fetch(
+      apiUrl,
+      { method: 'POST' },
+      serverConfig
+    );
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error(`deleteAPIKey failed: ${response.status} ${t}`);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
+}
+
+export async function getTransferSpeedLimits(serverConfig) {
+  if (!compareWebApiVersion(serverConfig, '2.16.0')) {
+    return {
+      success: false,
+      error: {
+        userMessage: 'Global speed limits API requires Web API 2.16.0+.',
+      },
+    };
+  }
+  try {
+    const apiUrl = getApiUrl(serverConfig.url, 'transfer/getSpeedLimits');
+    const response = await qbitSession.fetch(apiUrl, {}, serverConfig);
+    if (!response.ok) {
+      throw new Error(`getSpeedLimits failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return {
+      success: true,
+      limits: {
+        dlLimit: Number(data.dl_limit ?? data.dlLimit ?? 0),
+        upLimit: Number(data.up_limit ?? data.upLimit ?? 0),
+        altDlLimit: Number(data.alt_dl_limit ?? data.altDlLimit ?? 0),
+        altUpLimit: Number(data.alt_up_limit ?? data.altUpLimit ?? 0),
+      },
+    };
+  } catch (error) {
+    return { success: false, error: mapQbitFlowError(error) };
+  }
 }
 
 export async function getCategories(serverConfig) {
@@ -539,6 +772,17 @@ export async function parseTorrentMetadata(serverConfig, torrentBase64, fileName
 }
 
 export async function fetchTorrentMetadataFromUrl(serverConfig, torrentUrl) {
+  if (compareWebApiVersion(serverConfig, '2.11.9')) {
+    const apiResult = await fetchTorrentMetadataFromSource(serverConfig, torrentUrl);
+    if (apiResult.success) {
+      return apiResult;
+    }
+    debug.warn(
+      'qBittorrent fetchMetadata failed, falling back to browser fetch:',
+      apiResult.error?.technicalDetail || apiResult.error?.userMessage
+    );
+  }
+
   try {
     const response = await fetch(torrentUrl, { credentials: 'include' });
     if (!response.ok) {
@@ -552,8 +796,20 @@ export async function fetchTorrentMetadataFromUrl(serverConfig, torrentUrl) {
       const n = p.substring(p.lastIndexOf('/') + 1);
       if (n.toLowerCase().endsWith('.torrent')) fileName = n;
     } catch (_) { /* ignore */ }
-    return parseTorrentMetadata(serverConfig, base64, fileName);
+    const parsed = await parseTorrentMetadata(serverConfig, base64, fileName);
+    if (parsed.success) {
+      return parsed;
+    }
+    if (compareWebApiVersion(serverConfig, '2.11.9')) {
+      const retryApi = await fetchTorrentMetadataFromSource(serverConfig, torrentUrl);
+      if (retryApi.success) return retryApi;
+    }
+    return parsed;
   } catch (error) {
+    if (compareWebApiVersion(serverConfig, '2.11.9')) {
+      const lastApi = await fetchTorrentMetadataFromSource(serverConfig, torrentUrl);
+      if (lastApi.success) return lastApi;
+    }
     return {
       success: false,
       error: {
@@ -808,8 +1064,9 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     return response.ok;
   }
 
-  async function _resumeTorrent(hash) {
-    const resumeUrl = getApiUrl(url, 'torrents/resume');
+  async function _resumeTorrent(hash, appVersion) {
+    const { resume: resumePath } = torrentPauseResumeApiPaths(appVersion);
+    const resumeUrl = getApiUrl(url, resumePath);
     const formData = new FormData();
     formData.append('hashes', hash);
 
@@ -824,10 +1081,11 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             throw new Error(`Torrent with hash ${hash} not found on server. It may have been removed or the hash is incorrect.`);
         }
         
-        // Throw a more specific error to be caught by the calling function
-        throw new Error(`Failed to resume torrent ${hash}. Server response: ${response.statusText}`);
+        throw new Error(
+          `Failed to resume torrent ${hash}. Server response: ${errorText || response.statusText}`
+        );
     }
-    debug.log(`qBittorrent: Resumed torrent ${hash}`);
+    debug.log(`qBittorrent: Resumed torrent ${hash} via ${resumePath}`);
     return response.ok;
   }
 
@@ -913,7 +1171,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
 
     const version = await getQbittorrentVersion(serverConfig);
-    const useStopped = version.startsWith('v5.1.2') || version.startsWith('v5.1.3') || version.startsWith('v5.1.4') || version.startsWith('v5.1.5') || version.startsWith('v5.2');
+    const useStopped = qbittorrentUsesStartStopApi(version);
     
     if (useFileSelection || userWantsPaused) {
         addTorrentFormData.append(useStopped ? 'stopped' : 'paused', 'true');
@@ -976,7 +1234,7 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
             if (!userWantsPaused) {
                 try {
-                    await _resumeTorrent(newHash);
+                    await _resumeTorrent(newHash, version);
                 } catch (resumeError) {
                     debug.warn(`qBittorrent: Failed to resume torrent ${newHash}, but torrent was added successfully. Error: ${resumeError.message}`);
                     // Don't throw here - just log the warning and continue
@@ -1046,7 +1304,7 @@ export async function getActiveTorrents(serverConfig) {
     throw new Error(`Failed to list torrents: ${response.status} ${response.statusText}`);
   }
   const torrents = await response.json();
-  return torrents.slice(0, 20).map((torrent) => ({
+  return torrents.map((torrent) => ({
     hash: torrent.hash,
     name: torrent.name,
     progress: Number(torrent.progress || 0),
@@ -1054,6 +1312,7 @@ export async function getActiveTorrents(serverConfig) {
     eta: Number(torrent.eta || 0),
     dlspeed: Number(torrent.dlspeed || 0),
     upspeed: Number(torrent.upspeed || 0),
+    added_on: Number(torrent.added_on || 0),
   }));
 }
 
@@ -1061,9 +1320,11 @@ export async function torrentAction(serverConfig, actionType, hash) {
   if (!hash) {
     return { success: false, error: "Missing torrent hash." };
   }
+  const appVersion = await resolveQbittorrentAppVersion(serverConfig);
+  const pauseResumePaths = torrentPauseResumeApiPaths(appVersion);
   const actionMap = {
-    pause: "torrents/pause",
-    resume: "torrents/resume",
+    pause: pauseResumePaths.pause,
+    resume: pauseResumePaths.resume,
     delete: "torrents/delete",
   };
   const apiPath = actionMap[actionType];
@@ -1175,6 +1436,14 @@ export async function testConnection(serverConfig) {
       if (cats.success) categoryCount = cats.categories.length;
     } catch (_) { /* non-fatal */ }
 
+    let globalSpeedLimits = null;
+    const limitsResult = await getTransferSpeedLimits(serverConfig);
+    if (limitsResult.success) {
+      globalSpeedLimits = limitsResult.limits;
+    }
+
+    const authMode = qbitAuthModeLabel(serverConfig);
+
     return {
         success: true,
         data: {
@@ -1183,6 +1452,8 @@ export async function testConnection(serverConfig) {
             webApiVersion: buildInfo.webUIVersion,
             freeSpace: buildInfo.freeSpace,
             categoryCount,
+            authMode,
+            globalSpeedLimits,
             torrentsInfo: {
                 total: buildInfo.total_torrents,
                 downloadSpeed: buildInfo.dl_info_speed,

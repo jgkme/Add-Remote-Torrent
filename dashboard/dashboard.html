@@ -10,11 +10,57 @@
     body {
         font-family: 'Inter', sans-serif;
     }
+    .dashboard-page {
+        width: 100%;
+        max-width: 96rem;
+        margin-inline: auto;
+        padding-inline: clamp(1rem, 3vw, 2rem);
+    }
+    .dashboard-server-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+        gap: 1.5rem;
+        align-items: start;
+        width: 100%;
+    }
+    .server-card {
+        min-width: 0;
+        width: 100%;
+    }
+    .server-card.server-card--expanded {
+        grid-column: 1 / -1;
+    }
+    .server-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        gap: 0.35rem 1.25rem;
+    }
+    .server-torrent-tools {
+        width: 100%;
+        min-width: 0;
+    }
+    .server-torrent-panel {
+        width: 100%;
+        min-width: 0;
+        max-height: min(70vh, 36rem);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 0.25rem;
+    }
+    .server-torrent-panel .torrent-card {
+        min-width: 0;
+        width: 100%;
+    }
+    @media (min-width: 640px) {
+        .server-torrent-panel .torrent-card {
+            max-width: 100%;
+        }
+    }
   </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4 md:p-8">
-  <div class="container mx-auto max-w-6xl">
-    <header class="mb-8 flex justify-between items-center">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen py-4 md:py-8">
+  <div class="dashboard-page">
+    <header class="mb-8 flex flex-wrap gap-4 justify-between items-center">
       <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
       <a href="../options/options.html" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
         Go to Options
@@ -29,7 +75,7 @@
           Refresh All
         </button>
       </div>
-      <div id="serverStatusContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="serverStatusContainer" class="dashboard-server-grid">
         <!-- Server status cards will be populated here by dashboard.js -->
         <p class="text-gray-500 dark:text-gray-400">Loading server statuses...</p>
       </div>
@@ -52,6 +98,8 @@
     </section>
 
   </div>
+  <script src="../js/torrent-ui.js"></script>
+  <script src="../js/torrent-list.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

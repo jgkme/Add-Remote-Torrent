@@ -39,6 +39,7 @@
       <p><strong>Paused:</strong> <span id="activeServerPaused" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
       <p><strong>DL Speed:</strong> <span id="activeServerDlSpeed" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
       <p><strong>UL Speed:</strong> <span id="activeServerUlSpeed" class="font-normal text-gray-600 dark:text-gray-300">N/A</span></p>
+      <p id="activeServerGlobalLimitsRow" style="display:none;"><strong>Global limits:</strong> <span id="activeServerGlobalLimits" class="font-normal text-gray-600 dark:text-gray-300"></span></p>
     </section>
 
     <section class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
@@ -79,11 +80,19 @@
     </section>
 
     <section id="torrentListSection" class="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
-      <div class="flex items-center justify-between mb-2">
-        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Active Torrents</p>
-        <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md transition-colors hover:bg-gray-300 dark:hover:bg-gray-500">Refresh</button>
+      <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <label for="torrentListModeSelect" class="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0">Torrents</label>
+        <div class="flex items-center gap-2 ml-auto">
+          <select id="torrentListModeSelect" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white" title="Which torrents to show" aria-label="Torrent list filter">
+            <option value="recent" selected>Recently added</option>
+            <option value="active">Active now</option>
+            <option value="all">All</option>
+          </select>
+          <button id="refreshTorrentsButton" class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 rounded-md transition-colors hover:bg-gray-300 dark:hover:bg-gray-500">Refresh</button>
+        </div>
       </div>
-      <div id="torrentListContainer" aria-live="polite" class="space-y-2 max-h-40 overflow-y-auto">
+      <p id="torrentListSummary" class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 hidden"></p>
+      <div id="torrentListContainer" aria-live="polite" class="space-y-2 max-h-52 overflow-y-auto">
         <p class="text-gray-600 dark:text-gray-200">No data yet.</p>
       </div>
     </section>

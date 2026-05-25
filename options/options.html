@@ -276,20 +276,34 @@
         <input type="text" id="qbittorrentSavePath" name="qbittorrentSavePath" placeholder="/downloads" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
       </div>
 
+      <div class="form-group mt-6" id="qbittorrentAuthModeGroup" style="display:none;">
+        <label for="qbittorrentAuthMode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">qBittorrent API authentication:</label>
+        <select id="qbittorrentAuthMode" name="qbittorrentAuthMode" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+          <option value="cookie">Web UI cookie login (default)</option>
+          <option value="basic">Web API HTTP Basic (2.15+, username/password)</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use <strong>Basic</strong> when cookie login fails but username/password work in the browser (qBittorrent 5.2+). Do not use with reverse-proxy Basic Auth below — pick one method. A saved <strong>API key</strong> overrides this dropdown.</p>
+      </div>
+
       <div class="form-group mt-6" id="qbittorrentApiKeyGroup" style="display:none;">
         <label for="qbittorrentApiKey" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Web API key (optional, qBittorrent 5.2+):</label>
         <input type="password" id="qbittorrentApiKey" name="qbittorrentApiKey" autocomplete="off" placeholder="qbt_… (leave empty to use username/password login)" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate under Preferences → Web UI → API Key. When set, the extension uses Bearer authentication instead of Web UI cookie login (helps with some 5.2 setups). Cannot combine with reverse-proxy Basic Auth on the same request.</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Generate under Preferences → Web UI → API Key, or use <strong>Rotate API key on server</strong> below (Web API 2.14.1+). When set, Bearer auth is used instead of cookie/Basic login.</p>
         <label class="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
           <input type="checkbox" id="qbittorrentApiKeyClear" name="qbittorrentApiKeyClear" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600">
           <span>Remove saved API key on save</span>
         </label>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button type="button" id="qbitRotateApiKeyBtn" class="px-3 py-1.5 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-md">Rotate API key on server</button>
+          <button type="button" id="qbitDeleteApiKeyOnServerBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Delete API key on server</button>
+        </div>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Rotate generates a new key on qBittorrent and fills the field above — click <strong>Save Server</strong> to store it. Delete removes the key on the server (you may need to generate a new one in qBittorrent).</p>
       </div>
 
       <div class="form-group mt-6 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40" id="qbittorrentToolsGroup" style="display:none;">
         <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">qBittorrent sync &amp; import</h3>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Pull categories/tags/paths from this server, or import a <code class="text-xs">categories.json</code> export (5.2+). No direct file upload to qBittorrent — import parses locally and uses the Web API.</p>
-        <p class="text-xs text-amber-700 dark:text-amber-300 mb-3">Run <strong>Test connection</strong> once per profile to store Web API version (unlocks free-space hints, faster add feedback, and add-time file priorities). After sync or import, click <strong>Save Server</strong> to keep changes.</p>
+        <p class="text-xs text-amber-700 dark:text-amber-300 mb-3">Run <strong>Test connection</strong> once per profile to store Web API version (unlocks free-space hints, <code class="text-xs">fetchMetadata</code> file lists, faster add feedback, and global speed limit display on Web API 2.16+). After sync or import, click <strong>Save Server</strong> to keep changes.</p>
         <div class="flex flex-wrap gap-2 mb-3">
           <button type="button" id="syncQbitCategoriesBtn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md">Sync categories</button>
           <button type="button" id="importQbitCategoriesBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Import categories…</button>
@@ -306,6 +320,45 @@
           <button type="button" id="refreshQbitSearchPluginsBtn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-md">Refresh search plugins</button>
           <ul id="qbitSearchPluginsList" class="mt-2 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside max-h-24 overflow-y-auto"></ul>
         </div>
+      </div>
+
+      <div class="form-group mt-6 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40" id="synologyDownloadStationGroup" style="display:none;">
+        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Synology Download Station (advanced)</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Leave API versions at defaults unless Synology returns error 102/103. Auth stays <strong>SID-only</strong> (no SynoToken) for legacy DSM compatibility.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+          <div>
+            <label for="synologyAuthApiVersion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Auth API version:</label>
+            <select id="synologyAuthApiVersion" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm">
+              <option value="6">6 (default)</option>
+              <option value="7">7</option>
+            </select>
+          </div>
+          <div>
+            <label for="synologyTaskApiVersion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task API version:</label>
+            <select id="synologyTaskApiVersion" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3 (default)</option>
+            </select>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input type="checkbox" id="synologyAutoResume" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600">
+          <span>Auto-resume after add (experimental — lists tasks before/after create)</span>
+        </label>
+      </div>
+
+      <div class="form-group mt-6" id="porlaOptionsGroup" style="display:none;">
+        <label for="porlaPreset" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Porla preset (optional):</label>
+        <input type="text" id="porlaPreset" placeholder="default" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white text-sm">
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maps to <code class="text-xs">torrents.add</code> <code class="text-xs">preset</code>. Category/tags use extension labels when set.</p>
+      </div>
+
+      <div class="form-group mt-6" id="floodOptionsGroup" style="display:none;">
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input type="checkbox" id="floodSequentialDownload" class="h-4 w-4 rounded border-gray-300 dark:border-gray-600">
+          <span>Sequential download by default (Flood)</span>
+        </label>
       </div>
 
       <div class="form-group mt-6" id="ruTorrentPathGroup" style="display:none;">

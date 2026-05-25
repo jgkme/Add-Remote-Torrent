@@ -40,14 +40,14 @@ async function makeApiRequest(serverConfig, method, params = {}, token) {
         jsonrpc: '2.0',
         id: Date.now(),
         method: method,
-        params: params
+        params: params,
     };
 
     try {
         const response = await fetch(url, {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -66,25 +66,84 @@ async function makeApiRequest(serverConfig, method, params = {}, token) {
     }
 }
 
+function buildPorlaAddParams(torrentUrl, torrentOptions, serverConfig) {
+    const params = {};
+
+    if (torrentUrl.startsWith('magnet:')) {
+        params.magnet_uri = torrentUrl;
+    } else {
+        params.ti = torrentOptions.torrentFileContentBase64;
+    }
+
+    if (torrentOptions.downloadDir) {
+        params.save_path = torrentOptions.downloadDir;
+    }
+    if (torrentOptions.paused) {
+        params.paused = true;
+    }
+
+    const category =
+        (typeof torrentOptions.category === 'string' && torrentOptions.category.trim()) ||
+        '';
+    if (category) {
+        params.category = category.trim();
+    }
+
+    const tagList = [];
+    if (Array.isArray(torrentOptions.labels) && torrentOptions.labels.length > 0) {
+        tagList.push(...torrentOptions.labels.map((t) => String(t).trim()).filter(Boolean));
+    } else if (typeof torrentOptions.tags === 'string' && torrentOptions.tags.trim()) {
+        tagList.push(
+            ...torrentOptions.tags
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean)
+        );
+    }
+    if (tagList.length > 0) {
+        params.tags = tagList;
+    }
+
+    const preset = (serverConfig.porlaPreset || '').trim();
+    if (preset) {
+        params.preset = preset;
+    }
+
+    if (serverConfig.porlaDownloadLimit > 0) {
+        params.download_limit = Number(serverConfig.porlaDownloadLimit);
+    }
+    if (serverConfig.porlaUploadLimit > 0) {
+        params.upload_limit = Number(serverConfig.porlaUploadLimit);
+    }
+
+    return params;
+}
+
+async function addTorrentWithParams(serverConfig, params, token) {
+    let result = await makeApiRequest(serverConfig, 'torrents.add', params, token);
+    if (result.success) {
+        return result;
+    }
+
+    const errMsg = String(result.error?.userMessage || '');
+    const optionalKeys = ['category', 'tags', 'preset', 'download_limit', 'upload_limit'];
+    if (!optionalKeys.some((k) => k in params)) {
+        return result;
+    }
+
+    debug.warn('Porla: Retrying torrents.add without optional params:', errMsg);
+    const minimal = { ...params };
+    for (const key of optionalKeys) {
+        delete minimal[key];
+    }
+    return makeApiRequest(serverConfig, 'torrents.add', minimal, token);
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     try {
         const token = await authenticateForToken(serverConfig);
-        const params = {};
-
-        if (torrentUrl.startsWith("magnet:")) {
-            params.magnet_uri = torrentUrl;
-        } else {
-            params.ti = torrentOptions.torrentFileContentBase64;
-        }
-
-        if (torrentOptions.downloadDir) {
-            params.save_path = torrentOptions.downloadDir;
-        }
-        if (torrentOptions.paused) {
-            params.paused = true;
-        }
-
-        return makeApiRequest(serverConfig, 'torrents.add', params, token);
+        const params = buildPorlaAddParams(torrentUrl, torrentOptions, serverConfig);
+        return addTorrentWithParams(serverConfig, params, token);
     } catch (error) {
         return { success: false, error: { userMessage: `Failed to add torrent to Porla: ${error.message}` } };
     }
@@ -99,8 +158,8 @@ export async function testConnection(serverConfig) {
                 success: true,
                 data: {
                     message: 'Successfully connected to Porla.',
-                    version: result.data.porla
-                }
+                    version: result.data.porla,
+                },
             };
         }
         return result;

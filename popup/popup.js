@@ -1,4 +1,8 @@
 import { debug } from '../debug';
+import '../js/torrent-ui.js';
+import '../js/torrent-list.js';
+
+const { decodeDataAttr, encodeDataAttr, renderTorrentCardHtml } = globalThis.TorrentUI;
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -33,6 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const activeServerUlSpeedSpan = document.getElementById('activeServerUlSpeed');
     const refreshTorrentsButton = document.getElementById('refreshTorrentsButton');
     const torrentListContainer = document.getElementById('torrentListContainer');
+    const torrentListModeSelect = document.getElementById('torrentListModeSelect');
+    const torrentListSummary = document.getElementById('torrentListSummary');
+    let torrentListMode = 'recent';
     const torrentDropZone = document.getElementById('torrentDropZone');
     const torrentFileInput = document.getElementById('torrentFileInput');
     const clipboardStatusText = document.getElementById('clipboardStatusText');
@@ -64,18 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return div.innerHTML;
     }
 
-    function encodeDataAttr(value) {
-        return encodeURIComponent(String(value ?? ''));
-    }
-
-    function decodeDataAttr(value) {
-        try {
-            return decodeURIComponent(String(value ?? ''));
-        } catch {
-            return String(value ?? '');
-        }
-    }
-
     function displayActiveServerDetails(serverId) {
         const server = servers.find(s => s.id === serverId);
         if (server) {
@@ -86,6 +81,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeServerPausedSpan.textContent = server.addPaused ? 'Yes' : 'No';
             activeServerDlSpeedSpan.textContent = `${formatBytes(server.downloadSpeed)}/s`;
             activeServerUlSpeedSpan.textContent = `${formatBytes(server.uploadSpeed)}/s`;
+            const limitsRow = document.getElementById('activeServerGlobalLimitsRow');
+            const limitsSpan = document.getElementById('activeServerGlobalLimits');
+            if (
+                limitsRow &&
+                limitsSpan &&
+                server.clientType === 'qbittorrent' &&
+                server.globalSpeedLimits
+            ) {
+                const gl = server.globalSpeedLimits;
+                const fmt = (n) => (n <= 0 ? '∞' : `${formatBytes(n)}/s`);
+                limitsSpan.textContent = `DL ${fmt(gl.dlLimit)}, UL ${fmt(gl.upLimit)}`;
+                limitsRow.style.display = 'block';
+            } else if (limitsRow) {
+                limitsRow.style.display = 'none';
+            }
             activeServerDetailsDiv.style.display = 'block';
         } else {
             activeServerClientTypeSpan.textContent = 'N/A';
@@ -168,7 +178,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function loadPopupData() {
-        chrome.storage.local.get(['servers', 'activeServerId', 'lastActionStatus'], (result) => {
+        chrome.storage.local.get(['servers', 'activeServerId', 'lastActionStatus', 'torrentListMode'], (result) => {
+            torrentListMode = result.torrentListMode || 'recent';
+            if (torrentListModeSelect) {
+                torrentListModeSelect.value = torrentListMode;
+            }
             servers = (result.servers || []).map(s => ({
                 ...s,
                 clientType: s.clientType || 'qbittorrent',
@@ -264,41 +278,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function renderTorrentList(torrents, errorMessage = '') {
+    function updateTorrentListSummary(shown, total, mode) {
+        if (!torrentListSummary) return;
+        if (!total && shown === 0) {
+            torrentListSummary.classList.add('hidden');
+            return;
+        }
+        const labels = { recent: 'recently added', active: 'active', all: 'total' };
+        const label = labels[mode] || mode;
+        torrentListSummary.textContent =
+            total > shown
+                ? `Showing ${shown} of ${total} ${label} torrents (newest first).`
+                : `Showing ${shown} ${label} torrent(s), newest first.`;
+        torrentListSummary.classList.remove('hidden');
+    }
+
+    function renderTorrentList(torrents, errorMessage = '', meta = {}) {
         if (errorMessage) {
             torrentListContainer.innerHTML = `<p class="text-red-500 dark:text-red-300">${escapeHtml(errorMessage)}</p>`;
+            torrentListSummary?.classList.add('hidden');
             return;
         }
         if (!Array.isArray(torrents) || torrents.length === 0) {
-            torrentListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-300">No active torrents right now. Start one from Manual Add, Search, or Clipboard.</p>';
+            const emptyByMode = {
+                recent: 'No recently added torrents on this server.',
+                active: 'No active transfers right now.',
+                all: 'No torrents on this server.',
+            };
+            torrentListContainer.innerHTML = `<p class="text-gray-500 dark:text-gray-300">${escapeHtml(emptyByMode[meta.listMode] || emptyByMode.recent)}</p>`;
+            torrentListSummary?.classList.add('hidden');
             return;
         }
-        torrentListContainer.innerHTML = torrents.map((torrent) => {
-            const progressPct = Math.max(0, Math.min(100, Math.round((torrent.progress || 0) * 100)));
-            return `
-                <div class="rounded border border-gray-200 dark:border-gray-600 p-2">
-                    <p class="font-medium text-gray-800 dark:text-gray-100 truncate" title="${escapeHtml(torrent.name)}">${escapeHtml(torrent.name)}</p>
-                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded h-1.5 mt-1 mb-1">
-                        <div class="bg-blue-500 h-1.5 rounded" style="width: ${progressPct}%"></div>
-                    </div>
-                    <p class="text-[10px] text-gray-600 dark:text-gray-300">${progressPct}% | DL ${formatBytes(torrent.dlspeed)}/s | UL ${formatBytes(torrent.upspeed)}/s</p>
-                    <div class="mt-1 space-x-1">
-                        <button data-action="pause" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-yellow-500 text-white rounded">Pause</button>
-                        <button data-action="resume" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-green-600 text-white rounded">Resume</button>
-                        <button data-action="delete" data-hash="${encodeDataAttr(torrent.hash)}" style="min-height:32px" class="torrent-action-btn px-2 py-0.5 text-[11px] bg-red-600 text-white rounded">Delete</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        torrentListContainer.innerHTML = torrents
+            .map((torrent) =>
+                renderTorrentCardHtml(torrent, {
+                    formatBytes,
+                    escapeHtml,
+                })
+            )
+            .join('');
+        updateTorrentListSummary(torrents.length, meta.total ?? torrents.length, meta.listMode || torrentListMode);
     }
 
     function refreshTorrentList() {
-        chrome.runtime.sendMessage({ action: 'getPopupTorrents' }, (response) => {
+        chrome.runtime.sendMessage(
+            { action: 'getPopupTorrents', listMode: torrentListMode },
+            (response) => {
             if (chrome.runtime.lastError) {
                 renderTorrentList([], chrome.runtime.lastError.message);
                 return;
             }
-            renderTorrentList(response?.torrents || [], response?.error || '');
+            renderTorrentList(response?.torrents || [], response?.error || '', {
+                total: response?.total,
+                listMode: response?.listMode || torrentListMode,
+            });
         });
     }
 
@@ -516,6 +549,14 @@ Add any other context about the problem here. Please double-check that you have 
             // debug.log('Last action status cleared.');
         });
     });
+
+    if (torrentListModeSelect) {
+        torrentListModeSelect.addEventListener('change', () => {
+            torrentListMode = torrentListModeSelect.value || 'recent';
+            chrome.storage.local.set({ torrentListMode });
+            refreshTorrentList();
+        });
+    }
 
     refreshTorrentsButton.addEventListener('click', () => {
         refreshPopupServerStats();

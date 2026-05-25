@@ -4,14 +4,34 @@ import { debug } from '../debug';
 // This file will contain the logic for interacting with the uTorrent WebUI API.
 
 // uTorrent uses a token for CSRF protection, fetched from /gui/token.html
-let uTorrentToken = null;
-let lastTokenFetchTime = 0;
-const TOKEN_CACHE_DURATION = 5 * 60 * 1000; // Cache token for 5 minutes
+const uTorrentTokenBuckets = new Map();
+const TOKEN_CACHE_DURATION = 5 * 60 * 1000;
+
+function utorrentSessionKey(serverConfig) {
+    if (!serverConfig) return 'unknown';
+    const id = serverConfig.id;
+    if (id !== undefined && id !== null && String(id).trim() !== '') {
+        return `id:${String(id).trim()}`;
+    }
+    const url = (serverConfig.url || '').trim().replace(/\/$/, '');
+    const relpath = (serverConfig.utorrentrelativepath || '/gui/').trim();
+    const username = (serverConfig.username || '').trim();
+    return `cfg:${url}|${relpath}|${username}`;
+}
+
+function getUtorrentTokenBucket(serverConfig) {
+    const key = utorrentSessionKey(serverConfig);
+    if (!uTorrentTokenBuckets.has(key)) {
+        uTorrentTokenBuckets.set(key, { token: null, lastFetchTime: 0 });
+    }
+    return uTorrentTokenBuckets.get(key);
+}
 
 async function getCsrfToken(serverConfig) {
+    const bucket = getUtorrentTokenBucket(serverConfig);
     const now = Date.now();
-    if (uTorrentToken && (now - lastTokenFetchTime < TOKEN_CACHE_DURATION)) {
-        return uTorrentToken;
+    if (bucket.token && now - bucket.lastFetchTime < TOKEN_CACHE_DURATION) {
+        return bucket.token;
     }
 
     // Use the user-defined relative path, defaulting to /gui/
@@ -51,16 +71,16 @@ async function getCsrfToken(serverConfig) {
         const match = /<div id='token' style='display:none;'>([^<]+)<\/div>/.exec(html);
         
         if (match && match[1]) {
-            uTorrentToken = match[1];
-            lastTokenFetchTime = now;
+            bucket.token = match[1];
+            bucket.lastFetchTime = now;
             debug.log(`uTorrent: Successfully fetched token from ${tokenUrl}`);
-            return uTorrentToken;
+            return bucket.token;
         } else {
             throw new Error(`CSRF token not found in response from ${tokenUrl}`);
         }
     } catch (error) {
         debug.error('Error fetching uTorrent CSRF token:', error);
-        uTorrentToken = null;
+        bucket.token = null;
         throw new Error(`TokenFetchError: ${error.message}`);
     }
 }

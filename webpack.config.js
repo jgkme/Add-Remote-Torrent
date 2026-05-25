@@ -22,6 +22,9 @@ module.exports = (env, argv) => {
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
+      // Extension-root URLs for any shared assets (options/popup live in subfolders).
+      publicPath: '/',
+      globalObject: 'self',
       filename: (pathData) => {
         // Place JS files in subdirectories matching source structure
         if (pathData.chunk.name === 'options') return 'options/[name].js';
@@ -29,7 +32,7 @@ module.exports = (env, argv) => {
         if (pathData.chunk.name === 'confirmAdd') return 'confirmAdd/[name].js'; // Adjusted for new entry key
         return '[name].js';
       },
-      // clean: true, // Temporarily disable to see if file persists
+      clean: true,
     },
     module: {
       rules: [
@@ -62,13 +65,50 @@ module.exports = (env, argv) => {
       }),
       new CopyPlugin({
         patterns: [
-          { from: 'manifest.json', to: 'manifest.json' },
+          {
+            from: 'manifest.json',
+            to: 'manifest.json',
+            transform(content) {
+              const manifest = JSON.parse(content.toString());
+              // Bundled background.js is an IIFE, not an ES module.
+              if (manifest.background?.type === 'module') {
+                delete manifest.background.type;
+              }
+              return JSON.stringify(manifest, null, 2);
+            },
+          },
           { from: 'icons', to: 'icons' },
-          { from: 'options/options.html', to: 'options/options.html' },
-          { from: 'popup/popup.html', to: 'popup/popup.html' },
-          { from: 'confirmAdd/confirmAdd.html', to: 'confirmAdd/confirmAdd.html' },
+          {
+            from: 'options/options.html',
+            to: 'options/options.html',
+            transform: (content) =>
+              content.toString().replace(
+                /<script type="module" src="options\.js"><\/script>/,
+                '<script src="options.js"></script>'
+              ),
+          },
+          {
+            from: 'popup/popup.html',
+            to: 'popup/popup.html',
+            transform: (content) =>
+              content.toString().replace(
+                /<script type="module" src="popup\.js"><\/script>/,
+                '<script src="popup.js"></script>'
+              ),
+          },
+          {
+            from: 'confirmAdd/confirmAdd.html',
+            to: 'confirmAdd/confirmAdd.html',
+            transform: (content) =>
+              content.toString().replace(
+                /<script type="module" src="confirmAdd\.js"><\/script>/,
+                '<script src="confirmAdd.js"></script>'
+              ),
+          },
           { from: 'dashboard', to: 'dashboard' },
           { from: 'js/theme.js', to: 'js/theme.js' },
+          { from: 'js/torrent-ui.js', to: 'js/torrent-ui.js' },
+          { from: 'js/torrent-list.js', to: 'js/torrent-list.js' },
           { from: 'audio', to: 'audio' }, // Added to copy audio files
           { from: 'offscreen_audio.html', to: 'offscreen_audio.html' }, // Added to copy offscreen document
           { from: 'offscreen_audio.js', to: 'offscreen_audio.js' } // Added to copy offscreen script
@@ -80,9 +120,19 @@ module.exports = (env, argv) => {
       }),
     ],
     optimization: {
+      // One self-contained bundle per entry (no 970.js stubs; options/popup must not split).
+      splitChunks: false,
+      runtimeChunk: false,
       minimize: isProduction,
       minimizer: [
         new TerserPlugin({
+          // Copied dashboard.js is plain script (not webpack entry); mangling can
+          // shadow function names inside forEach (ReferenceError before initialization).
+          exclude: [
+            /dashboard[\\/]dashboard\.js$/,
+            /js[\\/]torrent-ui\.js$/,
+            /js[\\/]torrent-list\.js$/,
+          ],
           terserOptions: {
             compress: {
               // drop_console: isProduction, // Temporarily disable for testing background.js
