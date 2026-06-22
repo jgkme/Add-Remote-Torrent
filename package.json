@@ -17,8 +17,8 @@
   "author": "jgkme https://github.com/jgkme/Add-Remote-Torrent/",
   "license": "GPL-3.0 license",
   "devDependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.5",
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
     "@tailwindcss/postcss": "^4.3.0",
     "babel-loader": "^10.1.1",
     "copy-webpack-plugin": "^14.0.0",
