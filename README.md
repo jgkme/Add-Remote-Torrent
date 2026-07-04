@@ -148,8 +148,8 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 **Q: I'm using an old version of uTorrent (like v2.0.4) and getting a "Failed to obtain uTorrent CSRF token" error.**
 A: Very old versions of the uTorrent WebUI have a different API. When you configure your server in the extension's options, make sure you select **"uTorrent (Old)"** as the "Client Type". This uses a legacy API handler that is compatible with older clients. If you have selected the standard "uTorrent" client type, it will fail with a token error.
 
-**Q: On macOS, clicking torrent links doesn't do anything.**
-A: Please ensure that the "Enable on-page link/form catching" option is enabled in the extension's settings. You can find this under "Other Global Settings" on the options page. **v0.4.43+** only loads the on-page script when that option is on (it is **off by default** for new installs). If you enabled it before updating, the setting is kept—reload the page or open a new tab if interception does not start right away; tabs in other windows may need a refresh. If it is enabled and still not working, please open an issue on GitHub and provide as much detail as possible, including your macOS and Chrome versions.
+**Q: Clicking torrent links on a page doesn't do anything.**
+A: Enable **Enable on-page link/form catching** under **Other Global Settings** on the Options page. **v0.4.49+** prompts for **site access** when you turn it on—approve that prompt so the extension can intercept links on web pages. **v0.4.43+** only loads the on-page script when that option is on (it is **off by default** for new installs). Tabs in the focused window activate immediately; refresh other open tabs if needed. If you enabled link catching before **v0.4.49**, toggle it off and on once to grant site access. If it still fails, open an issue on GitHub with your browser, OS, and whether you saw the permission prompt.
 
 **Q: I'm having trouble connecting to rTorrent on seedbox.io.**
 A: For older `seedbox.io` accounts, you may need a specific URL format. When configuring the `rTorrent (XML-RPC)` client, try the following:
@@ -204,6 +204,10 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.49 (2026-07-04):**
+  - **Fix:** On-page link catching requests site access when enabled—works immediately without a browser restart ([#63](https://github.com/jgkme/Add-Remote-Torrent/issues/63)).
+  - **Chore:** Babel 8 dev dependency bump.
+  - **Build:** Release artifacts for `v0.4.49`.
 - **v0.4.48 (2026-05-25):**
   - **Feat (qBittorrent):** **RSS Reader** — feeds, articles, double-click add, download rules on server; import feeds to extension auto-add.
   - **Feat:** Per-server delete torrent **with files** (qBittorrent, Transmission, Deluge, rTorrent).

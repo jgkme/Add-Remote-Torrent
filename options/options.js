@@ -1903,8 +1903,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         chrome.storage.local.set({ advancedAddDialog: globalSettings.advancedAddDialog }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
     catchFromPageToggle.addEventListener('change', () => {
-        globalSettings.catchfrompage = catchFromPageToggle.checked;
-        chrome.storage.local.set({ catchfrompage: globalSettings.catchfrompage }, () => { displayFormStatus('Global settings updated.', 'success'); });
+        const enableLinkCatching = catchFromPageToggle.checked;
+        const persistCatchFromPage = () => {
+            globalSettings.catchfrompage = enableLinkCatching;
+            chrome.storage.local.set({ catchfrompage: globalSettings.catchfrompage }, () => {
+                displayFormStatus('Global settings updated.', 'success');
+            });
+        };
+        if (!enableLinkCatching) {
+            persistCatchFromPage();
+            return;
+        }
+        chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] }, (granted) => {
+            if (!granted) {
+                catchFromPageToggle.checked = false;
+                displayFormStatus(
+                    'Site access is required for on-page link catching. The setting was not enabled.',
+                    'error'
+                );
+                return;
+            }
+            persistCatchFromPage();
+        });
     });
     linksFoundIndicatorToggle.addEventListener('change', () => {
         globalSettings.linksfoundindicator = linksFoundIndicatorToggle.checked;
@@ -2176,6 +2196,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             toggleMappingListVisibility(); 
             globalSettings.catchfrompage = result.catchfrompage || false; 
             catchFromPageToggle.checked = globalSettings.catchfrompage;
+            if (globalSettings.catchfrompage) {
+                chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] }, (granted) => {
+                    if (!granted) {
+                        displayFormStatus(
+                            'On-page link catching is on but site access is missing. Toggle it off and on to approve the permission prompt.',
+                            'error'
+                        );
+                    }
+                });
+            }
             globalSettings.linksfoundindicator = result.linksfoundindicator || false;
             linksFoundIndicatorToggle.checked = globalSettings.linksfoundindicator;
             

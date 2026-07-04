@@ -7,7 +7,29 @@ import { debug } from './debug.js';
 
 export const LINK_CATCHING_CONTENT_SCRIPT_ID = 'art-link-catching';
 
+/** Matches manifest optional_host_permissions; required before register/inject on pages. */
+export const LINK_CATCHING_HOST_ORIGINS = ['http://*/*', 'https://*/*'];
+
 const INJECTABLE_URL = /^https?:\/\//i;
+
+export async function hasLinkCatchingHostPermissions() {
+    return chrome.permissions.contains({ origins: LINK_CATCHING_HOST_ORIGINS });
+}
+
+export function requestLinkCatchingHostPermissions() {
+    return new Promise((resolve) => {
+        chrome.permissions.request({ origins: LINK_CATCHING_HOST_ORIGINS }, (granted) => {
+            resolve(Boolean(granted));
+        });
+    });
+}
+
+export async function ensureLinkCatchingHostPermissions() {
+    if (await hasLinkCatchingHostPermissions()) {
+        return true;
+    }
+    return requestLinkCatchingHostPermissions();
+}
 
 /**
  * @param {boolean} enabled
@@ -28,6 +50,19 @@ export async function syncLinkCatchingContentScript(enabled) {
     }
 
     const isRegistered = registered.some((s) => s.id === LINK_CATCHING_CONTENT_SCRIPT_ID);
+
+    if (enabled && !(await hasLinkCatchingHostPermissions())) {
+        debug.warn(
+            '[ART] Link catching enabled but site access (http/https) was not granted; skipping content script registration.'
+        );
+        if (isRegistered) {
+            await chrome.scripting.unregisterContentScripts({
+                ids: [LINK_CATCHING_CONTENT_SCRIPT_ID],
+            });
+            debug.log('[ART] Unregistered link-catching content script (missing site access).');
+        }
+        return;
+    }
 
     if (enabled && !isRegistered) {
         await chrome.scripting.registerContentScripts([
@@ -54,6 +89,10 @@ export async function syncLinkCatchingContentScript(enabled) {
  */
 export async function injectLinkCatchingIntoFocusedWindowTabs() {
     if (!chrome.scripting?.executeScript) {
+        return;
+    }
+    if (!(await hasLinkCatchingHostPermissions())) {
+        debug.warn('[ART] Skipping link-catching injection: site access not granted.');
         return;
     }
 

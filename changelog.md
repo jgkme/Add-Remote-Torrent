@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.49 (2026-07-04)
+
+- **Fix:** On-page link/form catching now requests **site access** (`http`/`https`) when you enable it in Options, so torrent links intercept immediately without a browser restart ([#63](https://github.com/jgkme/Add-Remote-Torrent/issues/63)). Tabs in the focused window activate right away; refresh other open tabs if needed.
+- **Chore:** Dev dependency updates — Babel 8 (`@babel/core`, `@babel/preset-env`).
+- **Build:** Generated release artifacts for `v0.4.49`.
+
 ### 0.4.48 (2026-05-25)
 
 - **Feat (qBittorrent):** **RSS Reader** page (`rss/rss.html`) — feed tree with selection, article table from `rss/items?withData=true`, double-click add torrent, download rules editor (`rss/rules`).

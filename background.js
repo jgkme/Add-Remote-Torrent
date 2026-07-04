@@ -9,6 +9,7 @@ import {
   syncLinkCatchingContentScript,
   syncLinkCatchingFromStorage,
   injectLinkCatchingIntoFocusedWindowTabs,
+  ensureLinkCatchingHostPermissions,
 } from "./content_script_registration.js";
 import {
   initReviewPromptListeners,
@@ -2292,6 +2293,15 @@ chrome.commands.onCommand.addListener(async (command) => {
   } else if (command === "toggle_link_catching") {
     const { catchfrompage = false } = await chrome.storage.local.get("catchfrompage");
     const nextEnabled = !catchfrompage;
+    if (nextEnabled) {
+      const granted = await ensureLinkCatchingHostPermissions();
+      if (!granted) {
+        await updateActionHistory(
+          "Link catching needs site access. Open Options and enable on-page link catching to approve the permission prompt."
+        );
+        return;
+      }
+    }
     await chrome.storage.local.set({ catchfrompage: nextEnabled });
     await updateActionHistory(
       `Link catching ${nextEnabled ? "enabled" : "disabled"} via keyboard shortcut. Refresh other open tabs if needed.`
