@@ -58,27 +58,56 @@ Please give it a try and create some feedbacks or issues here.
 
 ### Adding Torrents with a Single Click (On-Page Catching)
 
-The extension can automatically detect torrent links on any webpage and allow you to add them with a single left-click, without needing to use the right-click context menu.
+The extension can automatically detect torrent links on any webpage and allow you to add them with a **single left-click**, without needing to use the right-click context menu. This is an intended feature—not a Chrome “file downloads” permission. If left-click still saves a `.torrent` file to your Downloads folder, on-page catching is either off, missing site access, or the link URL does not match any catch pattern (see below and [#17](https://github.com/jgkme/Add-Remote-Torrent/issues/17)).
 
 **How to Enable:**
 
 1.  Open the extension's **Options** page.
 2.  Go to the **"Other Global Settings"** section.
 3.  Check the box next to **"Enable on-page link/form catching"**.
+4.  **v0.4.49+:** Approve the **site access** prompt when it appears (required for the extension to run on web pages).
+5.  Reload the current tab, or open a new one, if the link you want to click was already open before you enabled catching.
 
-Once enabled, the extension will monitor pages for torrent links (like `magnet:` or links ending in `.torrent`). When you click one of these links, it will be automatically sent to your configured torrent client.
+Once enabled, the extension monitors pages for torrent links (like `magnet:` or URLs matching built-in/custom patterns). When you **left-click** a matched link, it is sent to your configured torrent client instead of downloading in Chrome.
+
+**What is caught by default**
+
+Out of the box, patterns include:
+
+- `magnet:` links
+- URLs containing `.torrent` (with common word-boundary rules)
+- `torrents.php?action=download` (common private-tracker style)
+- `download_torrent?id=` followed by digits
+
+If your tracker uses a different URL shape, you need a custom pattern (next section).
 
 #### **Catching links that don't end in `.torrent`**
 
-Some websites provide download links for `.torrent` files that don't have the `.torrent` file extension in the URL (e.g., `https://example.com/download.php?id=123`). By default, the extension won't catch these.
+Many private trackers use download URLs that **do not** end in `.torrent` (e.g. `https://www.example-tracker.com/torrent.php/12345/download`). The browser will keep downloading those files until you add a regex that matches the **full href** of the link you click.
 
-To catch these links, you need to add a custom URL pattern:
+1.  Enable on-page link catching (and site access) as above.
+2.  Scroll to the bottom of **Other Global Settings** and expand **Advanced: Custom Link Catching Patterns** (easy to miss—it is inside a collapsed `<details>` block; thanks [@ddouglas87](https://github.com/ddouglas87) for calling this out in [#17](https://github.com/jgkme/Add-Remote-Torrent/issues/17)).
+3.  Copy the **exact** download URL from the page (right-click the link → copy link address).
+4.  Add a regex that matches that URL shape. Test it on [regex101.com](https://regex101.com/) (JavaScript flavor) by pasting the real URL—if it matches, the extension will catch it.
+5.  Reload the page and left-click again.
 
-1.  Go to the extension's **Options** page -> **Other Global Settings**.
-2.  Open the **"Custom Link Catching Patterns"** section under **Other Global Settings**.
-3.  Add a new regex pattern for that website's torrent links. Use one pattern per rule (no tilde separator needed anymore).
+**Example ([issue #17](https://github.com/jgkme/Add-Remote-Torrent/issues/17), thanks [@TheShaze](https://github.com/TheShaze)):** For links like `https://www.example-tracker.com/torrent.php/12345/my-release.torrent`, a pattern that is too short (e.g. only `example-tracker.com/torrent.php`) may **not** match. A working pattern often needs more of the path, for example:
 
-**Example:** If a site's download links look like `https://www.example-tracker.com/torrent.php/12345/my-file.torrent`, a good pattern to add would be `example-tracker.com/torrent.php/`.
+```text
+https://www\.example-tracker\.com/torrent\.php/
+```
+
+Adjust the hostname and path for your tracker; escape dots as `\.` in regex.
+
+**Troubleshooting left-click vs. right-click**
+
+| Symptom | What to check |
+| --- | --- |
+| Right-click → “Add Torrent…” works, left-click downloads the file | Enable on-page catching; approve site access (**v0.4.49+**); add a **Custom Link Catching Pattern** for that site’s download URL. |
+| Extension badge shows `1` but left-click still downloads | The badge counts **matched** links on the page—the link you clicked may use a different URL. Copy its href and verify your regex on [regex101.com](https://regex101.com/). |
+| Nothing happens on left-click | Confirm a server is configured; check **Last Action** in the popup; try right-click as a fallback. |
+
+**Thanks:** Community tips from [issue #17](https://github.com/jgkme/Add-Remote-Torrent/issues/17)—[@TheShaze](https://github.com/TheShaze) (original report and working regex example), [@newadventure079](https://github.com/newadventure079) (custom patterns pointer), and [@ddouglas87](https://github.com/ddouglas87) (step-by-step setup notes).
 
 For private trackers that do **not** provide magnet links, you may also want to enable **"Always download .torrent files before sending to client"** in **Other Global Settings**. This makes the extension download the `.torrent` file in your browser session (with your cookies) and upload it to the remote client, which is especially helpful when the client itself cannot reach the tracker URL directly.
 
@@ -148,8 +177,11 @@ A: Some websites use intermediate links or redirects. The extension tries to fol
 **Q: I'm using an old version of uTorrent (like v2.0.4) and getting a "Failed to obtain uTorrent CSRF token" error.**
 A: Very old versions of the uTorrent WebUI have a different API. When you configure your server in the extension's options, make sure you select **"uTorrent (Old)"** as the "Client Type". This uses a legacy API handler that is compatible with older clients. If you have selected the standard "uTorrent" client type, it will fail with a token error.
 
+**Q: Left-click downloads the `.torrent` file instead of sending it to my client (right-click works).**
+A: Yes, **left-click interception is supported**—it is the **Enable on-page link/form catching** feature, not Chrome’s file-download permission ([#17](https://github.com/jgkme/Add-Remote-Torrent/issues/17)). Enable it under **Other Global Settings**, approve **site access** when prompted (**v0.4.49+**), and reload the tab. If the download URL does not end in `.torrent` or match the built-in patterns, expand **Advanced: Custom Link Catching Patterns** at the bottom of Options, add a regex for that site’s link shape, and test the URL on [regex101.com](https://regex101.com/). A badge count of `1` only means *some* link on the page matched—not necessarily the button you clicked. Right-click → **Add Torrent to Remote WebUI** remains a reliable fallback. Thanks to [@TheShaze](https://github.com/TheShaze), [@newadventure079](https://github.com/newadventure079), and [@ddouglas87](https://github.com/ddouglas87) for the community write-up in that thread.
+
 **Q: Clicking torrent links on a page doesn't do anything.**
-A: Enable **Enable on-page link/form catching** under **Other Global Settings** on the Options page. **v0.4.49+** prompts for **site access** when you turn it on—approve that prompt so the extension can intercept links on web pages. **v0.4.43+** only loads the on-page script when that option is on (it is **off by default** for new installs). Tabs in the focused window activate immediately; refresh other open tabs if needed. If you enabled link catching before **v0.4.49**, toggle it off and on once to grant site access. If it still fails, open an issue on GitHub with your browser, OS, and whether you saw the permission prompt.
+A: Enable **Enable on-page link/form catching** under **Other Global Settings** on the Options page. **v0.4.49+** prompts for **site access** when you turn it on—approve that prompt so the extension can intercept links on web pages. **v0.4.43+** only loads the on-page script when that option is on (it is **off by default** for new installs). Tabs in the focused window activate immediately; refresh other open tabs if needed. If you enabled link catching before **v0.4.49**, toggle it off and on once to grant site access. If links are detected but not intercepted, add **Custom Link Catching Patterns** (see [On-Page Catching](#adding-torrents-with-a-single-click-on-page-catching) and [#17](https://github.com/jgkme/Add-Remote-Torrent/issues/17)). If it still fails, open an issue on GitHub with your browser, OS, the page URL, and whether you saw the permission prompt.
 
 **Q: I'm having trouble connecting to rTorrent on seedbox.io.**
 A: For older `seedbox.io` accounts, you may need a specific URL format. When configuring the `rTorrent (XML-RPC)` client, try the following:
