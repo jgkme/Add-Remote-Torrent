@@ -236,6 +236,10 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.50 (2026-07-24):**
+  - **Chore:** Dependency updates (webpack, Tailwind CSS, PostCSS, terser, and related build tooling).
+  - **Security:** Transitive dependency overrides to clear `bun audit` findings.
+  - **Build:** Release artifacts for `v0.4.50`.
 - **v0.4.49 (2026-07-04):**
   - **Fix:** On-page link catching requests site access when enabled—works immediately without a browser restart ([#63](https://github.com/jgkme/Add-Remote-Torrent/issues/63)).
   - **Chore:** Babel 8 dev dependency bump.

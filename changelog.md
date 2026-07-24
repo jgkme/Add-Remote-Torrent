@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.50 (2026-07-24)
+
+- **Chore:** Updated project dependencies (webpack, Tailwind CSS, PostCSS, terser, webpack-cli, zip-a-folder, bencode, and related tooling).
+- **Security:** Added overrides for patched transitive packages so `bun audit` reports no vulnerabilities.
+- **Build:** Generated release artifacts for `v0.4.50`.
+
 ### 0.4.49 (2026-07-04)
 
 - **Fix:** On-page link/form catching now requests **site access** (`http`/`https`) when you enable it in Options, so torrent links intercept immediately without a browser restart ([#63](https://github.com/jgkme/Add-Remote-Torrent/issues/63)). Tabs in the focused window activate right away; refresh other open tabs if needed.

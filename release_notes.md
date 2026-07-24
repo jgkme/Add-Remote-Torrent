@@ -1,3 +1,9 @@
+### v0.4.50 (2026-07-24)
+
+*   **Chore:** Dependency updates for the build toolchain (webpack, Tailwind CSS, PostCSS, terser, and related packages).
+*   **Security:** Transitive dependency overrides so `bun audit` is clean.
+*   **Build:** Generated release artifacts for `v0.4.50`.
+
 ### v0.4.49 (2026-07-04)
 
 *   **Fix:** **Enable on-page link/form catching** now prompts for site access when you turn it on, so `.torrent` and `magnet:` links work right away without quitting the browser ([#63](https://github.com/jgkme/Add-Remote-Torrent/issues/63)). If you already had it enabled, open Options and toggle it off and on once to approve access.
