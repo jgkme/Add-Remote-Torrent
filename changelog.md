@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.51 (2026-08-01)
+
+- **Fix:** Context-menu directory adds now infer and pass the uniquely mapped category from the label-to-directory map (exact match after trim). No match or multiple categories for the same directory keep prior behavior. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).
+- **Build:** Generated release artifacts for `v0.4.51`.
+
 ### 0.4.50 (2026-07-24)
 
 - **Chore:** Updated project dependencies (webpack, Tailwind CSS, PostCSS, terser, webpack-cli, zip-a-folder, bencode, and related tooling).

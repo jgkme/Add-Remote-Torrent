@@ -236,6 +236,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.51 (2026-08-01):**
+  - **Fix:** Choosing a download directory from the right-click context menu now also assigns the uniquely mapped category/label (qBittorrent and other category-aware clients). Ambiguous mappings (multiple categories → same path) are left alone. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).
+  - **Build:** Release artifacts for `v0.4.51`.
 - **v0.4.50 (2026-07-24):**
   - **Chore:** Dependency updates (webpack, Tailwind CSS, PostCSS, terser, and related build tooling).
   - **Security:** Transitive dependency overrides to clear `bun audit` findings.

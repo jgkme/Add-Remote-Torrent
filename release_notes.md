@@ -1,3 +1,8 @@
+### v0.4.51 (2026-08-01)
+
+*   **Fix:** Right-click → select a configured download directory now also assigns the uniquely mapped category/label when the label-to-directory map has exactly one match. Ambiguous or missing mappings are unchanged. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).
+*   **Build:** Generated release artifacts for `v0.4.51`.
+
 ### v0.4.50 (2026-07-24)
 
 *   **Chore:** Dependency updates for the build toolchain (webpack, Tailwind CSS, PostCSS, terser, and related packages).
