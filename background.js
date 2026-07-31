@@ -1234,6 +1234,32 @@ function parseLabelDirectoryMap(rawMapping) {
     }, {});
 }
 
+function findUniqueCategoryForDirectory(labelDirectoryMap, downloadDir) {
+  if (
+    !labelDirectoryMap ||
+    typeof labelDirectoryMap !== "object" ||
+    downloadDir === null ||
+    downloadDir === undefined
+  ) {
+    return null;
+  }
+
+  const normalizedDownloadDir = String(downloadDir).trim();
+  if (!normalizedDownloadDir) {
+    return null;
+  }
+
+  const matchingCategories = Object.entries(labelDirectoryMap)
+    .filter(
+      ([, directory]) =>
+        typeof directory === "string" &&
+        directory.trim() === normalizedDownloadDir
+    )
+    .map(([category]) => category);
+
+  return matchingCategories.length === 1 ? matchingCategories[0] : null;
+}
+
 function looksLikeTorrentUrl(url) {
   if (!url) return false;
   const lower = String(url).toLowerCase();
@@ -2367,11 +2393,38 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (showAdvancedDialog) {
     popAdvancedDialog(linkUrl, selectedServer);
   } else {
+    const labelDirectoryMap = parseLabelDirectoryMap(
+      selectedServer.labelDirectoryMap
+    );
+    const inferredCategory = findUniqueCategoryForDirectory(
+      labelDirectoryMap,
+      downloadDir
+    );
+
+    if (inferredCategory) {
+      debug.log(
+        "[ART Background] Inferred a unique category for the selected context-menu directory."
+      );
+    } else if (downloadDir) {
+      const normalizedDownloadDir = downloadDir.trim();
+      const matchingDirectoryCount = Object.values(labelDirectoryMap).filter(
+        (directory) =>
+          typeof directory === "string" &&
+          directory.trim() === normalizedDownloadDir
+      ).length;
+
+      if (matchingDirectoryCount > 1) {
+        debug.log(
+          "[ART Background] Multiple categories map to the selected context-menu directory; category inference skipped."
+        );
+      }
+    }
+
     addTorrentToClient(
       linkUrl,
       selectedServer,
       null,
-      null,
+      inferredCategory,
       null,
       info.pageUrl,
       downloadDir
