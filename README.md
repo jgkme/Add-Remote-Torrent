@@ -1,18 +1,44 @@
 # Add Remote Torrent
 
-A Chrome browser extension that allows users to easily add torrents (via magnet links or .torrent file URLs) to various remote torrent client WebUIs. It supports managing multiple server profiles for different client types like qBittorrent, Transmission, Deluge, and more, offering a streamlined experience for torrent management directly from your browser.
+**Send magnet links and `.torrent` URLs from your browser straight to your BitTorrent client — local or remote — with a single click.**
 
-I used Cline + Google Gemini Pro to code this from scratch losely based on now discontinued @bogenpirat/remote-torrent-adder with my own added features.
-Please give it a try and create some feedbacks or issues here.
+[![Chrome Web Store Users](https://img.shields.io/chrome-web-store/users/holiffefjdehbfhliggafhhlecphpdof)](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof)
+[![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/holiffefjdehbfhliggafhhlecphpdof)](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof)
+[![Chrome Web Store Version](https://img.shields.io/chrome-web-store/v/holiffefjdehbfhliggafhhlecphpdof)](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof)
+[![GitHub stars](https://img.shields.io/github/stars/jgkme/Add-Remote-Torrent)](https://github.com/jgkme/Add-Remote-Torrent)
 
-**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof?hl=en-US&utm_source=ext_sidebar)**
+[Install](#install) · [Features](#features) · [Clients](#supported-clients) · [Link catching](#link-catching) · [Shortcuts](#keyboard-shortcuts) · [Troubleshooting](#troubleshooting--faq) · [Development](#development) · [Changelog](#changelog)
+
+---
+
+## Install
+
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof)**
+
+1. Open the extension **Options** and add your server (client type, host, credentials).
+2. Click a magnet or torrent link — or use the popup / context menu.
+
+Tip: if left-click still downloads a `.torrent` to disk, enable **on-page link catching** and adjust patterns under [Link catching](#link-catching).
+
+## Features
+
+- **One-click add** — magnets and `.torrent` URLs go to your client's WebUI instead of Chrome Downloads
+- **Multi-server profiles** — pick a target per link via the context menu, or route by source-site URL rules
+- **Optional on-page catching** — left-click matched links; custom regex for private-tracker URL shapes; site access only when enabled
+- **Advanced Add dialog** — tags, category/label, directory, paused state, file selection, and client-specific options (e.g. qBittorrent force start); remembers your last confirm choices per server
+- **Labels & directories** — per-server defaults, label→path maps, and tracker-URL rules
+- **Beyond add-only** — popup torrent list / speeds, dashboard, completion notifications, optional sounds
+- **Search & RSS** — Jackett, Prowlarr, and qBittorrent search plugins; extension RSS auto-add and qBittorrent RSS reader
+- **Private-tracker friendly** — download `.torrent` bytes in your browser session (cookies) before uploading to the client
+- **Auth flexibility** — client login, reverse-proxy Basic Auth, URL-embedded credentials, qBittorrent cookie / WebUI Basic / API key
+- **Privacy** — settings stay local; Manifest V3. See [Privacy Policy](PRIVACY_POLICY.md)
 
 ## Supported Clients
 
 - qBittorrent
 - Transmission
 - Deluge
-- uTorrent / BitTorrent
+- uTorrent / BitTorrent (including uTorrent Old)
 - rTorrent (XML-RPC)
 - ruTorrent (WebUI)
 - Synology Download Station
@@ -20,41 +46,16 @@ Please give it a try and create some feedbacks or issues here.
 - Hadouken
 - Tixati
 - Torrentflux
-- Vuze (HTML WebUI)
+- Vuze (HTML WebUI and XML WebUI)
 - Flood
 - Tribler
 - BiglyBT
 - Kodi Elementum
 - Buffalo Torrent Client
 - Porla
+- tTorrent
 
-## Core Features
-
-- **Multi-Client Support:** Configure and manage connections to a wide variety of file-transfer clients.
-- **Flexible Torrent Addition:**
-  - Clicking a magnet or file link automatically adds it to your default server.
-  - Right-click context menu to choose a specific server.
-  - Manual URL input via the extension popup.
-  - On-page link catching with an optional quick-add modal for setting directories/labels.
-- **Advanced Management:**
-  - Define per-server default parameters (tags, category, download directory, initial paused state).
-  - Optional "Advanced Add Dialog" to customize parameters and select specific files before adding.
-- **Authentication & Security:**
-  - **Basic Auth Support:** Configure basic authentication for reverse proxy setups (Nginx, Apache, etc.) that require additional HTTP authentication headers.
-  - **Automatic Credential Extraction:** URLs with embedded credentials (e.g., `http://user:pass@server.com`) are automatically parsed and configured.
-  - **Per-Server Auth:** Each server can have its own basic auth credentials, independent of client authentication.
-- **Server & Rule Management:**
-  - Manage multiple server profiles with client-specific settings.
-  - Test server connections.
-  - Open a server's WebUI directly from the extension.
-  - Configure rules to automatically select a server based on the source website URL.
-  - Assign labels/directories based on tracker URLs found within the transfer file.
-- **Modern & Secure:**
-  - User-friendly interface built with Tailwind CSS, including dark mode.
-  - Manifest V3 compliant, adhering to the latest security standards.
-  - No data collection. All your settings are stored locally. See our [Privacy Policy](PRIVACY_POLICY.md).
-- **Customization:**
-  - Optional sound notifications for success/failure.
+## Link catching
 
 ### Adding Torrents with a Single Click (On-Page Catching)
 

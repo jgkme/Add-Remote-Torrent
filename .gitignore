@@ -48,3 +48,6 @@ skills-lock.json
 
 # Secrets
 *.pem
+
+# Superpowers brainstorm companion (local)
+.superpowers/
