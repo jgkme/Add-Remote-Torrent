@@ -1,3 +1,12 @@
+### v0.4.52 (2026-08-01)
+
+*   **Feat:** Advanced Add remembers last-used tags, category/label, and download directory per server after a successful add.
+*   **Fix:** Advanced Add prefills tags from the server profile `tags` field (falls back to legacy `defaultTags` when needed).
+*   **Feat:** Label→directory mapping applies for the initially selected category when the dialog opens.
+*   **Docs:** README landing page refresh; GitHub topics and Chrome Web Store homepage on the repository.
+*   **Chore:** Build toolchain updates (webpack, webpack-cli, postcss) and unit tests for confirmAdd default resolution (`bun test`).
+*   **Build:** Generated release artifacts for `v0.4.52`.
+
 ### v0.4.51 (2026-08-01)
 
 *   **Fix:** Right-click → select a configured download directory now also assigns the uniquely mapped category/label when the label-to-directory map has exactly one match. Ambiguous or missing mappings are unchanged. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).

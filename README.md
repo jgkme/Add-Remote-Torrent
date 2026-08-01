@@ -237,6 +237,13 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.52 (2026-08-01):**
+  - **Feat:** Advanced Add remembers your last tags, category/label, and download directory **per server** after a successful add.
+  - **Fix:** Advanced Add tag prefill now uses the server profile `tags` field (with fallback for older `defaultTags` data).
+  - **Feat:** Label→directory map applies when the dialog opens for the initially selected category, not only after you change the dropdown.
+  - **Docs:** README product landing (badges, features, client list); GitHub topics and store homepage metadata.
+  - **Chore:** Dependency updates (webpack, webpack-cli, postcss); `bun test` for confirmAdd defaults helpers.
+  - **Build:** Generated release artifacts for `v0.4.52`.
 - **v0.4.51 (2026-08-01):**
   - **Fix:** Choosing a download directory from the right-click context menu now also assigns the uniquely mapped category/label (qBittorrent and other category-aware clients). Ambiguous mappings (multiple categories → same path) are left alone. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).
   - **Build:** Release artifacts for `v0.4.51`.

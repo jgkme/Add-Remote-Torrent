@@ -9,6 +9,15 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.52 (2026-08-01)
+
+- **Feat:** Advanced Add remembers last-used tags, category/label, and download directory per server after a successful add.
+- **Fix:** Advanced Add tag prefill uses profile `tags` (with `defaultTags` fallback).
+- **Feat:** Label→directory map applied on dialog open for the initial category.
+- **Docs:** README landing refresh; GitHub topics / CWS homepage.
+- **Chore:** webpack / webpack-cli / postcss updates; `bun test` for confirmAdd defaults.
+- **Build:** Generated release artifacts for `v0.4.52`.
+
 ### 0.4.51 (2026-08-01)
 
 - **Fix:** Context-menu directory adds now infer and pass the uniquely mapped category from the label-to-directory map (exact match after trim). No match or multiple categories for the same directory keep prior behavior. Thanks [@peter-fillmore](https://github.com/peter-fillmore) ([#64](https://github.com/jgkme/Add-Remote-Torrent/pull/64)).
