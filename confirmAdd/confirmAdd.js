@@ -1,6 +1,10 @@
 import bencode from 'bencode'; // Changed from 'bencode-js'
 import { Buffer } from 'buffer'; // Import Buffer polyfill
 import { debug } from '../debug';
+import {
+    parseLabelDirectoryMap,
+    resolveConfirmAddDefaults,
+} from '../js/confirmAddDefaults.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -44,21 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let activeServer = null;
     let labelDirectoryMap = {};
 
-    function parseLabelDirectoryMap(rawMapping) {
-        if (!rawMapping || typeof rawMapping !== 'string') return {};
-        return rawMapping
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line && line.includes('='))
-            .reduce((acc, line) => {
-                const [label, ...rest] = line.split('=');
-                const key = (label || '').trim();
-                const value = rest.join('=').trim();
-                if (key && value) acc[key] = value;
-                return acc;
-            }, {});
-    }
-
     debug.log("[ART ConfirmAdd] window.location.search:", window.location.search);
     const urlParams = new URLSearchParams(window.location.search);
     const rawUrlParam = urlParams.get('url');
@@ -93,50 +82,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (activeServer) {
             labelDirectoryMap = parseLabelDirectoryMap(activeServer.labelDirectoryMap);
             serverNameDisplay.textContent = activeServer.name;
-            
-            // Handle tags input - use defaultTags from the server config
-            tagsInput.value = activeServer.defaultTags || '';
-            
-            // Handle category dropdown - populate from comma-separated 'categories' field
+
+            // Populate category dropdown from comma-separated 'categories' field
             if (activeServer.categories) {
                 const categoryOptions = activeServer.categories.split(',').map(cat => cat.trim()).filter(cat => cat.length > 0);
-                
-                // Clear existing options except the first placeholder
                 categoryInput.innerHTML = '<option value="">Select a category...</option>';
-                
-                // Add options from comma-separated categories
                 categoryOptions.forEach(category => {
                     const option = document.createElement('option');
                     option.value = category;
                     option.textContent = category;
                     categoryInput.appendChild(option);
                 });
-                
-            // Set default selection if defaultCategory is defined and exists in the dropdown
-            const defaultCat = activeServer.defaultCategory || activeServer.category;
-            if (defaultCat && categoryOptions.includes(defaultCat.trim())) {
-                categoryInput.value = defaultCat.trim();
+            } else {
+                categoryInput.innerHTML = '<option value="">Select a category...</option>';
             }
-        } else {
-            // If no categories defined, just keep the placeholder
-            categoryInput.innerHTML = '<option value="">Select a category...</option>';
-        }
 
-        // Handle directory dropdown
-        if (activeServer.downloadDirectories) {
-            const directoryOptions = activeServer.downloadDirectories.split(',').map(dir => dir.trim()).filter(dir => dir.length > 0);
-            directoryInput.innerHTML = '<option value="">Default Directory</option>';
-            directoryOptions.forEach(dir => {
-                const option = document.createElement('option');
-                option.value = dir;
-                option.textContent = dir;
-                directoryInput.appendChild(option);
-            });
-        } else {
-            directoryInput.innerHTML = '<option value="">Default Directory</option>';
-        }
-        
-        pausedInput.checked = activeServer.addPaused || false;
+            // Populate directory dropdown
+            if (activeServer.downloadDirectories) {
+                const directoryOptions = activeServer.downloadDirectories.split(',').map(dir => dir.trim()).filter(dir => dir.length > 0);
+                directoryInput.innerHTML = '<option value="">Default Directory</option>';
+                directoryOptions.forEach(dir => {
+                    const option = document.createElement('option');
+                    option.value = dir;
+                    option.textContent = dir;
+                    directoryInput.appendChild(option);
+                });
+            } else {
+                directoryInput.innerHTML = '<option value="">Default Directory</option>';
+            }
+
+            const defaults = resolveConfirmAddDefaults({ server: activeServer });
+            tagsInput.value = defaults.tags;
+            if (defaults.category) {
+                categoryInput.value = defaults.category;
+            }
+            if (defaults.downloadDir) {
+                directoryInput.value = defaults.downloadDir;
+            }
+
+            pausedInput.checked = activeServer.addPaused || false;
 
             if (activeServer.clientType === 'qbittorrent') {
                 qbittorrentOptions.style.display = 'block';

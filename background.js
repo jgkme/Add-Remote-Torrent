@@ -15,6 +15,10 @@ import {
   initReviewPromptListeners,
   recordSuccessfulAddAndMaybePrompt,
 } from "./review_prompt.js";
+import {
+  parseLabelDirectoryMap,
+  buildLastUsedServerPatch,
+} from "./js/confirmAddDefaults.js";
 import "./js/torrent-list.js";
 
 const { applyTorrentListMode } = globalThis.TorrentList;
@@ -257,7 +261,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const { servers = [] } = await chrome.storage.local.get("servers");
       const server = servers.find((s) => s.id === serverId);
       if (server) {
-        addTorrentToClient(
+        await addTorrentToClient(
           url,
           server,
           tags,
@@ -277,7 +281,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           skipChecking,
           sequentialDownload,
           firstLastPiecePrio,
-          renameParam
+          renameParam,
+          true
         );
       } else {
         debug.error(
@@ -1215,25 +1220,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
-function parseLabelDirectoryMap(rawMapping) {
-  if (!rawMapping || typeof rawMapping !== "string") {
-    return {};
-  }
-  return rawMapping
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && line.includes("="))
-    .reduce((acc, line) => {
-      const [label, ...rest] = line.split("=");
-      const key = (label || "").trim();
-      const value = rest.join("=").trim();
-      if (key && value) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
-}
-
 function findUniqueCategoryForDirectory(labelDirectoryMap, downloadDir) {
   if (
     !labelDirectoryMap ||
@@ -1520,7 +1506,8 @@ async function addTorrentToClient(
   customSkipChecking = null,
   customSequentialDownload = null,
   customFirstLastPiecePrio = null,
-  customRename = null
+  customRename = null,
+  persistLastUsed = false
 ) {
   let serverToUse = null;
   let serverDeterminedByRule = false;
@@ -1905,6 +1892,32 @@ async function addTorrentToClient(
       torrentOptions
     );
     if (result.success) {
+      if (persistLastUsed && serverToUse?.id) {
+        try {
+          const patch = buildLastUsedServerPatch({
+            tags: torrentOptions.tags || "",
+            category: torrentOptions.category || "",
+            downloadDir: torrentOptions.downloadDir || "",
+          });
+          const { servers = [] } = await chrome.storage.local.get("servers");
+          const idx = servers.findIndex((s) => s.id === serverToUse.id);
+          if (idx !== -1) {
+            servers[idx] = { ...servers[idx], ...patch };
+            await chrome.storage.local.set({ servers });
+            debug.log(
+              "[ART Background] Persisted confirmAdd last-used defaults for server:",
+              serverToUse.id,
+              patch
+            );
+          }
+        } catch (persistError) {
+          debug.error(
+            "[ART Background] Failed to persist confirmAdd last-used defaults:",
+            persistError
+          );
+        }
+      }
+
       // Add to tracked torrents list if it's a new, successful addition
       if (result.hash && !result.duplicate) {
         const { trackedTorrents = [] } = await chrome.storage.local.get(

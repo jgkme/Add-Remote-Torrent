@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production && node scripts/verify-dist-background.js && node scripts/zip.js",
-    "build:firefox": "webpack --mode production"
+    "build:firefox": "webpack --mode production",
+    "test": "bun test"
   },
   "keywords": [
     "chrome-extension",
