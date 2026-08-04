@@ -1,10 +1,17 @@
+import {
+  createExtensionNotification,
+  getStoreReviewsUrl,
+  isFirefox,
+} from "./browser_compat.js";
+
 const REVIEW_PROMPT_PREFIX = "art-review-prompt-";
 const FIRST_PROMPT_AFTER = 5;
 const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_PROMPTS = 3;
 
+/** @deprecated Prefer getStoreReviewsUrl */
 export function getChromeWebStoreReviewsUrl() {
-  return `https://chromewebstore.google.com/detail/${chrome.runtime.id}/reviews`;
+  return getStoreReviewsUrl();
 }
 
 let listenersRegistered = false;
@@ -13,17 +20,20 @@ export function initReviewPromptListeners() {
   if (listenersRegistered) return;
   listenersRegistered = true;
 
-  chrome.notifications.onButtonClicked.addListener(
-    async (notificationId, buttonIndex) => {
-      if (!String(notificationId).startsWith(REVIEW_PROMPT_PREFIX)) return;
-      if (buttonIndex === 0) {
-        await openReviewPage();
-      } else {
-        await dismissReviewPromptForCooldown();
+  // buttons are Chromium-only; keep listener for Chrome where we still send buttons.
+  if (chrome.notifications.onButtonClicked) {
+    chrome.notifications.onButtonClicked.addListener(
+      async (notificationId, buttonIndex) => {
+        if (!String(notificationId).startsWith(REVIEW_PROMPT_PREFIX)) return;
+        if (buttonIndex === 0) {
+          await openReviewPage();
+        } else {
+          await dismissReviewPromptForCooldown();
+        }
+        chrome.notifications.clear(notificationId);
       }
-      chrome.notifications.clear(notificationId);
-    }
-  );
+    );
+  }
 
   chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (!String(notificationId).startsWith(REVIEW_PROMPT_PREFIX)) return;
@@ -37,7 +47,7 @@ async function openReviewPage() {
     reviewPromptOpenedReview: true,
     showReviewPromptInPopup: false,
   });
-  chrome.tabs.create({ url: getChromeWebStoreReviewsUrl() });
+  chrome.tabs.create({ url: getStoreReviewsUrl() });
 }
 
 async function dismissReviewPromptForCooldown() {
@@ -85,12 +95,14 @@ export async function recordSuccessfulAddAndMaybePrompt({
 
   if (useTextNotification && data.enableTextNotifications) {
     const notificationId = `${REVIEW_PROMPT_PREFIX}${now}`;
-    chrome.notifications.create(notificationId, {
+    const message = isFirefox()
+      ? "Enjoying the extension? Star the project on GitHub or leave feedback — it helps others find it."
+      : "Enjoying the extension? A quick Chrome Web Store review helps others find it.";
+    createExtensionNotification(notificationId, {
       type: "basic",
       iconUrl: "icons/icon-48x48.png",
       title: "Add Remote Torrent",
-      message:
-        "Enjoying the extension? A quick Chrome Web Store review helps others find it.",
+      message,
       buttons: [{ title: "Leave review" }, { title: "Not now" }],
     });
   }

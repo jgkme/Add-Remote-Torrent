@@ -37,7 +37,7 @@ export async function ensureLinkCatchingHostPermissions() {
 export async function syncLinkCatchingContentScript(enabled) {
     if (!chrome.scripting?.registerContentScripts) {
         debug.warn(
-            '[ART] scripting.registerContentScripts unavailable; link catching requires a supported Chromium build.'
+            '[ART] scripting.registerContentScripts unavailable; link catching requires a browser that supports dynamic content scripts.'
         );
         return;
     }
@@ -69,7 +69,7 @@ export async function syncLinkCatchingContentScript(enabled) {
             {
                 id: LINK_CATCHING_CONTENT_SCRIPT_ID,
                 js: ['content_script.js'],
-                matches: ['<all_urls>'],
+                matches: ['http://*/*', 'https://*/*'],
                 runAt: 'document_idle',
                 persistAcrossSessions: true,
             },

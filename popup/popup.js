@@ -1,6 +1,7 @@
 import { debug } from '../debug';
 import '../js/torrent-ui.js';
 import '../js/torrent-list.js';
+import { getStoreReviewsUrl } from '../browser_compat.js';
 
 const { decodeDataAttr, encodeDataAttr, renderTorrentCardHtml, deleteTorrentConfirmMessage } = globalThis.TorrentUI;
 
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reviewPromptLink = document.getElementById('reviewPromptLink');
     const reviewPromptNotNowButton = document.getElementById('reviewPromptNotNowButton');
     const reviewPromptNeverButton = document.getElementById('reviewPromptNeverButton');
-    const reviewsPageUrl = `https://chromewebstore.google.com/detail/${chrome.runtime.id}/reviews`;
+    const reviewsPageUrl = getStoreReviewsUrl();
 
     // Active server details display elements
     const activeServerDetailsDiv = document.getElementById('activeServerDetails');

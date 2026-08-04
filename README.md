@@ -15,6 +15,8 @@
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/add-remote-torrent/holiffefjdehbfhliggafhhlecphpdof)**
 
+**Firefox:** AMO listing is in progress. Until it is live, use a temporary/sideload build — see [Firefox build notes](docs/firefox.md) (`bun run build:firefox`, then load `dist/manifest.json` via `about:debugging`).
+
 1. Open the extension **Options** and add your server (client type, host, credentials).
 2. Click a magnet or torrent link — or use the popup / context menu.
 
@@ -22,7 +24,7 @@ Tip: if left-click still downloads a `.torrent` to disk, enable **on-page link c
 
 ## Features
 
-- **One-click add** — magnets and `.torrent` URLs go to your client's WebUI instead of Chrome Downloads
+- **One-click add** — magnets and `.torrent` URLs go to your client's WebUI instead of the browser Downloads folder
 - **Multi-server profiles** — pick a target per link via the context menu, or route by source-site URL rules
 - **Optional on-page catching** — left-click matched links; custom regex for private-tracker URL shapes; site access only when enabled
 - **Advanced Add dialog** — tags, category/label, directory, paused state, file selection, and client-specific options (e.g. qBittorrent force start); remembers your last confirm choices per server
@@ -228,8 +230,22 @@ To get started:
 
 1. Install Bun: `curl -fsSL https://bun.sh/install | bash`
 2. Install dependencies: `bun install`
-3. Build the project: `bun run build`
-4. Load the `dist` folder as an unpacked extension in Chrome
+3. Build for the browser you are testing:
+   - **Chrome / Chromium:** `bun run build` → load unpacked `dist/`
+   - **Firefox:** `bun run build:firefox` → load `dist/manifest.json` via `about:debugging` (see [docs/firefox.md](docs/firefox.md))
+4. Run tests: `bun test`
+
+### Release builds (both stores)
+
+Before a release, compile **both** packages from the same version:
+
+```bash
+bun test
+bun run build          # add-remote-torrent-vX.Y.Z.zip (+ .crx)
+bun run build:firefox  # add-remote-torrent-vX.Y.Z-firefox.zip
+```
+
+Chrome and Firefox share one codebase; the Firefox build rewrites the manifest (`background.scripts`, no `offscreen`, Gecko id / data-collection keys, `clipboardRead`). Details: [docs/firefox.md](docs/firefox.md).
 
 ### Releases
 

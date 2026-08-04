@@ -19,6 +19,10 @@ import {
   parseLabelDirectoryMap,
   buildLastUsedServerPatch,
 } from "./js/confirmAddDefaults.js";
+import {
+  createExtensionNotification,
+  isFirefox,
+} from "./browser_compat.js";
 import "./js/torrent-list.js";
 
 const { applyTorrentListMode } = globalThis.TorrentList;
@@ -289,7 +293,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           `[ART Background] addTorrentWithCustomParams failed: Could not find server with ID ${serverId}`
         );
         // Optionally, create a notification for this failure
-        chrome.notifications.create({
+        createExtensionNotification({
           type: "basic",
           iconUrl: "icons/icon-48x48.png",
           title: "Add Remote Torrent Error",
@@ -646,7 +650,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             "[ART Background] Creating error notification (no target server):",
             msg
           );
-          chrome.notifications.create({
+          createExtensionNotification({
             type: "basic",
             iconUrl: "icons/icon-48x48.png",
             title: "Add Remote Torrent Error",
@@ -658,7 +662,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       } catch (error) {
         debug.error("Error in addTorrent action:", error);
         const errorMsg = `Error processing torrent link: ${error.message}`;
-        chrome.notifications.create({
+        createExtensionNotification({
           type: "basic",
           iconUrl: "icons/icon-48x48.png",
           title: "Add Remote Torrent Error",
@@ -685,7 +689,11 @@ const CLIPBOARD_SHORTCUT_CONFLICT_KEYS = new Set([
 ]);
 
 async function maybeNotifyClipboardShortcutConflict(details) {
-  if (details?.reason !== chrome.runtime.OnInstalledReason.UPDATE) {
+  // Chrome-only: Ctrl+Shift+V conflicts with paste-without-formatting.
+  if (isFirefox()) {
+    return;
+  }
+  if (details?.reason !== "update") {
     return;
   }
   const { clipboardShortcutConflictNudgeShown } = await chrome.storage.local.get(
@@ -703,7 +711,7 @@ async function maybeNotifyClipboardShortcutConflict(details) {
   }
 
   await chrome.storage.local.set({ clipboardShortcutConflictNudgeShown: true });
-  chrome.notifications.create(`clipboard-shortcut-${Date.now()}`, {
+  createExtensionNotification(`clipboard-shortcut-${Date.now()}`, {
     type: "basic",
     iconUrl: "icons/icon-128x128.png",
     title: "Add Remote Torrent — keyboard shortcut",
@@ -925,7 +933,7 @@ async function onAlarm(alarm) {
           // Check if torrent is complete (progress is 1 or state indicates completion)
           if (torrent.progress >= 1 || torrent.isCompleted) {
             const notificationId = `downloadComplete-${torrent.hash}`;
-            chrome.notifications.create(notificationId, {
+            createExtensionNotification(notificationId, {
               type: "basic",
               iconUrl: "icons/icon-48x48.png",
               title: "Download Complete",
@@ -1254,7 +1262,14 @@ function looksLikeTorrentUrl(url) {
 
 const OFFSCREEN_DOCUMENT_PATH = "offscreen_audio.html";
 
+function supportsOffscreenDocuments() {
+  return Boolean(chrome.offscreen?.createDocument);
+}
+
 async function hasOffscreenDocument() {
+  if (!supportsOffscreenDocuments()) {
+    return false;
+  }
   if (chrome.runtime.getContexts) {
     const existingContexts = await chrome.runtime.getContexts({
       contextTypes: ["OFFSCREEN_DOCUMENT"],
@@ -1266,6 +1281,13 @@ async function hasOffscreenDocument() {
 }
 
 async function setupOffscreenDocument() {
+  if (!supportsOffscreenDocuments()) {
+    debug.log(
+      "[ART Background] setupOffscreenDocument: chrome.offscreen unavailable (e.g. Firefox); skipping."
+    );
+    return;
+  }
+
   debug.log(
     "[ART Background] setupOffscreenDocument: Checking status. isReady:",
     offscreenDocumentManager.isReady
@@ -1347,6 +1369,16 @@ async function setupOffscreenDocument() {
   }
 }
 
+/** Firefox MV3 background is an event page with DOM; Chrome service workers need offscreen. */
+async function playSoundInBackground(soundFile) {
+  if (typeof Audio === "undefined") {
+    throw new Error("Audio API unavailable in this background context");
+  }
+  const url = chrome.runtime.getURL(soundFile);
+  const audio = new Audio(url);
+  await audio.play();
+}
+
 async function updateActionHistory(newMessage) {
   const { actionHistory = [] } = await chrome.storage.local.get(
     "actionHistory"
@@ -1366,6 +1398,24 @@ async function playSound(soundFile) {
       "enableSoundNotifications"
     );
     if (!enableSoundNotifications) {
+      return;
+    }
+
+    if (!supportsOffscreenDocuments()) {
+      try {
+        await playSoundInBackground(soundFile);
+        debug.log(
+          "[ART Background] playSound: Played via background Audio for:",
+          soundFile
+        );
+      } catch (error) {
+        debug.warn(
+          "[ART Background] playSound: Background Audio failed:",
+          error?.message || error,
+          "Sound file:",
+          soundFile
+        );
+      }
       return;
     }
 
@@ -1566,7 +1616,7 @@ async function addTorrentToClient(
       "[ART Background] Creating error notification (no target server):",
       msg
     );
-    chrome.notifications.create(
+    createExtensionNotification(
       {
         type: "basic",
         iconUrl: "icons/icon-48x48.png",
@@ -1700,7 +1750,7 @@ async function addTorrentToClient(
           if (shouldFetchTorrentContent) {
             const msg = "Failed to download .torrent file from site (empty response); sent original URL to client instead.";
             updateActionHistory(msg);
-            chrome.notifications.create({
+            createExtensionNotification({
               type: "basic",
               iconUrl: "icons/icon-48x48.png",
               title: "Add Remote Torrent",
@@ -1727,7 +1777,7 @@ async function addTorrentToClient(
           if (shouldFetchTorrentContent) {
             const msg = "Site returned no usable data when downloading .torrent; sent original URL to client instead.";
             updateActionHistory(msg);
-            chrome.notifications.create({
+            createExtensionNotification({
               type: "basic",
               iconUrl: "icons/icon-48x48.png",
               title: "Add Remote Torrent",
@@ -1746,7 +1796,7 @@ async function addTorrentToClient(
       if (shouldFetchTorrentContent) {
         const msg = "Could not download .torrent file with your browser session; sent original URL to client instead.";
         updateActionHistory(msg);
-        chrome.notifications.create({
+        createExtensionNotification({
           type: "basic",
           iconUrl: "icons/icon-48x48.png",
           title: "Add Remote Torrent",
@@ -1857,7 +1907,7 @@ async function addTorrentToClient(
       "[ART Background] Creating error notification (no API handler):",
       errorMsg
     );
-    chrome.notifications.create(
+    createExtensionNotification(
       {
         type: "basic",
         iconUrl: "icons/icon-48x48.png",
@@ -1960,7 +2010,7 @@ async function addTorrentToClient(
           "[ART Background] Creating success notification:",
           successMsg
         );
-        chrome.notifications.create(
+        createExtensionNotification(
           {
             type: "basic",
             iconUrl: "icons/icon-48x48.png",
@@ -2026,7 +2076,7 @@ async function addTorrentToClient(
         "[ART Background] Creating error notification (addTorrentToClient catch):",
         notificationErrorMessage
       );
-      chrome.notifications.create(
+      createExtensionNotification(
         {
           type: "basic",
           iconUrl: "icons/icon-48x48.png",

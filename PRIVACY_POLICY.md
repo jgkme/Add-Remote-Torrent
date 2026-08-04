@@ -1,6 +1,6 @@
 # Privacy Policy for Add Remote Torrent
 
-**Last Updated: 2026-05-22**
+**Last Updated: 2026-08-04**
 
 ## 1. Introduction
 
@@ -28,10 +28,11 @@ The Extension requests the following permissions:
 | **storage** | Save server profiles, settings, action history, and RSS state locally on your device. |
 | **contextMenus** | Show the right-click "send to…" menu for configured servers. |
 | **notifications** | Show success/failure (and optional status) notifications after actions. |
-| **offscreen** | Play optional success/failure sounds via a small offscreen document (required by Chrome for audio in MV3). |
+| **offscreen** | Play optional success/failure sounds via a small offscreen document (required by Chrome for audio in MV3). **Firefox builds omit this permission** and play sounds in the background page instead. |
 | **alarms** | Periodically refresh server/torrent status and optional RSS feed checks in the background. |
 | **activeTab** | Temporary access to the **current tab** when you invoke the extension (popup, context menu, or keyboard shortcut)—used with clipboard quick-add without requesting permanent access to all tabs. |
 | **scripting** | Run a one-shot script in the active tab to read the clipboard when you use the "Quick add torrent from clipboard" shortcut (user-initiated; only on normal `http://` / `https://` pages). |
+| **clipboardRead** | **Firefox package only.** Read the clipboard for quick-add / popup clipboard helpers on Firefox 140+. |
 | **optional_host_permissions** (`http://*/*`, `https://*/*`) | Connect to **your** torrent clients and sites. Host access is **optional** and granted by you (for example when saving a server or when the browser prompts). This broad pattern is intentional so the Extension works with **local network addresses** (for example `192.168.x.x`, `10.x.x.x`), **custom ports**, **reverse proxies**, and **remote VPS/seedbox hostnames** without listing every possible URL in advance. The Extension does not connect to arbitrary hosts unless you configure them or use a feature that needs the current page. |
 
 ### Content scripts and page access

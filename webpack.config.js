@@ -6,6 +6,7 @@ const webpack = require('webpack'); // Required for ProvidePlugin
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
+  const isFirefox = env?.browser === 'firefox' || env?.firefox === true;
 
   return {
     mode: isProduction ? 'production' : 'development',
@@ -74,6 +75,29 @@ module.exports = (env, argv) => {
               if (manifest.background?.type === 'module') {
                 delete manifest.background.type;
               }
+              if (isFirefox) {
+                // Firefox event pages use background.scripts; service_worker may be disabled.
+                if (manifest.background?.service_worker) {
+                  const sw = manifest.background.service_worker;
+                  delete manifest.background.service_worker;
+                  manifest.background.scripts = Array.isArray(sw) ? sw : [sw];
+                }
+                // chrome.offscreen is Chromium-only; drop unsupported permission for AMO.
+                manifest.permissions = (manifest.permissions || []).filter(
+                  (p) => p !== 'offscreen'
+                );
+                // Reliable clipboard reads on Firefox 140–146 for quick-add / popup.
+                if (!manifest.permissions.includes('clipboardRead')) {
+                  manifest.permissions.push('clipboardRead');
+                }
+                if (manifest.web_accessible_resources?.[0]?.resources) {
+                  manifest.web_accessible_resources[0].resources =
+                    manifest.web_accessible_resources[0].resources.filter(
+                      (r) =>
+                        r !== 'offscreen_audio.html' && r !== 'offscreen_audio.js'
+                    );
+                }
+              }
               return JSON.stringify(manifest, null, 2);
             },
           },
@@ -111,8 +135,12 @@ module.exports = (env, argv) => {
           { from: 'js/torrent-ui.js', to: 'js/torrent-ui.js' },
           { from: 'js/torrent-list.js', to: 'js/torrent-list.js' },
           { from: 'audio', to: 'audio' }, // Added to copy audio files
-          { from: 'offscreen_audio.html', to: 'offscreen_audio.html' }, // Added to copy offscreen document
-          { from: 'offscreen_audio.js', to: 'offscreen_audio.js' } // Added to copy offscreen script
+          ...(isFirefox
+            ? []
+            : [
+                { from: 'offscreen_audio.html', to: 'offscreen_audio.html' },
+                { from: 'offscreen_audio.js', to: 'offscreen_audio.js' },
+              ]),
           // Add any other static assets that need to be copied
         ],
       }),

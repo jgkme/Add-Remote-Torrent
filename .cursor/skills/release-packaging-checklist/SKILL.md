@@ -12,12 +12,14 @@ For push / `gh release` auth: **`.cursor/MAINTAINERS.md`** (gitignored).
 ## Release Flow
 
 1. Ensure version is correct in `package.json` and extension metadata.
-2. Run build pipeline: `bun run build`.
+2. Run build pipeline: `bun run build` (Chrome). For Firefox/AMO also run `bun run build:firefox`.
 3. Confirm generated files exist for the target version:
    - `add-remote-torrent-vX.Y.Z.zip`
    - `add-remote-torrent-vX.Y.Z.zip.sha256`
    - `add-remote-torrent-vX.Y.Z.crx`
+   - Firefox: `add-remote-torrent-vX.Y.Z-firefox.zip` (+ `.sha256`)
 4. Verify checksum file matches generated zip.
+5. Firefox/AMO details: skill `firefox-amo-publish` and `docs/firefox.md`.
 
 ## Safety Rules
 
