@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.56 (2026-08-08):**
+  - **Fix / Feat:** Fix Chrome link catching when a stale <all_urls> content-script registration survives upgrades (#67).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.56`.
 - **v0.4.55 (2026-08-08):**
   - **Fix / Feat:** Show Site access granted/missing per server (Options + Dashboard) with Grant access; link-catching site-access status (#66).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.55`.

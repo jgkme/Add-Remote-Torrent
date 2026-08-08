@@ -1,6 +1,6 @@
 {
   "name": "add-remote-torrent",
-  "version": "0.4.55",
+  "version": "0.4.56",
   "packageManager": "bun@1.3.14",
   "description": "Browser extension to add remote torrents (Chrome and Firefox).",
   "main": "background.js",

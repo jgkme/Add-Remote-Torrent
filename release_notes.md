@@ -1,3 +1,8 @@
+### v0.4.56 (2026-08-08)
+
+*   **Fix / Feat:** Fix Chrome link catching when a stale <all_urls> content-script registration survives upgrades (#67).
+*   **Build:** Chrome (`add-remote-torrent-v0.4.56.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.
+
 ### v0.4.55 (2026-08-08)
 
 *   **Fix / Feat:** Show Site access granted/missing per server (Options + Dashboard) with Grant access; link-catching site-access status (#66).
