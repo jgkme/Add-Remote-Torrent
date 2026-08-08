@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.54 (2026-08-08):**
+  - **Fix / Feat:** Private-tracker .torrent download via page session (fixes HTTP 403); ruTorrent Basic Auth for seedboxes; re-request host permissions on settings import (#66).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.54`.
 - **v0.4.53 (2026-08-08):**
   - **Fix / Feat:** Fix ruTorrent crash when browser-session .torrent download fails (Buffer.from null / Received type object); clearer cookie/session Recent Activity errors for private trackers (#66).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.53`.
