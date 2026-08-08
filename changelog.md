@@ -9,6 +9,14 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.54 (2026-08-08)
+
+- **Fix (private trackers):** Download `.torrent` files from the open tracker tab when possible so first-party cookies / Referer work (fixes HTTP 403 from sites like torrentleech when the service worker fetch is blocked) ([#66](https://github.com/jgkme/Add-Remote-Torrent/issues/66)).
+- **Fix (ruTorrent / seedboxes):** Send HTTP Basic Auth from the server profile username/password (or dedicated Basic Auth fields) on add and connection test — required for hosts like Whatbox.
+- **Fix:** Importing settings now re-requests host permissions for saved server URLs.
+- **Fix:** Clearer “Failed to fetch” guidance (host permission vs Basic Auth).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.53 (2026-08-08)
 
 - **Fix (ruTorrent):** When browser-session `.torrent` download fails, fall back to URL add instead of crashing with `Buffer.from(null)` / “Received type object” ([#66](https://github.com/jgkme/Add-Remote-Torrent/issues/66)).

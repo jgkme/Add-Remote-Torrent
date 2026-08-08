@@ -23,6 +23,7 @@ import {
   classifyTorrentDownloadFailure,
   formatTorrentDownloadHistoryMessage,
 } from "./js/torrentDownloadErrors.js";
+import { fetchTorrentBytesWithSession } from "./js/sessionTorrentFetch.js";
 import {
   createExtensionNotification,
   isFirefox,
@@ -276,6 +277,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           category,
           addPaused,
           null,
+          null,
           downloadDir,
           selectedFileIndices,
           totalFileCount,
@@ -326,6 +328,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         tags ?? null,
         category ?? null,
         typeof addPaused === "boolean" ? addPaused : null,
+        null,
         null,
         downloadDir ?? null,
         undefined,
@@ -644,7 +647,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (showAdvancedDialog) {
             popAdvancedDialog(url, targetServer);
           } else {
-            addTorrentToClient(url, targetServer, null, null, null, pageUrl);
+            addTorrentToClient(
+              url,
+              targetServer,
+              null,
+              null,
+              null,
+              pageUrl,
+              sender.tab?.id ?? null
+            );
           }
           sendResponse({ status: "Torrent add request sent to background." });
         } else {
@@ -1547,6 +1558,7 @@ async function addTorrentToClient(
   customCategory = null,
   customAddPaused = null,
   sourcePageUrl = null,
+  sourceTabId = null,
   customDownloadDir = null,
   selectedFileIndices = undefined,
   totalFileCount = undefined,
@@ -1720,149 +1732,104 @@ async function addTorrentToClient(
       debug.log("[ART Background] forceTorrentDownload disabled and URL not recognized as direct torrent; sending URL directly.");
     } else {
     debug.log(
-      `[ART Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content to check if it's a .torrent file.`
+      `[ART Background] Non-magnet link: ${torrentUrl}. Attempting to fetch content with browser session (page tab when available).`
     );
     try {
-      const response = await fetch(torrentUrl, { credentials: "include" });
-      if (!response.ok) {
-        const classified = classifyTorrentDownloadFailure(
-          new Error(
-            `Failed to fetch URL: ${response.status} ${response.statusText}`
-          ),
-          { status: response.status, statusText: response.statusText }
-        );
-        const err = new Error(classified.short);
-        err.artDownloadFailure = classified;
-        err.artHttpStatus = response.status;
-        throw err;
-      }
-      const contentType = response.headers.get("content-type");
+      const fetched = await fetchTorrentBytesWithSession(torrentUrl, {
+        pageUrl: sourcePageUrl,
+        tabId: sourceTabId,
+      });
+      const contentType = fetched.contentType;
+      const bytes = fetched.bytes;
       debug.log(
-        `[ART Background] Fetched ${torrentUrl}, Content-Type: ${contentType}`
+        `[ART Background] Fetched ${torrentUrl} via=${fetched.via}, Content-Type: ${contentType}, bytes=${bytes.byteLength}`
       );
-      if (
+
+      const headSnippet = new TextDecoder("utf-8", { fatal: false })
+        .decode(bytes.slice(0, 64))
+        .trimStart()
+        .toLowerCase();
+      const looksLikeHtml =
+        (contentType && contentType.includes("text/html")) ||
+        headSnippet.startsWith("<!doctype html") ||
+        headSnippet.startsWith("<html");
+
+      const looksLikeTorrentType =
         contentType &&
         (contentType.includes("application/x-bittorrent") ||
           contentType.includes("application/octet-stream") ||
-          contentType.includes("application/torrent"))
-      ) {
-        const arrayBuffer = await response.arrayBuffer();
-        if (arrayBuffer && arrayBuffer.byteLength > 0) {
-          torrentOptions.torrentFileContentBase64 =
-            arrayBufferToBase64(arrayBuffer);
-          debug.log(
-            `[ART Background] Successfully fetched and base64 encoded .torrent content (Content-Type: ${contentType}) for: ${torrentUrl}`
+          contentType.includes("application/torrent"));
+
+      if (looksLikeHtml) {
+        torrentOptions.torrentFileContentBase64 = null;
+        if (shouldFetchTorrentContent) {
+          const classified = classifyTorrentDownloadFailure(
+            new Error(
+              `Site returned HTML instead of a .torrent (Content-Type: ${contentType || "unknown"}). Usually means you are logged out or the download needs a fresh session cookie.`
+            ),
+            { status: 401, statusText: "HTML login/interstitial page" }
           );
-        } else {
+          classified.likelyCause = "session_auth";
+          classified.short =
+            "Could not download .torrent: site returned a login/HTML page instead of a torrent file. Log in on that site in this browser (cookies), then retry. Sent original URL to the client instead.";
+          const msg = formatTorrentDownloadHistoryMessage(
+            classified.short,
+            classified.detail
+          );
           debug.warn(
-            `[ART Background] URL ${torrentUrl} had .torrent Content-Type but empty/invalid body. Sending URL to client.`
+            `[ART Background] Torrent download got HTML. cause=${classified.likelyCause}`,
+            classified.detail
           );
-          torrentOptions.torrentFileContentBase64 = null;
-          if (shouldFetchTorrentContent) {
-            const classified = classifyTorrentDownloadFailure(
-              new Error("empty response body with torrent Content-Type")
-            );
-            const msg = formatTorrentDownloadHistoryMessage(
-              classified.short,
-              classified.detail
-            );
-            debug.warn(
-              `[ART Background] Torrent download empty body. cause=${classified.likelyCause}`,
-              classified.detail
-            );
-            updateActionHistory(msg);
-            createExtensionNotification({
-              type: "basic",
-              iconUrl: "icons/icon-48x48.png",
-              title: "Add Remote Torrent",
-              message: classified.short.substring(0, 150),
-            });
-          }
+          updateActionHistory(msg);
+          createExtensionNotification({
+            type: "basic",
+            iconUrl: "icons/icon-48x48.png",
+            title: "Add Remote Torrent",
+            message: classified.short.substring(0, 150),
+          });
+        }
+      } else if (bytes.byteLength > 0) {
+        torrentOptions.torrentFileContentBase64 = arrayBufferToBase64(bytes);
+        debug.log(
+          `[ART Background] Successfully fetched and base64 encoded .torrent content (via=${fetched.via}, Content-Type: ${contentType || "unknown"}) for: ${torrentUrl}`
+        );
+        if (!looksLikeTorrentType) {
+          debug.warn(
+            `[ART Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Using body anyway.`
+          );
         }
       } else {
-        debug.warn(
-          `[ART Background] URL ${torrentUrl} did not return a .torrent Content-Type (got: ${contentType}). Assuming it is a torrent and attempting to use content anyway.`
-        );
-        const arrayBuffer = await response.arrayBuffer();
-        if (arrayBuffer && arrayBuffer.byteLength > 0) {
-          // HTML login pages are a common private-tracker failure mode when cookies expired.
-          const headSnippet = new TextDecoder("utf-8", { fatal: false })
-            .decode(arrayBuffer.slice(0, 64))
-            .trimStart()
-            .toLowerCase();
-          const looksLikeHtml =
-            (contentType && contentType.includes("text/html")) ||
-            headSnippet.startsWith("<!doctype html") ||
-            headSnippet.startsWith("<html");
-          if (looksLikeHtml) {
-            torrentOptions.torrentFileContentBase64 = null;
-            if (shouldFetchTorrentContent) {
-              const classified = classifyTorrentDownloadFailure(
-                new Error(
-                  `Site returned HTML instead of a .torrent (Content-Type: ${contentType || "unknown"}). Usually means you are logged out or the download needs a fresh session cookie.`
-                ),
-                { status: 401, statusText: "HTML login/interstitial page" }
-              );
-              // Prefer session_auth messaging for HTML interstitial.
-              classified.likelyCause = "session_auth";
-              classified.short =
-                "Could not download .torrent: site returned a login/HTML page instead of a torrent file. Log in on that site in this browser (cookies), then retry. Sent original URL to the client instead.";
-              const msg = formatTorrentDownloadHistoryMessage(
-                classified.short,
-                classified.detail
-              );
-              debug.warn(
-                `[ART Background] Torrent download got HTML. cause=${classified.likelyCause}`,
-                classified.detail
-              );
-              updateActionHistory(msg);
-              createExtensionNotification({
-                type: "basic",
-                iconUrl: "icons/icon-48x48.png",
-                title: "Add Remote Torrent",
-                message: classified.short.substring(0, 150),
-              });
-            }
-          } else {
-            torrentOptions.torrentFileContentBase64 =
-              arrayBufferToBase64(arrayBuffer);
-            debug.log(
-              `[ART Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`
-            );
-          }
-        } else {
-          debug.warn(
-            `[ART Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`
+        torrentOptions.torrentFileContentBase64 = null;
+        if (shouldFetchTorrentContent) {
+          const classified = classifyTorrentDownloadFailure(
+            new Error(
+              `no usable data (Content-Type: ${contentType || "unknown"})`
+            )
           );
-          torrentOptions.torrentFileContentBase64 = null;
-          if (shouldFetchTorrentContent) {
-            const classified = classifyTorrentDownloadFailure(
-              new Error(
-                `no usable data (Content-Type: ${contentType || "unknown"})`
-              )
-            );
-            const msg = formatTorrentDownloadHistoryMessage(
-              classified.short,
-              classified.detail
-            );
-            debug.warn(
-              `[ART Background] Torrent download unusable. cause=${classified.likelyCause}`,
-              classified.detail
-            );
-            updateActionHistory(msg);
-            createExtensionNotification({
-              type: "basic",
-              iconUrl: "icons/icon-48x48.png",
-              title: "Add Remote Torrent",
-              message: classified.short.substring(0, 150),
-            });
-          }
+          const msg = formatTorrentDownloadHistoryMessage(
+            classified.short,
+            classified.detail
+          );
+          debug.warn(
+            `[ART Background] Torrent download unusable. cause=${classified.likelyCause}`,
+            classified.detail
+          );
+          updateActionHistory(msg);
+          createExtensionNotification({
+            type: "basic",
+            iconUrl: "icons/icon-48x48.png",
+            title: "Add Remote Torrent",
+            message: classified.short.substring(0, 150),
+          });
         }
       }
     } catch (fetchError) {
       const classified =
         fetchError?.artDownloadFailure ||
-        classifyTorrentDownloadFailure(fetchError);
+        classifyTorrentDownloadFailure(fetchError, {
+          status: fetchError?.artHttpStatus,
+          statusText: fetchError?.artHttpStatusText,
+        });
       debug.warn(
         `[ART Background] Error attempting to fetch content for ${torrentUrl}:`,
         `cause=${classified.likelyCause}`,
@@ -2570,6 +2537,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       inferredCategory,
       null,
       info.pageUrl,
+      tab?.id ?? null,
       downloadDir
     );
   }

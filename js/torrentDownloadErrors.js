@@ -23,9 +23,9 @@ export function classifyTorrentDownloadFailure(error, http = null) {
       short:
         "Could not download .torrent: site rejected the browser session (HTTP " +
         status +
-        "). Check that you are logged in on that site, then retry.",
+        "). Stay logged in on that tab and retry from the torrent page (private trackers need first-party cookies).",
       detail:
-        "Private trackers need your cookies. Open the torrent site in this browser, log in, and try again. " +
+        "Private trackers often block extension background fetches (SameSite cookies / missing Referer). Prefer right-click add while the tracker page is open. " +
         `HTTP ${status} ${statusText}`.trim(),
     };
   }

@@ -11,7 +11,7 @@ describe("classifyTorrentDownloadFailure", () => {
       statusText: "Forbidden",
     });
     expect(r.likelyCause).toBe("session_auth");
-    expect(r.short).toContain("logged in");
+    expect(r.short.toLowerCase()).toContain("cookie");
     expect(r.short).toContain("403");
   });
 

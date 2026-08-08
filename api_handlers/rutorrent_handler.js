@@ -1,4 +1,8 @@
 import { debug } from '../debug';
+import {
+    applyHttpAuthHeaders,
+    classifyClientContactFailure,
+} from '../js/httpAuthHeaders.js';
 
 // ruTorrent API Handler
 
@@ -17,6 +21,18 @@ function getruTorrentUrl(serverConfig) {
 
 function hasTorrentFileContent(torrentFileContentBase64) {
     return typeof torrentFileContentBase64 === 'string' && torrentFileContentBase64.length > 0;
+}
+
+async function hasHostPermission(url) {
+    try {
+        if (typeof chrome === 'undefined' || !chrome.permissions?.contains) {
+            return true;
+        }
+        const origin = `${new URL(url).origin}/`;
+        return await chrome.permissions.contains({ origins: [origin] });
+    } catch {
+        return false;
+    }
 }
 
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
@@ -43,6 +59,8 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     let body;
     const headers = {};
+    applyHttpAuthHeaders(headers, serverConfig);
+
     const useUrl =
         torrentUrl.startsWith("magnet:") ||
         serverConfig.rutorrentalwaysurl ||
@@ -90,14 +108,20 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
         }
     } catch (error) {
         debug.error('Error adding torrent to ruTorrent:', error);
-        return { success: false, error: { userMessage: `Could not contact ruTorrent: ${error.message}` } };
+        const permitted = await hasHostPermission(serverConfig.url);
+        const classified = classifyClientContactFailure('ruTorrent', error, {
+            hasHostPermission: permitted,
+        });
+        return { success: false, error: { userMessage: classified.userMessage, technicalDetail: error.message, errorCode: classified.likelyCause } };
     }
 }
 
 export async function testConnection(serverConfig) {
     const url = getruTorrentUrl(serverConfig) + "/php/addtorrent.php";
+    const headers = {};
+    applyHttpAuthHeaders(headers, serverConfig);
     try {
-        const response = await fetch(url, { credentials: 'include' });
+        const response = await fetch(url, { credentials: 'include', headers });
         if (response.ok) {
             return { success: true, data: { message: "Successfully connected to ruTorrent." } };
         } else {
@@ -105,6 +129,10 @@ export async function testConnection(serverConfig) {
         }
     } catch (error) {
         debug.error('Error testing connection to ruTorrent:', error);
-        return { success: false, error: { userMessage: `Could not contact ruTorrent: ${error.message}` } };
+        const permitted = await hasHostPermission(serverConfig.url);
+        const classified = classifyClientContactFailure('ruTorrent', error, {
+            hasHostPermission: permitted,
+        });
+        return { success: false, error: { userMessage: classified.userMessage, technicalDetail: error.message, errorCode: classified.likelyCause } };
     }
 }

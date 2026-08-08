@@ -96,4 +96,16 @@ describe("ruTorrent addTorrent", () => {
     expect(result.success).toBe(true);
     expect(calls[0].init.body).toBe(`url=${encodeURIComponent(magnet)}`);
   });
+
+  test("sends Basic Auth from profile username/password (seedboxes)", async () => {
+    const calls = mockFetchOk();
+    await addTorrent(
+      "magnet:?xt=urn:btih:abcdef",
+      { ...serverConfig, username: "whatbox", password: "secret" },
+      { paused: false, torrentFileContentBase64: null, downloadDir: "", labels: [] }
+    );
+    expect(calls[0].init.headers.Authorization).toBe(
+      `Basic ${btoa("whatbox:secret")}`
+    );
+  });
 });

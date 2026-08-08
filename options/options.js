@@ -2131,8 +2131,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                         bgDebugEnabled: Array.isArray(importedSettings.bgDebugEnabled) && importedSettings.bgDebugEnabled || ['log', 'warn', 'error'],
                     };
                     chrome.storage.local.set(settingsToSave, () => {
-                        displayBackupStatus('Settings imported successfully! Reloading...', 'success');
-                        loadSettings(); 
+                        const origins = [];
+                        for (const s of newServers) {
+                            if (!s?.url) continue;
+                            try {
+                                origins.push(`${new URL(s.url).origin}/`);
+                            } catch (_) { /* skip invalid */ }
+                        }
+                        const uniqueOrigins = [...new Set(origins)];
+                        const finishImport = () => {
+                            displayBackupStatus('Settings imported successfully! Reloading...', 'success');
+                            loadSettings();
+                        };
+                        if (uniqueOrigins.length === 0) {
+                            finishImport();
+                            return;
+                        }
+                        chrome.permissions.request({ origins: uniqueOrigins }, (granted) => {
+                            if (!granted) {
+                                displayBackupStatus(
+                                    'Settings imported, but host permission was denied for one or more server URLs. Edit/save each server or use Test Connection to grant access.',
+                                    'error'
+                                );
+                            }
+                            finishImport();
+                        });
                     });
                 }
             } catch (e) { displayBackupStatus(`Error importing settings: ${e.message}`, 'error'); }
