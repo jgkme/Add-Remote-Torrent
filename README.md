@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.53 (2026-08-08):**
+  - **Fix / Feat:** Fix ruTorrent crash when browser-session .torrent download fails (Buffer.from null / Received type object); clearer cookie/session Recent Activity errors for private trackers (#66).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.53`.
 - **v0.4.52 (2026-08-01):**
   - **Feat:** Advanced Add remembers your last tags, category/label, and download directory **per server** after a successful add.
   - **Fix:** Advanced Add tag prefill now uses the server profile `tags` field (with fallback for older `defaultTags` data).

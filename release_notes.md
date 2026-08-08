@@ -1,3 +1,8 @@
+### v0.4.53 (2026-08-08)
+
+*   **Fix / Feat:** Fix ruTorrent crash when browser-session .torrent download fails (Buffer.from null / Received type object); clearer cookie/session Recent Activity errors for private trackers (#66).
+*   **Build:** Chrome (`add-remote-torrent-v0.4.53.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.
+
 ### v0.4.52 (2026-08-01)
 
 *   **Feat:** Advanced Add remembers last-used tags, category/label, and download directory per server after a successful add.

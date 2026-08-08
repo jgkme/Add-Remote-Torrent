@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Add Remote Torrent",
   "short_name": "Add Remote Torrent",
-  "version": "0.4.52",
+  "version": "0.4.53",
   "description": "Add magnets and .torrent URLs to remote clients. Multi-server, local-only settings.",
   "permissions": [
     "storage",
@@ -84,7 +84,9 @@
       "id": "add-remote-torrent@jgkme",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   }
