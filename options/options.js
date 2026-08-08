@@ -1,6 +1,13 @@
 import '../css/input.css';
 import { debug } from '../debug';
 import { generateLocalId } from '../utils.js';
+import {
+    requestHostPermissionForUrl,
+    hostPermissionStatusLabel,
+    mapServerHostPermissions,
+    hasLinkCatchingHostPermission,
+    requestLinkCatchingHostPermission,
+} from '../js/hostPermissions.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -977,6 +984,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             serverListUl.appendChild(li);
             return;
         }
+        mapServerHostPermissions(servers).then((permissionById) => {
+            renderServerListWithPermissions(permissionById || {});
+        });
+    }
+
+    function renderServerListWithPermissions(permissionById) {
+        serverListUl.innerHTML = '';
+        if (servers.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'No server profiles configured yet.';
+            li.className = 'text-gray-500 dark:text-gray-400 italic p-4 text-center';
+            serverListUl.appendChild(li);
+            return;
+        }
         servers.forEach(server => {
             const li = document.createElement('li');
             li.className = `p-4 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0 bg-white dark:bg-gray-700 shadow-sm hover:shadow-md transition-shadow`;
@@ -1028,6 +1049,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             urlSpan.className = 'text-sm text-gray-500 dark:text-gray-400 break-all';
             urlSpan.textContent = `URL: ${server.url}`;
             serverInfoDiv.appendChild(urlSpan);
+
+            const hostGranted = permissionById[server.id];
+            const hostStatus = hostPermissionStatusLabel(
+                typeof hostGranted === 'boolean' ? hostGranted : null
+            );
+            const hostRow = document.createElement('div');
+            hostRow.className = 'mt-1 flex flex-wrap items-center gap-2';
+            const hostBadge = document.createElement('span');
+            hostBadge.className =
+                hostStatus.tone === 'ok'
+                    ? 'px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : hostStatus.tone === 'missing'
+                      ? 'px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+                      : 'px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200';
+            hostBadge.textContent = hostStatus.label;
+            hostRow.appendChild(hostBadge);
+            if (hostGranted === false && server.url) {
+                const grantBtn = document.createElement('button');
+                grantBtn.type = 'button';
+                grantBtn.className =
+                    'grant-host-permission-button px-2 py-0.5 text-xs font-medium rounded-md bg-amber-500 hover:bg-amber-600 text-white';
+                grantBtn.dataset.id = server.id;
+                grantBtn.dataset.url = server.url;
+                grantBtn.textContent = 'Grant access';
+                hostRow.appendChild(grantBtn);
+            }
+            serverInfoDiv.appendChild(hostRow);
+
             li.appendChild(serverInfoDiv);
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'actions flex space-x-2 shrink-0 mt-2 md:mt-0';
@@ -1069,7 +1118,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.export-profile-button').forEach(button => {
             button.addEventListener('click', handleExportServerProfile);
         });
+        document.querySelectorAll('.grant-host-permission-button').forEach((button) => {
+            button.addEventListener('click', async (event) => {
+                const url = event.currentTarget.dataset.url;
+                const granted = await requestHostPermissionForUrl(url);
+                if (granted) {
+                    displayFormStatus('Site access granted for this server.', 'success');
+                } else {
+                    displayFormStatus(
+                        'Site access was not granted. Chrome must show a permission prompt — try again and click Allow.',
+                        'error'
+                    );
+                }
+                renderServerList();
+            });
+        });
         populateRssFeedServerSelect();
+    }
+
+    async function refreshLinkCatchingPermissionUi() {
+        const statusEl = document.getElementById('linkCatchingPermissionStatus');
+        const grantBtn = document.getElementById('grantLinkCatchingPermissionButton');
+        if (!statusEl || !grantBtn) return;
+        const granted = await hasLinkCatchingHostPermission();
+        const status = hostPermissionStatusLabel(granted);
+        statusEl.textContent = granted
+            ? 'Link catching site access: granted (all http/https)'
+            : 'Link catching site access: missing';
+        statusEl.className =
+            status.tone === 'ok'
+                ? 'px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                : 'px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100';
+        grantBtn.classList.toggle('hidden', granted);
     }
 
     function populateRssFeedServerSelect() {
@@ -1908,24 +1988,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             globalSettings.catchfrompage = enableLinkCatching;
             chrome.storage.local.set({ catchfrompage: globalSettings.catchfrompage }, () => {
                 displayFormStatus('Global settings updated.', 'success');
+                refreshLinkCatchingPermissionUi();
             });
         };
         if (!enableLinkCatching) {
             persistCatchFromPage();
             return;
         }
-        chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] }, (granted) => {
+        requestLinkCatchingHostPermission().then((granted) => {
             if (!granted) {
                 catchFromPageToggle.checked = false;
                 displayFormStatus(
                     'Site access is required for on-page link catching. The setting was not enabled.',
                     'error'
                 );
+                refreshLinkCatchingPermissionUi();
                 return;
             }
             persistCatchFromPage();
         });
     });
+
+    const grantLinkCatchingPermissionButton = document.getElementById('grantLinkCatchingPermissionButton');
+    if (grantLinkCatchingPermissionButton) {
+        grantLinkCatchingPermissionButton.addEventListener('click', async () => {
+            const granted = await requestLinkCatchingHostPermission();
+            if (granted) {
+                displayFormStatus('Link catching site access granted.', 'success');
+            } else {
+                displayFormStatus(
+                    'Site access was not granted. Click Allow on the Chrome permission prompt.',
+                    'error'
+                );
+            }
+            refreshLinkCatchingPermissionUi();
+        });
+    }
     linksFoundIndicatorToggle.addEventListener('change', () => {
         globalSettings.linksfoundindicator = linksFoundIndicatorToggle.checked;
         chrome.storage.local.set({ linksfoundindicator: globalSettings.linksfoundindicator }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -2220,10 +2318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             globalSettings.catchfrompage = result.catchfrompage || false; 
             catchFromPageToggle.checked = globalSettings.catchfrompage;
             if (globalSettings.catchfrompage) {
-                chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] }, (granted) => {
+                hasLinkCatchingHostPermission().then((granted) => {
                     if (!granted) {
                         displayFormStatus(
-                            'On-page link catching is on but site access is missing. Toggle it off and on to approve the permission prompt.',
+                            'On-page link catching is on but site access is missing. Use “Grant site access” below or toggle catching off and on.',
                             'error'
                         );
                     }
@@ -2304,6 +2402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             globalSettings.bgDebugEnabled = (Array.isArray(result.bgDebugEnabled) ? result.bgDebugEnabled : ['log', 'warn', 'error']);
             renderDebugSettings()
             renderServerList();
+            refreshLinkCatchingPermissionUi();
             renderUrlMappingsList();
             populateMapToServerSelect();
             renderTrackerUrlRulesList();
@@ -2313,6 +2412,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
+    if (chrome.permissions?.onAdded) {
+        chrome.permissions.onAdded.addListener(() => {
+            renderServerList();
+            refreshLinkCatchingPermissionUi();
+        });
+    }
+    if (chrome.permissions?.onRemoved) {
+        chrome.permissions.onRemoved.addListener(() => {
+            renderServerList();
+            refreshLinkCatchingPermissionUi();
+        });
+    }
     // --- URL Mapping Functions ---
     function generateMappingId() { 
         return generateLocalId('map');

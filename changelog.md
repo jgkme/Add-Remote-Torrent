@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.55 (2026-08-08)
+
+- **Feat:** Options and Dashboard show per-server **Site access: granted/missing** with a **Grant access** button when host permission is missing.
+- **Feat:** Link-catching row shows whether all-site access is granted, with **Grant site access**.
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.54 (2026-08-08)
 
 - **Fix (private trackers):** Download `.torrent` files from the open tracker tab when possible so first-party cookies / Referer work (fixes HTTP 403 from sites like torrentleech when the service worker fetch is blocked) ([#66](https://github.com/jgkme/Add-Remote-Torrent/issues/66)).

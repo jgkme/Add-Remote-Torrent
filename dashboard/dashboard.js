@@ -160,7 +160,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function buildServerStatusCard(server) {
+    function originPatternFromUrl(url) {
+        try {
+            return `${new URL(url).origin}/`;
+        } catch {
+            return null;
+        }
+    }
+
+    async function hasHostPermissionForUrl(url) {
+        const origin = originPatternFromUrl(url);
+        if (!origin || !chrome.permissions?.contains) return false;
+        try {
+            return await chrome.permissions.contains({ origins: [origin] });
+        } catch {
+            return false;
+        }
+    }
+
+    async function requestHostPermissionForUrl(url) {
+        const origin = originPatternFromUrl(url);
+        if (!origin || !chrome.permissions?.request) return false;
+        try {
+            return await chrome.permissions.request({ origins: [origin] });
+        } catch {
+            return false;
+        }
+    }
+
+    function buildServerStatusCard(server, hostGranted = null) {
             const isOnline = server.status === 'online';
             const torrentPanelExpanded = expandedTorrentPanels.has(server.id);
             const cardElement = document.createElement('div');
@@ -184,6 +212,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailsLastErrorTech = server.lastError?.technicalDetail ? escapeHtml(server.lastError.technicalDetail) : '';
             const detailsLastErrorCode = server.lastError?.errorCode ? escapeHtml(server.lastError.errorCode) : '';
             const detailsLastErrorAt = server.lastError?.at ? escapeHtml(new Date(server.lastError.at).toLocaleString()) : '';
+            const hostBadgeClass =
+                hostGranted === true
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : hostGranted === false
+                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200';
+            const hostBadgeLabel =
+                hostGranted === true
+                    ? 'Site access: granted'
+                    : hostGranted === false
+                      ? 'Site access: missing'
+                      : 'Site access: checking…';
+            const hostAccessDetail =
+                hostGranted === true ? 'Granted' : hostGranted === false ? 'Missing' : 'Unknown';
 
             cardElement.innerHTML = `
                 <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
@@ -193,6 +235,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="server-stats-grid text-sm text-gray-600 dark:text-gray-400 mb-3">
                     <p class="min-w-0 col-span-full"><strong>Client:</strong> ${escapeHtml(server.clientType || 'N/A')} ${server.version ? `(${escapeHtml(server.version.startsWith('v') ? server.version : 'v' + server.version)})` : ''}${server.clientType === 'qbittorrent' && server.webApiVersion ? ` · Web API ${escapeHtml(server.webApiVersion)}` : ''}</p>
                     <p class="min-w-0 col-span-full"><strong>URL:</strong> <span class="break-all">${escapeHtml(server.url)}</span></p>
+                    <p class="min-w-0 col-span-full flex flex-wrap items-center gap-2">
+                      <span class="px-2 py-0.5 text-xs font-semibold rounded-full ${hostBadgeClass}">${hostBadgeLabel}</span>
+                      ${
+                          hostGranted === false
+                              ? `<button type="button" class="grant-host-permission-btn px-2 py-0.5 text-xs font-medium rounded-md bg-amber-500 hover:bg-amber-600 text-white" data-url="${escapeHtml(server.url || '')}">Grant access</button>`
+                              : ''
+                      }
+                    </p>
                     <p class="min-w-0"><strong>Free space:</strong> ${escapeHtml(freeSpace)}</p>
                     <p class="min-w-0"><strong>Torrents:</strong> ${escapeHtml(torrentCountDisplay)}</p>
                     <p class="min-w-0"><strong>DL:</strong> ${escapeHtml(dlSpeed)}</p>
@@ -239,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p><strong>Client Version:</strong> ${detailsVersion}</p>
                             <p><strong>Server ID:</strong> <span class="break-all">${detailsServerId}</span></p>
                             <p><strong>Tracked Active Torrents:</strong> ${detailsActiveCount}</p>
+                            <p><strong>Site access:</strong> ${hostAccessDetail}</p>
                             ${
                                 !isOnline && (detailsLastErrorUser || detailsLastErrorTech || detailsLastErrorCode)
                                     ? `
@@ -285,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return cardElement;
     }
 
-    function renderServerStatus(servers) {
+    async function renderServerStatus(servers) {
         serversCache = servers || [];
         serverStatusContainer.innerHTML = '';
         if (!servers || servers.length === 0) {
@@ -299,8 +350,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const permissionEntries = await Promise.all(
+            servers.map(async (server) => [server.id, await hasHostPermissionForUrl(server.url || '')])
+        );
+        const permissionById = Object.fromEntries(permissionEntries);
+
         servers.forEach((server) => {
-            serverStatusContainer.appendChild(buildServerStatusCard(server));
+            serverStatusContainer.appendChild(
+                buildServerStatusCard(server, permissionById[server.id])
+            );
+        });
+
+        document.querySelectorAll('.grant-host-permission-btn').forEach((button) => {
+            button.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = e.currentTarget.dataset.url;
+                const granted = await requestHostPermissionForUrl(url);
+                if (!granted) {
+                    window.alert(
+                        'Site access was not granted. Click Allow on the Chrome permission prompt, then try again.'
+                    );
+                }
+                renderServerStatus(serversCache);
+            });
         });
 
         document.querySelectorAll('.show-more-btn').forEach((button) => {
@@ -395,6 +468,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load
     loadDashboardData();
+
+    if (chrome.permissions?.onAdded) {
+        chrome.permissions.onAdded.addListener(() => renderServerStatus(serversCache));
+    }
+    if (chrome.permissions?.onRemoved) {
+        chrome.permissions.onRemoved.addListener(() => renderServerStatus(serversCache));
+    }
 
     refreshAllButton.addEventListener('click', () => {
         refreshAllButton.disabled = true;
