@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.55 (2026-08-08):**
+  - **Fix / Feat:** Show Site access granted/missing per server (Options + Dashboard) with Grant access; link-catching site-access status (#66).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.55`.
 - **v0.4.54 (2026-08-08):**
   - **Fix / Feat:** Private-tracker .torrent download via page session (fixes HTTP 403); ruTorrent Basic Auth for seedboxes; re-request host permissions on settings import (#66).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.54`.
