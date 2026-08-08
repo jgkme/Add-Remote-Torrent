@@ -15,6 +15,10 @@ function getruTorrentUrl(serverConfig) {
     return url;
 }
 
+function hasTorrentFileContent(torrentFileContentBase64) {
+    return typeof torrentFileContentBase64 === 'string' && torrentFileContentBase64.length > 0;
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const {
         paused,
@@ -39,7 +43,21 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     let body;
     const headers = {};
-    if (torrentUrl.startsWith("magnet:") || serverConfig.rutorrentalwaysurl) {
+    const useUrl =
+        torrentUrl.startsWith("magnet:") ||
+        serverConfig.rutorrentalwaysurl ||
+        !hasTorrentFileContent(torrentFileContentBase64);
+
+    if (useUrl) {
+        if (
+            !torrentUrl.startsWith("magnet:") &&
+            !serverConfig.rutorrentalwaysurl &&
+            !hasTorrentFileContent(torrentFileContentBase64)
+        ) {
+            debug.warn(
+                "ruTorrent: No torrent file content available; falling back to URL add. Private trackers may fail if the client cannot authenticate to the site."
+            );
+        }
         headers['Content-Type'] = 'application/x-www-form-urlencoded';
         body = `url=${encodeURIComponent(torrentUrl)}`;
     } else {

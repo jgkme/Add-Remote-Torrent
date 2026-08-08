@@ -20,6 +20,10 @@ import {
   buildLastUsedServerPatch,
 } from "./js/confirmAddDefaults.js";
 import {
+  classifyTorrentDownloadFailure,
+  formatTorrentDownloadHistoryMessage,
+} from "./js/torrentDownloadErrors.js";
+import {
   createExtensionNotification,
   isFirefox,
 } from "./browser_compat.js";
@@ -1721,9 +1725,16 @@ async function addTorrentToClient(
     try {
       const response = await fetch(torrentUrl, { credentials: "include" });
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch URL: ${response.status} ${response.statusText}`
+        const classified = classifyTorrentDownloadFailure(
+          new Error(
+            `Failed to fetch URL: ${response.status} ${response.statusText}`
+          ),
+          { status: response.status, statusText: response.statusText }
         );
+        const err = new Error(classified.short);
+        err.artDownloadFailure = classified;
+        err.artHttpStatus = response.status;
+        throw err;
       }
       const contentType = response.headers.get("content-type");
       debug.log(
@@ -1748,13 +1759,23 @@ async function addTorrentToClient(
           );
           torrentOptions.torrentFileContentBase64 = null;
           if (shouldFetchTorrentContent) {
-            const msg = "Failed to download .torrent file from site (empty response); sent original URL to client instead.";
+            const classified = classifyTorrentDownloadFailure(
+              new Error("empty response body with torrent Content-Type")
+            );
+            const msg = formatTorrentDownloadHistoryMessage(
+              classified.short,
+              classified.detail
+            );
+            debug.warn(
+              `[ART Background] Torrent download empty body. cause=${classified.likelyCause}`,
+              classified.detail
+            );
             updateActionHistory(msg);
             createExtensionNotification({
               type: "basic",
               iconUrl: "icons/icon-48x48.png",
               title: "Add Remote Torrent",
-              message: msg,
+              message: classified.short.substring(0, 150),
             });
           }
         }
@@ -1764,43 +1785,102 @@ async function addTorrentToClient(
         );
         const arrayBuffer = await response.arrayBuffer();
         if (arrayBuffer && arrayBuffer.byteLength > 0) {
-          torrentOptions.torrentFileContentBase64 =
-            arrayBufferToBase64(arrayBuffer);
-          debug.log(
-            `[ART Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`
-          );
+          // HTML login pages are a common private-tracker failure mode when cookies expired.
+          const headSnippet = new TextDecoder("utf-8", { fatal: false })
+            .decode(arrayBuffer.slice(0, 64))
+            .trimStart()
+            .toLowerCase();
+          const looksLikeHtml =
+            (contentType && contentType.includes("text/html")) ||
+            headSnippet.startsWith("<!doctype html") ||
+            headSnippet.startsWith("<html");
+          if (looksLikeHtml) {
+            torrentOptions.torrentFileContentBase64 = null;
+            if (shouldFetchTorrentContent) {
+              const classified = classifyTorrentDownloadFailure(
+                new Error(
+                  `Site returned HTML instead of a .torrent (Content-Type: ${contentType || "unknown"}). Usually means you are logged out or the download needs a fresh session cookie.`
+                ),
+                { status: 401, statusText: "HTML login/interstitial page" }
+              );
+              // Prefer session_auth messaging for HTML interstitial.
+              classified.likelyCause = "session_auth";
+              classified.short =
+                "Could not download .torrent: site returned a login/HTML page instead of a torrent file. Log in on that site in this browser (cookies), then retry. Sent original URL to the client instead.";
+              const msg = formatTorrentDownloadHistoryMessage(
+                classified.short,
+                classified.detail
+              );
+              debug.warn(
+                `[ART Background] Torrent download got HTML. cause=${classified.likelyCause}`,
+                classified.detail
+              );
+              updateActionHistory(msg);
+              createExtensionNotification({
+                type: "basic",
+                iconUrl: "icons/icon-48x48.png",
+                title: "Add Remote Torrent",
+                message: classified.short.substring(0, 150),
+              });
+            }
+          } else {
+            torrentOptions.torrentFileContentBase64 =
+              arrayBufferToBase64(arrayBuffer);
+            debug.log(
+              `[ART Background] Successfully fetched and base64 encoded content despite wrong Content-Type for: ${torrentUrl}`
+            );
+          }
         } else {
           debug.warn(
             `[ART Background] URL ${torrentUrl} had wrong Content-Type and empty/invalid body. Sending URL to client.`
           );
           torrentOptions.torrentFileContentBase64 = null;
           if (shouldFetchTorrentContent) {
-            const msg = "Site returned no usable data when downloading .torrent; sent original URL to client instead.";
+            const classified = classifyTorrentDownloadFailure(
+              new Error(
+                `no usable data (Content-Type: ${contentType || "unknown"})`
+              )
+            );
+            const msg = formatTorrentDownloadHistoryMessage(
+              classified.short,
+              classified.detail
+            );
+            debug.warn(
+              `[ART Background] Torrent download unusable. cause=${classified.likelyCause}`,
+              classified.detail
+            );
             updateActionHistory(msg);
             createExtensionNotification({
               type: "basic",
               iconUrl: "icons/icon-48x48.png",
               title: "Add Remote Torrent",
-              message: msg,
+              message: classified.short.substring(0, 150),
             });
           }
         }
       }
     } catch (fetchError) {
+      const classified =
+        fetchError?.artDownloadFailure ||
+        classifyTorrentDownloadFailure(fetchError);
       debug.warn(
         `[ART Background] Error attempting to fetch content for ${torrentUrl}:`,
-        fetchError.message,
-        ". Will send URL to client as is."
+        `cause=${classified.likelyCause}`,
+        classified.detail || fetchError.message,
+        ". Will send URL to client as is (client may still fail on private trackers)."
       );
       torrentOptions.torrentFileContentBase64 = null;
       if (shouldFetchTorrentContent) {
-        const msg = "Could not download .torrent file with your browser session; sent original URL to client instead.";
+        const msg = formatTorrentDownloadHistoryMessage(
+          classified.short,
+          classified.detail
+        );
         updateActionHistory(msg);
         createExtensionNotification({
           type: "basic",
           iconUrl: "icons/icon-48x48.png",
           title: "Add Remote Torrent",
-          message: msg,
+          message: classified.short.substring(0, 150),
         });
       }
     }

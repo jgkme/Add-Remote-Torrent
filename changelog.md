@@ -9,6 +9,13 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.53 (2026-08-08)
+
+- **Fix (ruTorrent):** When browser-session `.torrent` download fails, fall back to URL add instead of crashing with `Buffer.from(null)` / “Received type object” ([#66](https://github.com/jgkme/Add-Remote-Torrent/issues/66)).
+- **Fix:** Recent Activity messages now call out cookie/session, HTTP auth failures, HTML login pages, and network/CORS causes when a site `.torrent` cannot be fetched.
+- **Build:** Chrome and Firefox release artifacts; `scripts/release.sh` packages both.
+- **Chore:** Unit tests for ruTorrent URL fallback and download-error classification.
+
 ### 0.4.52 (2026-08-01)
 
 - **Feat:** Advanced Add remembers last-used tags, category/label, and download directory per server after a successful add.

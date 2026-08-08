@@ -128,8 +128,8 @@ text = readme.read_text(encoding="utf-8")
 marker = "## Changelog\n\n"
 entry = (
     f"- **v{version} ({date}):**\n"
-    f"  - **Chore (Release):** {summary}.\n"
-    f"  - **Build:** Generated release artifacts for `v{version}`.\n"
+    f"  - **Fix / Feat:** {summary}.\n"
+    f"  - **Build:** Chrome + Firefox release artifacts for `v{version}`.\n"
 )
 if marker not in text:
     raise SystemExit("README.md does not contain '## Changelog' marker.")
@@ -139,27 +139,30 @@ notes = pathlib.Path("release_notes.md")
 notes_text = notes.read_text(encoding="utf-8")
 notes_entry = (
     f"### v{version} ({date})\n\n"
-    f"*   **Chore (Release):** {summary}.\n"
-    f"*   **Build:** Generated release artifacts for `v{version}`.\n\n"
+    f"*   **Fix / Feat:** {summary}.\n"
+    f"*   **Build:** Chrome (`add-remote-torrent-v{version}.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.\n\n"
 )
 notes.write_text(notes_entry + notes_text, encoding="utf-8")
 PY
 
 bun run build
+bun run build:firefox
 
 ZIP_FILE="add-remote-torrent-v${TARGET_VERSION}.zip"
 CRX_FILE="add-remote-torrent-v${TARGET_VERSION}.crx"
 SHA_FILE="${ZIP_FILE}.sha256"
+FF_ZIP_FILE="add-remote-torrent-v${TARGET_VERSION}-firefox.zip"
+FF_SHA_FILE="${FF_ZIP_FILE}.sha256"
 
-for f in "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE"; do
+for f in "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE" "$FF_ZIP_FILE" "$FF_SHA_FILE"; do
   if [[ ! -f "$f" ]]; then
     echo "Expected artifact missing: $f"
     exit 1
   fi
 done
 
-git add package.json manifest.json README.md release_notes.md
-git add -f "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE"
+git add package.json manifest.json README.md release_notes.md changelog.md
+git add -f "$ZIP_FILE" "$CRX_FILE" "$SHA_FILE" "$FF_ZIP_FILE" "$FF_SHA_FILE"
 git commit -m "$(cat <<EOF
 Release v${TARGET_VERSION}.
 
@@ -172,7 +175,9 @@ CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git push origin "$CURRENT_BRANCH"
 git push origin "v${TARGET_VERSION}"
 
-gh release create "v${TARGET_VERSION}" "$CRX_FILE" "$ZIP_FILE" "$SHA_FILE" \
+gh release create "v${TARGET_VERSION}" \
+  "$CRX_FILE" "$ZIP_FILE" "$SHA_FILE" \
+  "$FF_ZIP_FILE" "$FF_SHA_FILE" \
   --title "v${TARGET_VERSION}" \
   --notes-file release_notes.md
 
