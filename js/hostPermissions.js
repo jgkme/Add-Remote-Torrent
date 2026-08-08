@@ -4,6 +4,38 @@
 
 export const LINK_CATCHING_ORIGINS = ["http://*/*", "https://*/*"];
 
+/** Broader patterns Chrome may show as granted for "On all sites". */
+const LINK_CATCHING_BROADER_ORIGINS = ["<all_urls>", "*://*/*"];
+
+/**
+ * @returns {Promise<boolean>}
+ */
+export async function hasLinkCatchingHostPermission() {
+  if (typeof chrome === "undefined" || !chrome.permissions?.contains) {
+    return false;
+  }
+  try {
+    if (await chrome.permissions.contains({ origins: LINK_CATCHING_ORIGINS })) {
+      return true;
+    }
+    for (const origin of LINK_CATCHING_BROADER_ORIGINS) {
+      if (await chrome.permissions.contains({ origins: [origin] })) {
+        return true;
+      }
+    }
+    // Some Chrome builds grant schemes independently.
+    const httpOk = await chrome.permissions.contains({
+      origins: ["http://*/*"],
+    });
+    const httpsOk = await chrome.permissions.contains({
+      origins: ["https://*/*"],
+    });
+    return Boolean(httpOk && httpsOk);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * @param {string} url
  * @returns {string | null} Chrome origin pattern like "https://example.com/"
@@ -60,22 +92,6 @@ export async function requestHostPermissionForUrl(url) {
   }
   try {
     return await chrome.permissions.request({ origins: [origin] });
-  } catch {
-    return false;
-  }
-}
-
-/**
- * @returns {Promise<boolean>}
- */
-export async function hasLinkCatchingHostPermission() {
-  if (typeof chrome === "undefined" || !chrome.permissions?.contains) {
-    return false;
-  }
-  try {
-    return await chrome.permissions.contains({
-      origins: LINK_CATCHING_ORIGINS,
-    });
   } catch {
     return false;
   }

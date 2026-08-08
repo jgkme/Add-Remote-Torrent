@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.56 (2026-08-08)
+
+- **Fix (Chrome link catching):** Re-register the on-page content script when a stale `<all_urls>` registration from older builds persists across upgrades — that mismatch prevented injection (extension missing from DevTools, “On all sites” / catching appearing broken) ([#67](https://github.com/jgkme/Add-Remote-Torrent/issues/67)).
+- **Fix:** Broader detection of granted link-catching site access (`http`/`https`, `*://*/*`, `<all_urls>`).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.55 (2026-08-08)
 
 - **Feat:** Options and Dashboard show per-server **Site access: granted/missing** with a **Grant access** button when host permission is missing.
