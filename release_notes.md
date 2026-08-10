@@ -1,3 +1,8 @@
+### v0.4.57 (2026-08-10)
+
+*   **Fix / Feat:** Fix ruTorrent 401 by preferring browser session auth and only retrying Basic Auth after Unauthorized (#69).
+*   **Build:** Chrome (`add-remote-torrent-v0.4.57.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.
+
 ### v0.4.56 (2026-08-08)
 
 *   **Fix / Feat:** Fix Chrome link catching when a stale <all_urls> content-script registration survives upgrades (#67).

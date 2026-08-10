@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.57 (2026-08-10):**
+  - **Fix / Feat:** Fix ruTorrent 401 by preferring browser session auth and only retrying Basic Auth after Unauthorized (#69).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.57`.
 - **v0.4.56 (2026-08-08):**
   - **Fix / Feat:** Fix Chrome link catching when a stale <all_urls> content-script registration survives upgrades (#67).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.56`.
