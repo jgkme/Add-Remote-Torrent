@@ -2,6 +2,8 @@ import { debug } from '../debug';
 import {
     applyHttpAuthHeaders,
     classifyClientContactFailure,
+    shouldSendRuTorrentBasicAuthUpfront,
+    hasRuTorrentBasicAuthCredentials,
 } from '../js/httpAuthHeaders.js';
 
 // ruTorrent API Handler
@@ -35,6 +37,55 @@ async function hasHostPermission(url) {
     }
 }
 
+/**
+ * Prefer browser-session cookies (pre-0.4.54 behavior). Only send Authorization
+ * upfront when "Use HTTP Basic Authentication" is enabled. On 401, retry once
+ * with profile credentials so seedboxes still work.
+ */
+async function fetchRuTorrent(url, serverConfig, init = {}) {
+    const baseHeaders = { ...(init.headers || {}) };
+    const sendUpfront = shouldSendRuTorrentBasicAuthUpfront(serverConfig);
+    if (sendUpfront) {
+        applyHttpAuthHeaders(baseHeaders, serverConfig);
+    }
+
+    let response = await fetch(url, {
+        ...init,
+        headers: baseHeaders,
+        credentials: 'include',
+    });
+
+    if (
+        response.status === 401 &&
+        !baseHeaders.Authorization &&
+        hasRuTorrentBasicAuthCredentials(serverConfig)
+    ) {
+        debug.warn(
+            'ruTorrent: session auth returned 401; retrying with profile Basic Auth credentials.'
+        );
+        const retryHeaders = { ...baseHeaders };
+        applyHttpAuthHeaders(retryHeaders, {
+            ...serverConfig,
+            useBasicAuth: false,
+        });
+        response = await fetch(url, {
+            ...init,
+            headers: retryHeaders,
+            credentials: 'include',
+        });
+    }
+
+    return response;
+}
+
+function unauthorizedUserMessage() {
+    return (
+        'Failed to connect to ruTorrent: 401 Unauthorized. ' +
+        'If you log into ruTorrent in the browser, leave “Use HTTP Basic Authentication” unchecked and rely on that session — ' +
+        'or enable it and enter the correct HTTP Basic username/password (seedbox credentials).'
+    );
+}
+
 export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     const {
         paused,
@@ -59,7 +110,6 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
     let body;
     const headers = {};
-    applyHttpAuthHeaders(headers, serverConfig);
 
     const useUrl =
         torrentUrl.startsWith("magnet:") ||
@@ -86,14 +136,16 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
     }
 
     try {
-        const response = await fetch(url, {
+        const response = await fetchRuTorrent(url, serverConfig, {
             method: 'POST',
-            headers: headers,
-            body: body,
-            credentials: 'include'
+            headers,
+            body,
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                return { success: false, error: { userMessage: unauthorizedUserMessage() } };
+            }
             return { success: false, error: { userMessage: `ruTorrent API request failed: ${response.status} ${response.statusText}` } };
         }
 
@@ -118,12 +170,12 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
 
 export async function testConnection(serverConfig) {
     const url = getruTorrentUrl(serverConfig) + "/php/addtorrent.php";
-    const headers = {};
-    applyHttpAuthHeaders(headers, serverConfig);
     try {
-        const response = await fetch(url, { credentials: 'include', headers });
+        const response = await fetchRuTorrent(url, serverConfig, { method: 'GET' });
         if (response.ok) {
             return { success: true, data: { message: "Successfully connected to ruTorrent." } };
+        } else if (response.status === 401) {
+            return { success: false, error: { userMessage: unauthorizedUserMessage() } };
         } else {
             return { success: false, error: { userMessage: `Failed to connect to ruTorrent: ${response.status} ${response.statusText}` } };
         }

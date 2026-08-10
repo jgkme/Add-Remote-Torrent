@@ -97,14 +97,62 @@ describe("ruTorrent addTorrent", () => {
     expect(calls[0].init.body).toBe(`url=${encodeURIComponent(magnet)}`);
   });
 
-  test("sends Basic Auth from profile username/password (seedboxes)", async () => {
+  test("prefers browser session first; does not send Basic Auth on initial request", async () => {
     const calls = mockFetchOk();
     await addTorrent(
       "magnet:?xt=urn:btih:abcdef",
       { ...serverConfig, username: "whatbox", password: "secret" },
       { paused: false, torrentFileContentBase64: null, downloadDir: "", labels: [] }
     );
-    expect(calls[0].init.headers.Authorization).toBe(
+    expect(calls).toHaveLength(1);
+    expect(calls[0].init.headers.Authorization).toBeUndefined();
+  });
+
+  test("sends Basic Auth immediately when useBasicAuth is enabled", async () => {
+    const calls = mockFetchOk();
+    await addTorrent(
+      "magnet:?xt=urn:btih:abcdef",
+      {
+        ...serverConfig,
+        useBasicAuth: true,
+        basicAuthUsername: "seed",
+        basicAuthPassword: "box",
+      },
+      { paused: false, torrentFileContentBase64: null, downloadDir: "", labels: [] }
+    );
+    expect(calls[0].init.headers.Authorization).toBe(`Basic ${btoa("seed:box")}`);
+  });
+
+  test("retries with profile Basic Auth after 401 without Authorization", async () => {
+    const calls = [];
+    globalThis.fetch = mock(async (url, init = {}) => {
+      calls.push({ url: String(url), init });
+      if (!init.headers?.Authorization) {
+        return {
+          ok: false,
+          status: 401,
+          statusText: "Unauthorized",
+          url: String(url),
+          text: async () => "auth required",
+        };
+      }
+      return {
+        ok: true,
+        url: "https://rt.example/php/addtorrent.php?result[]=Success",
+        text: async () => "addTorrentSuccess",
+      };
+    });
+
+    const result = await addTorrent(
+      "magnet:?xt=urn:btih:abcdef",
+      { ...serverConfig, username: "whatbox", password: "secret" },
+      { paused: false, torrentFileContentBase64: null, downloadDir: "", labels: [] }
+    );
+
+    expect(result.success).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].init.headers.Authorization).toBeUndefined();
+    expect(calls[1].init.headers.Authorization).toBe(
       `Basic ${btoa("whatbox:secret")}`
     );
   });

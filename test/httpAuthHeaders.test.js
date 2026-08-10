@@ -19,12 +19,18 @@ describe("applyHttpAuthHeaders", () => {
     expect(headers.Authorization).toBe(`Basic ${btoa("seed:box")}`);
   });
 
-  test("falls back to profile username/password", () => {
+  test("falls back to profile username/password only when both are set", () => {
     const headers = applyHttpAuthHeaders(
       {},
       { username: "user", password: "pass" }
     );
     expect(headers.Authorization).toBe(`Basic ${btoa("user:pass")}`);
+  });
+
+  test("does not send Basic Auth for username without password", () => {
+    expect(
+      applyHttpAuthHeaders({}, { username: "user", password: "" })
+    ).toEqual({});
   });
 
   test("leaves headers unchanged when no credentials", () => {

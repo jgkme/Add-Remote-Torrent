@@ -22,12 +22,39 @@ export function applyHttpAuthHeaders(headers, serverConfig = {}) {
     )}`;
     return out;
   }
-  if (serverConfig.username || serverConfig.password) {
-    out.Authorization = `Basic ${btoa(
-      `${serverConfig.username || ""}:${serverConfig.password || ""}`
-    )}`;
+  const username = (serverConfig.username || "").trim();
+  const password = serverConfig.password || "";
+  // Require both — username-only Basic headers override browser session auth and cause 401s.
+  if (username && password) {
+    out.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
   }
   return out;
+}
+
+/**
+ * Whether ruTorrent should send Authorization on the first request.
+ * Prefer browser session cookies unless HTTP Basic Auth is explicitly enabled.
+ */
+export function shouldSendRuTorrentBasicAuthUpfront(serverConfig = {}) {
+  return Boolean(
+    serverConfig.useBasicAuth &&
+      ((serverConfig.basicAuthUsername && serverConfig.basicAuthPassword) ||
+        ((serverConfig.username || "").trim() && serverConfig.password))
+  );
+}
+
+/**
+ * Profile has credentials we can use for a Basic Auth retry after 401.
+ */
+export function hasRuTorrentBasicAuthCredentials(serverConfig = {}) {
+  if (
+    serverConfig.useBasicAuth &&
+    serverConfig.basicAuthUsername &&
+    serverConfig.basicAuthPassword
+  ) {
+    return true;
+  }
+  return Boolean((serverConfig.username || "").trim() && serverConfig.password);
 }
 
 /**

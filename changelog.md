@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.57 (2026-08-10)
+
+- **Fix (ruTorrent):** Stop sending profile username/password as HTTP Basic Auth on every request (regression in 0.4.54). Prefer the browser session first; only send Basic Auth upfront when **Use HTTP Basic Authentication** is enabled; otherwise retry with profile credentials after a 401. Fixes 401 Unauthorized / repeated login prompts after update ([#69](https://github.com/jgkme/Add-Remote-Torrent/issues/69)).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.56 (2026-08-08)
 
 - **Fix (Chrome link catching):** Re-register the on-page content script when a stale `<all_urls>` registration from older builds persists across upgrades — that mismatch prevented injection (extension missing from DevTools, “On all sites” / catching appearing broken) ([#67](https://github.com/jgkme/Add-Remote-Torrent/issues/67)).
