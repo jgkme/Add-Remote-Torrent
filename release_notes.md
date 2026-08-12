@@ -1,3 +1,8 @@
+### v0.4.58 (2026-08-12)
+
+*   **Fix / Feat:** Clarify ruTorrent private-tracker URL-add failures instead of dumping noty() JS into Recent Activity (#70).
+*   **Build:** Chrome (`add-remote-torrent-v0.4.58.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.
+
 ### v0.4.57 (2026-08-10)
 
 *   **Fix / Feat:** Fix ruTorrent 401 by preferring browser session auth and only retrying Basic Auth after Unauthorized (#69).
