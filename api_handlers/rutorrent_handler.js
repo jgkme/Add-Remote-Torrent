@@ -5,6 +5,7 @@ import {
     shouldSendRuTorrentBasicAuthUpfront,
     hasRuTorrentBasicAuthCredentials,
 } from '../js/httpAuthHeaders.js';
+import { interpretRuTorrentAddResponse } from '../js/rutorrentResponse.js';
 
 // ruTorrent API Handler
 
@@ -149,15 +150,19 @@ export async function addTorrent(torrentUrl, serverConfig, torrentOptions) {
             return { success: false, error: { userMessage: `ruTorrent API request failed: ${response.status} ${response.statusText}` } };
         }
 
-        if (response.url.includes("result[]=Success")) {
-            return { success: true, data: { message: "Torrent added successfully." } };
-        }
         const text = await response.text();
-        if (text.includes("addTorrentSuccess")) {
-            return { success: true, data: { message: "Torrent added successfully." } };
-        } else {
-            return { success: false, error: { userMessage: `Server didn't accept data: ${text}` } };
+        const interpreted = interpretRuTorrentAddResponse(text, response.url);
+        if (interpreted.success) {
+            return { success: true, data: { message: interpreted.userMessage } };
         }
+        return {
+            success: false,
+            error: {
+                userMessage: interpreted.userMessage,
+                technicalDetail: interpreted.technicalDetail,
+                errorCode: interpreted.errorCode,
+            },
+        };
     } catch (error) {
         debug.error('Error adding torrent to ruTorrent:', error);
         const permitted = await hasHostPermission(serverConfig.url);

@@ -123,6 +123,26 @@ describe("ruTorrent addTorrent", () => {
     expect(calls[0].init.headers.Authorization).toBe(`Basic ${btoa("seed:box")}`);
   });
 
+  test("translates ruTorrent addTorrentFailedURL noty JS into a private-tracker message", async () => {
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      url: "https://rt.example/php/addtorrent.php",
+      text: async () =>
+        'noty("https://URL/torrents/######/download - "+theUILang.addTorrentFailedURL,"error");',
+    }));
+
+    const result = await addTorrent(
+      "https://example.com/torrents/1/download",
+      serverConfig,
+      { paused: false, torrentFileContentBase64: null, downloadDir: "", labels: [] }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error.userMessage.toLowerCase()).toContain("private tracker");
+    expect(result.error.userMessage).not.toContain("noty(");
+    expect(result.error.errorCode).toBe("RUTORRENT_URL_FETCH_FAILED");
+  });
+
   test("retries with profile Basic Auth after 401 without Authorization", async () => {
     const calls = [];
     globalThis.fetch = mock(async (url, init = {}) => {
