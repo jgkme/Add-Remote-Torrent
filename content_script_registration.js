@@ -2,9 +2,9 @@
  * Registers the link-catching content script only when the user enables it.
  * Avoids loading content_script.js on every page by default (MV3 best practice).
  *
- * IMPORTANT: matches must stay aligned with optional_host_permissions (http/https).
- * Older builds registered `<all_urls>`; if that stale registration persists across
- * upgrades, Chrome will not inject the script. Always re-sync matches when enabling.
+ * Matches must be a subset of granted host permissions. Chrome "On specific sites"
+ * grants individual origins (not the all-sites wildcards), so register those origins.
+ * Requiring all-sites access skipped injection after restart (#67).
  */
 
 import { debug } from './debug.js';
@@ -12,6 +12,9 @@ import {
   LINK_CATCHING_ORIGINS,
   hasLinkCatchingHostPermission,
   requestLinkCatchingHostPermission,
+  grantedOriginsToContentScriptMatches,
+  getGrantedHostOrigins,
+  hasHostPermissionForUrl,
 } from './js/hostPermissions.js';
 
 export const LINK_CATCHING_CONTENT_SCRIPT_ID = 'art-link-catching';
@@ -19,7 +22,7 @@ export const LINK_CATCHING_CONTENT_SCRIPT_ID = 'art-link-catching';
 /** @deprecated Use LINK_CATCHING_ORIGINS from js/hostPermissions.js */
 export const LINK_CATCHING_HOST_ORIGINS = LINK_CATCHING_ORIGINS;
 
-const LINK_CATCHING_MATCHES = ['http://*/*', 'https://*/*'];
+const ALL_SITES_MATCHES = ['http://*/*', 'https://*/*'];
 
 const INJECTABLE_URL = /^https?:\/\//i;
 
@@ -38,13 +41,20 @@ export async function ensureLinkCatchingHostPermissions() {
   return requestLinkCatchingHostPermissions();
 }
 
-function matchesAreCurrent(script) {
-  const matches = Array.isArray(script?.matches) ? [...script.matches].sort() : [];
-  const expected = [...LINK_CATCHING_MATCHES].sort();
+function sameMatches(a, b) {
+  const left = Array.isArray(a) ? [...a].sort() : [];
+  const right = Array.isArray(b) ? [...b].sort() : [];
   return (
-    matches.length === expected.length &&
-    matches.every((value, index) => value === expected[index])
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
   );
+}
+
+async function resolveLinkCatchingMatches() {
+  if (await hasLinkCatchingHostPermission()) {
+    return ALL_SITES_MATCHES;
+  }
+  return grantedOriginsToContentScriptMatches(await getGrantedHostOrigins());
 }
 
 /**
@@ -67,11 +77,11 @@ export async function syncLinkCatchingContentScript(enabled) {
 
   const existing = registered.find((s) => s.id === LINK_CATCHING_CONTENT_SCRIPT_ID);
   const isRegistered = Boolean(existing);
-  const needsRewrite = isRegistered && !matchesAreCurrent(existing);
+  const expectedMatches = enabled ? await resolveLinkCatchingMatches() : [];
 
-  if (enabled && !(await hasLinkCatchingHostPermissions())) {
+  if (enabled && expectedMatches.length === 0) {
     debug.warn(
-      '[ART] Link catching enabled but site access (http/https) was not granted; skipping content script registration.'
+      '[ART] Link catching enabled but no http(s) site access was granted; skipping content script registration.'
     );
     if (isRegistered) {
       await chrome.scripting.unregisterContentScripts({
@@ -81,6 +91,8 @@ export async function syncLinkCatchingContentScript(enabled) {
     }
     return;
   }
+
+  const needsRewrite = isRegistered && !sameMatches(existing.matches, expectedMatches);
 
   if (enabled && (needsRewrite || !isRegistered)) {
     if (isRegistered) {
@@ -95,12 +107,14 @@ export async function syncLinkCatchingContentScript(enabled) {
       {
         id: LINK_CATCHING_CONTENT_SCRIPT_ID,
         js: ['content_script.js'],
-        matches: LINK_CATCHING_MATCHES,
+        matches: expectedMatches,
         runAt: 'document_idle',
         persistAcrossSessions: true,
       },
     ]);
-    debug.log('[ART] Registered link-catching content script.');
+    debug.log(
+      `[ART] Registered link-catching content script for ${expectedMatches.join(', ')}.`
+    );
   } else if (!enabled && isRegistered) {
     await chrome.scripting.unregisterContentScripts({
       ids: [LINK_CATCHING_CONTENT_SCRIPT_ID],
@@ -117,10 +131,8 @@ export async function injectLinkCatchingIntoFocusedWindowTabs() {
   if (!chrome.scripting?.executeScript) {
     return;
   }
-  if (!(await hasLinkCatchingHostPermissions())) {
-    debug.warn('[ART] Skipping link-catching injection: site access not granted.');
-    return;
-  }
+
+  const allSites = await hasLinkCatchingHostPermission();
 
   let windowId;
   try {
@@ -145,6 +157,9 @@ export async function injectLinkCatchingIntoFocusedWindowTabs() {
 
   for (const tab of tabs) {
     if (!tab.id || !tab.url || !INJECTABLE_URL.test(tab.url)) {
+      continue;
+    }
+    if (!allSites && !(await hasHostPermissionForUrl(tab.url))) {
       continue;
     }
     try {

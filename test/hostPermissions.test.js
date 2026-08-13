@@ -3,6 +3,7 @@ import {
   originPatternFromUrl,
   hostPermissionStatusLabel,
   mapServerHostPermissions,
+  grantedOriginsToContentScriptMatches,
 } from "../js/hostPermissions.js";
 
 describe("originPatternFromUrl", () => {
@@ -31,5 +32,32 @@ describe("hostPermissionStatusLabel", () => {
 describe("mapServerHostPermissions", () => {
   test("maps empty list", async () => {
     expect(await mapServerHostPermissions([])).toEqual({});
+  });
+});
+
+describe("grantedOriginsToContentScriptMatches", () => {
+  test("uses http/https wildcards when all-sites is granted", () => {
+    expect(
+      grantedOriginsToContentScriptMatches(["http://*/*", "https://*/*"])
+    ).toEqual(["http://*/*", "https://*/*"]);
+    expect(grantedOriginsToContentScriptMatches(["<all_urls>"])).toEqual([
+      "http://*/*",
+      "https://*/*",
+    ]);
+  });
+
+  test("maps Chrome specific-site grants to content-script match patterns", () => {
+    expect(
+      grantedOriginsToContentScriptMatches([
+        "https://torrentleech.org/",
+        "https://www.example.com/*",
+      ])
+    ).toEqual(["https://torrentleech.org/*", "https://www.example.com/*"]);
+  });
+
+  test("returns empty when no http(s) origins", () => {
+    expect(grantedOriginsToContentScriptMatches(["chrome://extensions/"])).toEqual(
+      []
+    );
   });
 });

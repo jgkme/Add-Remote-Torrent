@@ -1007,6 +1007,19 @@ chrome.runtime.onStartup.addListener(() => {
   );
 });
 
+function resyncLinkCatchingAfterPermissionChange() {
+  void syncLinkCatchingFromStorage().catch((e) =>
+    debug.error("[ART Background] Link-catching sync after permission change failed:", e)
+  );
+}
+
+if (chrome.permissions?.onAdded) {
+  chrome.permissions.onAdded.addListener(resyncLinkCatchingAfterPermissionChange);
+}
+if (chrome.permissions?.onRemoved) {
+  chrome.permissions.onRemoved.addListener(resyncLinkCatchingAfterPermissionChange);
+}
+
 // Listen for storage changes to update context menu when servers are modified
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (

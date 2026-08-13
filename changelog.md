@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.59 (2026-08-13)
+
+- **Fix (Chrome link catching):** Register the content script for **granted specific sites**, not only when “On all sites” is allowed. Per-site access after a Chrome restart no longer skips injection ([#67](https://github.com/jgkme/Add-Remote-Torrent/issues/67)).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.58 (2026-08-12)
 
 - **Fix (ruTorrent):** Translate `addTorrentFailedURL` / `noty(...)` JS into a readable private-tracker message instead of dumping raw script into Recent Activity ([#70](https://github.com/jgkme/Add-Remote-Torrent/issues/70)).

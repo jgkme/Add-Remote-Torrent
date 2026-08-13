@@ -7,6 +7,9 @@ import {
     mapServerHostPermissions,
     hasLinkCatchingHostPermission,
     requestLinkCatchingHostPermission,
+    grantedOriginsToContentScriptMatches,
+    getGrantedHostOrigins,
+    hasAnyLinkCatchingHostPermission,
 } from '../js/hostPermissions.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1140,16 +1143,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const statusEl = document.getElementById('linkCatchingPermissionStatus');
         const grantBtn = document.getElementById('grantLinkCatchingPermissionButton');
         if (!statusEl || !grantBtn) return;
-        const granted = await hasLinkCatchingHostPermission();
-        const status = hostPermissionStatusLabel(granted);
-        statusEl.textContent = granted
-            ? 'Link catching site access: granted (all http/https)'
-            : 'Link catching site access: missing';
-        statusEl.className =
-            status.tone === 'ok'
-                ? 'px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
-                : 'px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100';
-        grantBtn.classList.toggle('hidden', granted);
+        const allSites = await hasLinkCatchingHostPermission();
+        const specificMatches = grantedOriginsToContentScriptMatches(
+            await getGrantedHostOrigins()
+        );
+        const hasSome = allSites || specificMatches.length > 0;
+        if (allSites) {
+            statusEl.textContent = 'Link catching site access: granted (all http/https)';
+        } else if (specificMatches.length > 0) {
+            statusEl.textContent = `Link catching site access: granted (${specificMatches.length} specific site${specificMatches.length === 1 ? '' : 's'})`;
+        } else {
+            statusEl.textContent = 'Link catching site access: missing';
+        }
+        statusEl.className = hasSome
+            ? 'px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+            : 'px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100';
+        grantBtn.classList.toggle('hidden', allSites);
+        grantBtn.textContent = hasSome && !allSites ? 'Grant access to all sites' : 'Grant site access';
     }
 
     function populateRssFeedServerSelect() {
@@ -2318,10 +2328,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             globalSettings.catchfrompage = result.catchfrompage || false; 
             catchFromPageToggle.checked = globalSettings.catchfrompage;
             if (globalSettings.catchfrompage) {
-                hasLinkCatchingHostPermission().then((granted) => {
+                hasAnyLinkCatchingHostPermission().then((granted) => {
                     if (!granted) {
                         displayFormStatus(
-                            'On-page link catching is on but site access is missing. Use “Grant site access” below or toggle catching off and on.',
+                            'On-page link catching is on but site access is missing. Use “Grant site access” below or allow the tracker in chrome://extensions details.',
                             'error'
                         );
                     }

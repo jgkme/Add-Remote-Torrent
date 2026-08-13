@@ -50,6 +50,74 @@ export function originPatternFromUrl(url) {
 }
 
 /**
+ * Convert chrome.permissions granted origins into content-script match patterns.
+ * Chrome "On specific sites" grants look like `https://example.com/` — those must
+ * become `https://example.com/*` to inject. All-sites grants keep http/https wildcards.
+ * @param {string[]} origins
+ * @returns {string[]}
+ */
+export function grantedOriginsToContentScriptMatches(origins) {
+  const list = Array.isArray(origins) ? origins : [];
+  const hasAllSites =
+    list.includes("<all_urls>") ||
+    list.includes("*://*/*") ||
+    (list.includes("http://*/*") && list.includes("https://*/*"));
+  if (hasAllSites) {
+    return ["http://*/*", "https://*/*"];
+  }
+
+  const matches = [];
+  for (const raw of list) {
+    if (!raw || typeof raw !== "string") continue;
+    if (raw === "http://*/*" || raw === "https://*/*") {
+      matches.push(raw);
+      continue;
+    }
+    if (!/^https?:\/\//i.test(raw)) continue;
+    try {
+      if (raw.includes("*")) {
+        let pattern = raw;
+        if (pattern.endsWith("/")) pattern += "*";
+        else if (!pattern.endsWith("*")) pattern += "/*";
+        matches.push(pattern);
+        continue;
+      }
+      matches.push(`${new URL(raw).origin}/*`);
+    } catch {
+      /* skip invalid */
+    }
+  }
+  return [...new Set(matches)].sort();
+}
+
+/**
+ * @returns {Promise<string[]>}
+ */
+export async function getGrantedHostOrigins() {
+  if (typeof chrome === "undefined" || !chrome.permissions?.getAll) {
+    return [];
+  }
+  try {
+    const all = await chrome.permissions.getAll();
+    return Array.isArray(all?.origins) ? all.origins : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * True when link catching can run on at least one http(s) origin
+ * (all sites or Chrome "specific sites").
+ */
+export async function hasAnyLinkCatchingHostPermission() {
+  if (await hasLinkCatchingHostPermission()) return true;
+  const matches = grantedOriginsToContentScriptMatches(
+    await getGrantedHostOrigins()
+  );
+  return matches.length > 0;
+}
+
+/**
  * @param {boolean | null | undefined} granted
  * @returns {{ label: string, tone: 'ok' | 'missing' | 'unknown' }}
  */

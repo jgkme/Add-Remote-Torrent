@@ -28,4 +28,30 @@ describe("syncLinkCatchingContentScript", () => {
     const registered = registerContentScripts.mock.calls[0][0][0];
     expect(registered.matches).toEqual(["http://*/*", "https://*/*"]);
   });
+
+  test("registers specific granted origins when all-sites is not granted", async () => {
+    const unregisterContentScripts = mock(async () => {});
+    const registerContentScripts = mock(async () => {});
+    const contains = mock(async () => false);
+
+    globalThis.chrome = {
+      permissions: {
+        contains,
+        getAll: async () => ({
+          origins: ["https://torrentleech.org/"],
+        }),
+      },
+      scripting: {
+        getRegisteredContentScripts: async () => [],
+        unregisterContentScripts,
+        registerContentScripts,
+      },
+    };
+
+    await syncLinkCatchingContentScript(true);
+
+    expect(registerContentScripts).toHaveBeenCalled();
+    const registered = registerContentScripts.mock.calls[0][0][0];
+    expect(registered.matches).toEqual(["https://torrentleech.org/*"]);
+  });
 });
