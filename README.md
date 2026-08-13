@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.59 (2026-08-13):**
+  - **Fix / Feat:** Fix on-page link catching when Chrome site access is specific sites only, not On all sites (#67).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.59`.
 - **v0.4.58 (2026-08-12):**
   - **Fix / Feat:** Clarify ruTorrent private-tracker URL-add failures instead of dumping noty() JS into Recent Activity (#70).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.58`.
