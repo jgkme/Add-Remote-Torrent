@@ -9,6 +9,12 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.60 (2026-09-06)
+
+- **Fix (qBittorrent):** When cookie Web UI login expires, the extension now re-authenticates and retries on HTTP **401** and **403**, so the popup torrent list recovers without clicking **Test Connection** ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
+- **Chore:** Refresh `bun.lock` after `zip-a-folder` 7 and bump webpack-group patch versions.
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.59 (2026-08-13)
 
 - **Fix (Chrome link catching):** Register the content script for **granted specific sites**, not only when “On all sites” is allowed. Per-site access after a Chrome restart no longer skips injection ([#67](https://github.com/jgkme/Add-Remote-Torrent/issues/67)).
