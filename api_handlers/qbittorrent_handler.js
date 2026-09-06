@@ -248,15 +248,16 @@ const qbitSession = {
 
     const response = await fetch(apiUrl, finalOptions);
 
-    if (
-      response.status === 403 &&
+    const sessionExpired =
+      (response.status === 401 || response.status === 403) &&
       !isRetry &&
       !usesQbittorrentApiKey(serverConfig) &&
-      !usesWebApiBasicAuth(serverConfig)
-    ) {
-      debug.log('qBittorrent session expired (403), re-authenticating...');
+      !usesWebApiBasicAuth(serverConfig);
+    if (sessionExpired) {
+      debug.log(`qBittorrent session expired (${response.status}), re-authenticating...`);
       bucket.isLoggedIn = false;
-      return this.fetch(apiUrl, options, serverConfig, true); // Retry once after logging in
+      await this.login(serverConfig);
+      return this.fetch(apiUrl, options, serverConfig, true);
     }
 
     return response;
