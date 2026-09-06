@@ -1,3 +1,8 @@
+### v0.4.60 (2026-09-06)
+
+*   **Fix / Feat:** Fix qBittorrent cookie login expiry: re-authenticate and retry on 401/403 so the popup torrent list recovers without Test Connection (#72).
+*   **Build:** Chrome (`add-remote-torrent-v0.4.60.zip` / `.crx`) and Firefox (`*-firefox.zip`) artifacts.
+
 ### v0.4.59 (2026-08-13)
 
 *   **Fix / Feat:** Fix on-page link catching when Chrome site access is specific sites only, not On all sites (#67).
