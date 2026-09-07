@@ -118,4 +118,31 @@ describe("qBittorrent cookie session refresh", () => {
     const logins = calls.filter((u) => u.includes("/auth/login"));
     expect(logins).toHaveLength(2);
   });
+
+  test("does not POST login again when torrents/info is 401 right after a successful login", async () => {
+    const server = { ...baseServer, id: "qbit-proxy-401" };
+    const calls = [];
+    let logins = 0;
+    globalThis.fetch = mock(async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (href.includes("/api/v2/auth/login")) {
+        logins += 1;
+        if (logins > 1) {
+          return unauthorized(401, "Unauthorized");
+        }
+        return loginOk();
+      }
+      if (href.includes("/api/v2/torrents/info")) {
+        return unauthorized(401, "Unauthorized");
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    });
+
+    await expect(getActiveTorrents(server)).rejects.toThrow(
+      /Failed to list torrents: 401 Unauthorized/
+    );
+    expect(logins).toBe(1);
+    expect(calls.filter((u) => u.includes("/auth/login"))).toHaveLength(1);
+  });
 });

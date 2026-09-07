@@ -222,13 +222,12 @@ const qbitSession = {
   
   fetch: async function(apiUrl, options, serverConfig, isRetry = false) {
     const bucket = getQbitSessionBucket(serverConfig);
-    if (
-      !usesQbittorrentApiKey(serverConfig) &&
-      !usesWebApiBasicAuth(serverConfig) &&
-      !bucket.isLoggedIn &&
-      !isRetry
-    ) {
+    const cookieMode =
+      !usesQbittorrentApiKey(serverConfig) && !usesWebApiBasicAuth(serverConfig);
+    let loggedInThisCall = false;
+    if (cookieMode && !bucket.isLoggedIn && !isRetry) {
       await this.login(serverConfig);
+      loggedInThisCall = true;
     }
     if (usesQbittorrentApiKey(serverConfig) || usesWebApiBasicAuth(serverConfig)) {
       bucket.isLoggedIn = true;
@@ -251,9 +250,15 @@ const qbitSession = {
     const sessionExpired =
       (response.status === 401 || response.status === 403) &&
       !isRetry &&
-      !usesQbittorrentApiKey(serverConfig) &&
-      !usesWebApiBasicAuth(serverConfig);
+      cookieMode;
     if (sessionExpired) {
+      // Reverse proxies often return 401 even after a successful /auth/login.
+      // Re-POSTing login in that case can clear the browser/WebUI cookies and
+      // make Test Connection fail until the user opens the WebUI (#72).
+      if (loggedInThisCall) {
+        bucket.isLoggedIn = false;
+        return response;
+      }
       debug.log(`qBittorrent session expired (${response.status}), re-authenticating...`);
       bucket.isLoggedIn = false;
       await this.login(serverConfig);
