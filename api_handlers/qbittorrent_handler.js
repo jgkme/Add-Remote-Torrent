@@ -81,6 +81,26 @@ function getQbitSessionBucket(serverConfig) {
   return qbitSessionBuckets.get(key);
 }
 
+/** GET the WebUI origin first so reverse proxies can set session cookies (#72). */
+async function warmQbitWebUiSession(serverConfig) {
+  try {
+    const webUiUrl = new URL(serverConfig.url).href;
+    const headers = {
+      Referer: webUiUrl,
+      Origin: new URL(serverConfig.url).origin,
+    };
+    applyQbitAuthorization(headers, serverConfig);
+    await fetch(webUiUrl, {
+      method: 'GET',
+      credentials: 'include',
+      redirect: 'follow',
+      headers,
+    });
+  } catch (error) {
+    debug.log('qBittorrent WebUI warmup skipped:', error);
+  }
+}
+
 /**
  * Web API 2.14.0+ returns JSON with counts; legacy servers return plain "Ok." (see WebAPI_Changelog.md).
  */
@@ -176,6 +196,7 @@ const qbitSession = {
   },
   _performLogin: async function(serverConfig, bucket) {
     const { url, username, password } = serverConfig;
+    await warmQbitWebUiSession(serverConfig);
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
     const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -224,11 +245,6 @@ const qbitSession = {
     const bucket = getQbitSessionBucket(serverConfig);
     const cookieMode =
       !usesQbittorrentApiKey(serverConfig) && !usesWebApiBasicAuth(serverConfig);
-    let loggedInThisCall = false;
-    if (cookieMode && !bucket.isLoggedIn && !isRetry) {
-      await this.login(serverConfig);
-      loggedInThisCall = true;
-    }
     if (usesQbittorrentApiKey(serverConfig) || usesWebApiBasicAuth(serverConfig)) {
       bucket.isLoggedIn = true;
     }
@@ -252,14 +268,7 @@ const qbitSession = {
       !isRetry &&
       cookieMode;
     if (sessionExpired) {
-      // Reverse proxies often return 401 even after a successful /auth/login.
-      // Re-POSTing login in that case can clear the browser/WebUI cookies and
-      // make Test Connection fail until the user opens the WebUI (#72).
-      if (loggedInThisCall) {
-        bucket.isLoggedIn = false;
-        return response;
-      }
-      debug.log(`qBittorrent session expired (${response.status}), re-authenticating...`);
+      debug.log(`qBittorrent session expired (${response.status}), warming WebUI and re-authenticating...`);
       bucket.isLoggedIn = false;
       await this.login(serverConfig);
       return this.fetch(apiUrl, options, serverConfig, true);

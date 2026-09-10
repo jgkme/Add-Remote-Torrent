@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { getActiveTorrents } from "../api_handlers/qbittorrent_handler.js";
+import {
+  getActiveTorrents,
+  testConnection,
+} from "../api_handlers/qbittorrent_handler.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -62,6 +65,9 @@ function mockCookieSession({ unauthorizedStatus, unauthorizedText }) {
         return unauthorized(unauthorizedStatus, unauthorizedText);
       }
       return jsonTorrents(torrents);
+    }
+    if (!href.includes("/api/v2/")) {
+      return { ok: true, status: 200, statusText: "OK", text: async () => "" };
     }
     throw new Error(`unexpected fetch: ${href}`);
   });
@@ -136,6 +142,9 @@ describe("qBittorrent cookie session refresh", () => {
       if (href.includes("/api/v2/torrents/info")) {
         return unauthorized(401, "Unauthorized");
       }
+      if (!href.includes("/api/v2/")) {
+        return { ok: true, status: 200, statusText: "OK", text: async () => "" };
+      }
       throw new Error(`unexpected fetch: ${href}`);
     });
 
@@ -144,5 +153,131 @@ describe("qBittorrent cookie session refresh", () => {
     );
     expect(logins).toBe(1);
     expect(calls.filter((u) => u.includes("/auth/login"))).toHaveLength(1);
+  });
+
+  test("lists torrents from existing SID cookies without posting login first", async () => {
+    const server = { ...baseServer, id: "qbit-reuse-sid" };
+    const calls = [];
+    globalThis.fetch = mock(async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (href.includes("/api/v2/auth/login")) {
+        return loginOk();
+      }
+      if (href.includes("/api/v2/torrents/info")) {
+        return jsonTorrents([
+          {
+            hash: "abc",
+            name: "example",
+            progress: 0.5,
+            state: "downloading",
+            eta: 10,
+            dlspeed: 1,
+            upspeed: 0,
+            added_on: 1,
+          },
+        ]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    });
+
+    const torrents = await getActiveTorrents(server);
+    expect(torrents).toHaveLength(1);
+    expect(calls.filter((u) => u.includes("/auth/login"))).toHaveLength(0);
+    expect(calls.some((u) => u.includes("/torrents/info"))).toBe(true);
+  });
+
+  test("GETs the WebUI origin before login when the API is 401 (proxy cookie warmup)", async () => {
+    const server = { ...baseServer, id: "qbit-warmup" };
+    const calls = [];
+    let proxyReady = false;
+    globalThis.fetch = mock(async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (!href.includes("/api/v2/")) {
+        proxyReady = true;
+        return { ok: true, status: 200, statusText: "OK", text: async () => "" };
+      }
+      if (href.includes("/api/v2/auth/login")) {
+        if (!proxyReady) {
+          return unauthorized(401, "Unauthorized");
+        }
+        return loginOk();
+      }
+      if (href.includes("/api/v2/torrents/info")) {
+        if (!proxyReady) {
+          return unauthorized(401, "Unauthorized");
+        }
+        return jsonTorrents([
+          {
+            hash: "abc",
+            name: "example",
+            progress: 1,
+            state: "pausedUP",
+            eta: 0,
+            dlspeed: 0,
+            upspeed: 0,
+            added_on: 1,
+          },
+        ]);
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    });
+
+    const torrents = await getActiveTorrents(server);
+    expect(torrents).toHaveLength(1);
+    const loginIdx = calls.findIndex((u) => u.includes("/auth/login"));
+    const warmupIdx = calls.findIndex((u) => !u.includes("/api/v2/"));
+    expect(loginIdx).toBeGreaterThan(-1);
+    expect(warmupIdx).toBeGreaterThan(-1);
+    expect(warmupIdx).toBeLessThan(loginIdx);
+  });
+
+  test("Test Connection warms the WebUI origin before cookie login", async () => {
+    const server = { ...baseServer, id: "qbit-testconn-warmup" };
+    const calls = [];
+    let proxyReady = false;
+    globalThis.fetch = mock(async (url) => {
+      const href = String(url);
+      calls.push(href);
+      if (!href.includes("/api/v2/")) {
+        proxyReady = true;
+        return { ok: true, status: 200, statusText: "OK", text: async () => "" };
+      }
+      if (href.includes("/api/v2/auth/login")) {
+        if (!proxyReady) {
+          return unauthorized(401, "Unauthorized");
+        }
+        return loginOk();
+      }
+      if (href.includes("/api/v2/app/version")) {
+        return { ok: true, status: 200, text: async () => "v5.0.1" };
+      }
+      if (href.includes("/api/v2/app/buildInfo")) {
+        return { ok: true, status: 200, json: async () => ({ qt: "6" }) };
+      }
+      if (href.includes("/api/v2/app/webapiVersion")) {
+        return { ok: true, status: 200, text: async () => "2.11.2" };
+      }
+      if (href.includes("/api/v2/sync/maindata")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ torrents: {}, server_state: {} }),
+        };
+      }
+      if (href.includes("/api/v2/torrents/categories")) {
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    });
+
+    const result = await testConnection(server);
+    expect(result.success).toBe(true);
+    const loginIdx = calls.findIndex((u) => u.includes("/auth/login"));
+    const warmupIdx = calls.findIndex((u) => !u.includes("/api/v2/"));
+    expect(warmupIdx).toBeGreaterThan(-1);
+    expect(loginIdx).toBeGreaterThan(-1);
+    expect(warmupIdx).toBeLessThan(loginIdx);
   });
 });
