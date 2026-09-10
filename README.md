@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.62 (2026-09-10):**
+  - **Fix / Feat:** Fix qBittorrent cookie login after Firefox restart: GET the WebUI origin first so reverse-proxy cookies are set, then login (#72).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.62`.
 - **v0.4.61 (2026-09-07):**
   - **Fix / Feat:** Fix qBittorrent cookie login behind reverse proxies: do not re-POST auth/login when the API still returns 401 after a successful login (#72).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.61`.
