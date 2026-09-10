@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.62 (2026-09-10)
+
+- **Fix (qBittorrent):** After a browser restart, cookie login now **GET**s the WebUI origin first (same idea as opening the WebUI tab) so reverse-proxy session cookies can be set, then retries `/auth/login`. Existing SID cookies are reused without an extra login POST ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.61 (2026-09-07)
 
 - **Fix (qBittorrent):** Stop posting cookie login a second time when the torrent list still returns **401** after a successful `/auth/login`. That extra login could clear reverse-proxy cookies so **Test Connection** also failed until the WebUI was opened ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
