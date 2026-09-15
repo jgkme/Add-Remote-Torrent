@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.63 (2026-09-15):**
+  - **Fix / Feat:** Fix Firefox qBittorrent 401: reuse SID cookies on Test Connection, drop WebUI warmup GET, rewrite moz-extension Origin for CSRF (#72).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.63`.
 - **v0.4.62 (2026-09-10):**
   - **Fix / Feat:** Fix qBittorrent cookie login after Firefox restart: GET the WebUI origin first so reverse-proxy cookies are set, then login (#72).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.62`.
