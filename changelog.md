@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.63 (2026-09-16)
+
+- **Fix (qBittorrent / Firefox):** Test Connection now uses existing SID cookies like add-torrent, instead of always POSTing login. Removed the WebUI warmup GET. Firefox builds rewrite `Origin: moz-extension://…` to the WebUI host so qBittorrent CSRF does not 401 ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.62 (2026-09-10)
 
 - **Fix (qBittorrent):** After a browser restart, cookie login now **GET**s the WebUI origin first (same idea as opening the WebUI tab) so reverse-proxy session cookies can be set, then retries `/auth/login`. Existing SID cookies are reused without an extra login POST ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
