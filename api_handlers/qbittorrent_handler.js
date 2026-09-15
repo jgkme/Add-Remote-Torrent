@@ -81,26 +81,6 @@ function getQbitSessionBucket(serverConfig) {
   return qbitSessionBuckets.get(key);
 }
 
-/** GET the WebUI origin first so reverse proxies can set session cookies (#72). */
-async function warmQbitWebUiSession(serverConfig) {
-  try {
-    const webUiUrl = new URL(serverConfig.url).href;
-    const headers = {
-      Referer: webUiUrl,
-      Origin: new URL(serverConfig.url).origin,
-    };
-    applyQbitAuthorization(headers, serverConfig);
-    await fetch(webUiUrl, {
-      method: 'GET',
-      credentials: 'include',
-      redirect: 'follow',
-      headers,
-    });
-  } catch (error) {
-    debug.log('qBittorrent WebUI warmup skipped:', error);
-  }
-}
-
 /**
  * Web API 2.14.0+ returns JSON with counts; legacy servers return plain "Ok." (see WebAPI_Changelog.md).
  */
@@ -196,7 +176,6 @@ const qbitSession = {
   },
   _performLogin: async function(serverConfig, bucket) {
     const { url, username, password } = serverConfig;
-    await warmQbitWebUiSession(serverConfig);
     const loginApiUrl = getApiUrl(url, 'auth/login');
     const serverUrlObj = new URL(url);
     const origin = `${serverUrlObj.protocol}//${serverUrlObj.host}`;
@@ -268,7 +247,7 @@ const qbitSession = {
       !isRetry &&
       cookieMode;
     if (sessionExpired) {
-      debug.log(`qBittorrent session expired (${response.status}), warming WebUI and re-authenticating...`);
+      debug.log(`qBittorrent session expired (${response.status}), re-authenticating...`);
       bucket.isLoggedIn = false;
       await this.login(serverConfig);
       return this.fetch(apiUrl, options, serverConfig, true);
@@ -1832,8 +1811,6 @@ export async function testConnection(serverConfig) {
   try {
     if (usesQbittorrentApiKey(serverConfig)) {
       getQbitSessionBucket(serverConfig).isLoggedIn = true;
-    } else {
-      await qbitSession.login(serverConfig);
     }
 
     const version = await getQbittorrentVersion(serverConfig);
@@ -1876,10 +1853,11 @@ export async function testConnection(serverConfig) {
     const msg = error && error.message ? error.message : String(error);
     let userMessage = "Connection failed. Check URL, credentials, and network. For qBittorrent v4.3.0+, consider disabling 'CSRF Protection' in WebUI options.";
     if (/Login failed:\s*401/i.test(msg) || (/401/.test(msg) && /Login failed/i.test(msg))) {
-      userMessage = 'Connection failed: qBittorrent rejected the username or password (HTTP 401).';
+      userMessage =
+        'Connection failed: HTTP 401 on cookie login. On Firefox, qBittorrent CSRF often rejects extension requests (Origin: moz-extension). Disable CSRF in the qB WebUI, or use Web API HTTP Basic / API key. Also check username and password.';
     } else if (/Failed to get qBittorrent version:\s*401/i.test(msg)) {
       userMessage =
-        'Connection failed: unauthorized when calling the API after login. Verify username/password, CSRF settings, and Web UI URL. Optional Web API key (qBittorrent 5.2+) is only for setups where cookie-based login cannot reach the API.';
+        'Connection failed: unauthorized when calling the API after login. On Firefox this is often CSRF Origin mismatch; try disabling CSRF in qBittorrent or Web API Basic / API key.';
     }
     return { 
       success: false, 

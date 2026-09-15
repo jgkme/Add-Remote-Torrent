@@ -28,7 +28,10 @@ import {
   createExtensionNotification,
   isFirefox,
 } from "./browser_compat.js";
+import { installFirefoxOriginHeaderRewrite } from "./js/rewriteExtensionOriginHeaders.js";
 import "./js/torrent-list.js";
+
+installFirefoxOriginHeaderRewrite();
 
 const { applyTorrentListMode } = globalThis.TorrentList;
 

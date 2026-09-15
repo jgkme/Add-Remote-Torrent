@@ -90,6 +90,12 @@ module.exports = (env, argv) => {
                 if (!manifest.permissions.includes('clipboardRead')) {
                   manifest.permissions.push('clipboardRead');
                 }
+                // Firefox MV3 still allows blocking webRequest; Chrome CWS MV3 does not.
+                for (const perm of ['webRequest', 'webRequestBlocking']) {
+                  if (!manifest.permissions.includes(perm)) {
+                    manifest.permissions.push(perm);
+                  }
+                }
                 if (manifest.web_accessible_resources?.[0]?.resources) {
                   manifest.web_accessible_resources[0].resources =
                     manifest.web_accessible_resources[0].resources.filter(

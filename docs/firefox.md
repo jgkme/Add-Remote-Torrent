@@ -9,6 +9,7 @@
 - **Omit** the Chromium-only `offscreen` permission (sounds use `Audio()` on Firefox)
 - Use `background.scripts` (event page), not `background.service_worker` — Firefox often rejects SW for temporary/AMO installs
 - Add `clipboardRead` for reliable clipboard quick-add on Firefox 140+
+- Add `webRequest` + `webRequestBlocking` so background `fetch` can send the WebUI `Origin` instead of `moz-extension://…` (qBittorrent CSRF). Chrome builds omit these (MV3 store extensions cannot use blocking webRequest).
 - Notifications omit Chromium-only fields (`buttons`, `priority`) at runtime on Firefox
 
 **Permissions note:** `data_collection_permissions.required: ["none"]` means no developer/analytics collection. Traffic still goes to **user-configured** clients after optional host grants — explain that in AMO reviewer notes (see `docs/superpowers/specs/2026-08-04-firefox-compat-audit.md`).

@@ -66,6 +66,7 @@ Firefox-specific webpack transforms (must match the listing package):
 - `background.service_worker` → `background.scripts`
 - Strip Chromium-only `offscreen` permission and offscreen assets
 - Add `clipboardRead`
+- Add `webRequest` and `webRequestBlocking` (Firefox-only Origin rewrite for qBittorrent CSRF)
 - Keep `browser_specific_settings.gecko` (id, `strict_min_version`, `data_collection_permissions`)
 
 ### Diff tip for reviewers
