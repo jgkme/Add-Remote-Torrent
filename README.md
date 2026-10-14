@@ -253,6 +253,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.64 (2026-10-14):**
+  - **Fix / Feat:** Show Add Torrent on non-link download buttons, including M-Team, and fix Brave clipboard reads (#74, #73).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.64`.
 - **v0.4.63 (2026-09-15):**
   - **Fix / Feat:** Fix Firefox qBittorrent 401: reuse SID cookies on Test Connection, drop WebUI warmup GET, rewrite moz-extension Origin for CSRF (#72).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.63`.
