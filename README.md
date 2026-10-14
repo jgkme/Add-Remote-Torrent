@@ -245,7 +245,7 @@ bun run build          # add-remote-torrent-vX.Y.Z.zip (+ .crx)
 bun run build:firefox  # add-remote-torrent-vX.Y.Z-firefox.zip
 ```
 
-Chrome and Firefox share one codebase; the Firefox build rewrites the manifest (`background.scripts`, no `offscreen`, Gecko id / data-collection keys, `clipboardRead`, `webRequest` + `webRequestBlocking`). Details: [docs/firefox.md](docs/firefox.md).
+Chrome and Firefox share one codebase; the Firefox build rewrites the manifest (`background.scripts`, no `offscreen`, Gecko id / data-collection keys, `webRequest` + `webRequestBlocking`). Details: [docs/firefox.md](docs/firefox.md).
 
 ### Releases
 

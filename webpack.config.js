@@ -14,6 +14,7 @@ module.exports = (env, argv) => {
     entry: {
       background: './background.js',
       content_script: './content_script.js',
+      context_target: './context_target.js',
       options: './options/options.js',
       popup: './popup/popup.js',
       confirmAdd: './confirmAdd/confirmAdd.js', // Changed entry key here

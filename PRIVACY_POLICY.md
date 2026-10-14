@@ -32,7 +32,7 @@ The Extension requests the following permissions:
 | **alarms** | Periodically refresh server/torrent status and optional RSS feed checks in the background. |
 | **activeTab** | Temporary access to the **current tab** when you invoke the extension (popup, context menu, or keyboard shortcut)—used with clipboard quick-add without requesting permanent access to all tabs. |
 | **scripting** | Run a one-shot script in the active tab to read the clipboard when you use the "Quick add torrent from clipboard" shortcut (user-initiated; only on normal `http://` / `https://` pages). |
-| **clipboardRead** | **Firefox package only.** Read the clipboard for quick-add / popup clipboard helpers on Firefox 140+. |
+| **clipboardRead** | Read the clipboard for the popup clipboard row and quick-add. Chrome and Brave reject popup `readText()` without this permission, even when the site clipboard setting is Allow. |
 | **webRequest / webRequestBlocking** | **Firefox package only.** Rewrite `Origin: moz-extension://…` on requests to your torrent client so qBittorrent CSRF checks see the WebUI origin. Not included in the Chrome package (Chrome Web Store MV3 does not allow blocking `webRequest` for typical store extensions). |
 | **optional_host_permissions** (`http://*/*`, `https://*/*`) | Connect to **your** torrent clients and sites. Host access is **optional** and granted by you (for example when saving a server or when the browser prompts). This broad pattern is intentional so the Extension works with **local network addresses** (for example `192.168.x.x`, `10.x.x.x`), **custom ports**, **reverse proxies**, and **remote VPS/seedbox hostnames** without listing every possible URL in advance. The Extension does not connect to arbitrary hosts unless you configure them or use a feature that needs the current page. |
 
@@ -43,7 +43,9 @@ When you enable **on-page link catching** in Options, the Extension registers a 
 - Highlight and intercept magnet/torrent links on pages you visit (optional feature).
 - Send clicked links to your configured remote client.
 
-Disabling link catching unregisters the script for new page loads (already-open tabs may keep handlers until you refresh them).
+Disabling link catching unregisters that script for new page loads (already-open tabs may keep handlers until you refresh them).
+
+On sites you have already granted access to, a separate small script records the element under a right-click so download buttons that are not normal links can be sent to your client. It does not read page text for any other purpose. Right-click on a site you have not granted still uses temporary **activeTab** access only after you choose the menu item.
 
 Private-tracker `.torrent` downloads that need your browser session are handled in the extension background using fetches to URLs you trigger—not by uploading page content to us.
 

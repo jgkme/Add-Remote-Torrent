@@ -29,6 +29,7 @@ import {
   isFirefox,
 } from "./browser_compat.js";
 import { installFirefoxOriginHeaderRewrite } from "./js/rewriteExtensionOriginHeaders.js";
+import { selectionToTorrentUrl } from "./js/contextTargetUrl.js";
 import "./js/torrent-list.js";
 
 installFirefoxOriginHeaderRewrite();
@@ -1088,7 +1089,7 @@ async function createContextMenus() {
           chrome.contextMenus.create({
             id: "addTorrentSubmenu",
             title: "Add Torrent to Remote WebUI (No servers configured)",
-            contexts: ["link"],
+            contexts: ["link", "page", "image", "selection"],
             enabled: false,
           });
           return;
@@ -1097,7 +1098,7 @@ async function createContextMenus() {
         const parentId = chrome.contextMenus.create({
           id: "addTorrentParent",
           title: "Add Torrent to Remote WebUI",
-          contexts: ["link"],
+          contexts: ["link", "page", "image", "selection"],
         });
 
         if (enableServerSpecificContextMenu) {
@@ -1108,7 +1109,7 @@ async function createContextMenus() {
               id: serverMenuId,
               parentId: parentId,
               title: server.name,
-              contexts: ["link"],
+              contexts: ["link", "page", "image", "selection"],
             });
 
             if (showDownloadDirInContextMenu) {
@@ -1124,7 +1125,7 @@ async function createContextMenus() {
                     id: `${server.id}|${dir}`,
                     parentId: serverMenuId,
                     title: dir,
-                    contexts: ["link"],
+                    contexts: ["link", "page", "image", "selection"],
                   });
                 });
               }
@@ -1147,14 +1148,14 @@ async function createContextMenus() {
                   id: serverMenuId,
                   parentId: parentId,
                   title: `Add to ${activeServer.name}`,
-                  contexts: ["link"],
+                  contexts: ["link", "page", "image", "selection"],
                 });
                 directories.forEach((dir) => {
                   chrome.contextMenus.create({
                     id: `${activeServer.id}|${dir}`,
                     parentId: serverMenuId,
                     title: dir,
-                    contexts: ["link"],
+                    contexts: ["link", "page", "image", "selection"],
                   });
                 });
               } else {
@@ -1163,6 +1164,7 @@ async function createContextMenus() {
                   id: `server_${activeServer.id}`,
                   parentId: parentId,
                   title: `Add to ${activeServer.name}`,
+                  contexts: ["link", "page", "image", "selection"],
                 });
               }
             } else {
@@ -1170,6 +1172,7 @@ async function createContextMenus() {
                 id: `server_${activeServer.id}`,
                 parentId: parentId,
                 title: `Add to ${activeServer.name}`,
+                contexts: ["link", "page", "image", "selection"],
               });
             }
           }
@@ -2470,11 +2473,52 @@ chrome.action.onClicked.addListener((tab) => {
   });
 });
 
+async function resolveContextMenuTarget(info, tab) {
+  if (info.linkUrl) return { url: info.linkUrl, error: "" };
+  const selected = selectionToTorrentUrl(info.selectionText);
+  if (selected) return { url: selected, error: "" };
+  if (!tab?.id || !tab.url || !/^https?:\/\//i.test(tab.url)) {
+    return { url: "", error: "" };
+  }
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["context_target.js"],
+    });
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async () => {
+        if (typeof globalThis.__artResolveContextClick !== "function") {
+          return { url: "", error: "" };
+        }
+        return await globalThis.__artResolveContextClick();
+      },
+    });
+    return injected?.result || { url: "", error: "" };
+  } catch (error) {
+    debug.warn("[ART Background] Context target resolve failed:", error);
+    return { url: "", error: "" };
+  }
+}
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const menuItemId = String(info.menuItemId);
-  const linkUrl = info.linkUrl;
+  const target = await resolveContextMenuTarget(info, tab);
+  const linkUrl = target.url;
 
-  if (!linkUrl) return;
+  if (!linkUrl) {
+    const message =
+      target.error ||
+      "No torrent link was found under the cursor. Right-click a torrent link or the row's download button.";
+    updateActionHistory(message);
+    createExtensionNotification(`context-target-${Date.now()}`, {
+      type: "basic",
+      iconUrl: "icons/icon-48x48.png",
+      title: "Add Remote Torrent",
+      message: message.substring(0, 150),
+    });
+    return;
+  }
 
   let serverId;
   let downloadDir = null;

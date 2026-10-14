@@ -11,7 +11,8 @@
     "offscreen",
     "alarms",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "clipboardRead"
   ],
   "optional_host_permissions": [
     "http://*/*",

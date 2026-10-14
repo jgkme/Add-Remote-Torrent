@@ -2,6 +2,7 @@ import { debug } from '../debug';
 import '../js/torrent-ui.js';
 import '../js/torrent-list.js';
 import { getStoreReviewsUrl } from '../browser_compat.js';
+import { isSupportedClipboardLink, readClipboardText } from '../js/clipboardText.js';
 
 const { decodeDataAttr, encodeDataAttr, renderTorrentCardHtml, deleteTorrentConfirmMessage } = globalThis.TorrentUI;
 
@@ -343,22 +344,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    async function readClipboard() {
+    async function readClipboard({ fromPopupOpen = false } = {}) {
         try {
-            const text = await navigator.clipboard.readText();
+            const text = await readClipboardText();
             latestClipboardValue = String(text || '').trim();
-            if (latestClipboardValue.startsWith('magnet:') || /^https?:\/\//i.test(latestClipboardValue)) {
+            if (isSupportedClipboardLink(latestClipboardValue)) {
                 clipboardStatusText.textContent = `${latestClipboardValue.substring(0, 60)}${latestClipboardValue.length > 60 ? '...' : ''}`;
-                chrome.storage.local.get(['autoAddClipboardOnOpen'], ({ autoAddClipboardOnOpen }) => {
-                    if (autoAddClipboardOnOpen) {
-                        chrome.runtime.sendMessage({ action: 'addTorrentManually', url: latestClipboardValue });
-                    }
-                });
+                if (fromPopupOpen) {
+                    chrome.storage.local.get(['autoAddClipboardOnOpen'], ({ autoAddClipboardOnOpen }) => {
+                        if (autoAddClipboardOnOpen) {
+                            chrome.runtime.sendMessage({ action: 'addTorrentManually', url: latestClipboardValue });
+                        }
+                    });
+                }
             } else {
                 clipboardStatusText.textContent = 'Clipboard has no supported torrent URL.';
             }
         } catch (error) {
-            clipboardStatusText.textContent = 'Clipboard permission denied.';
+            latestClipboardValue = '';
+            clipboardStatusText.textContent = error?.name === 'NotAllowedError'
+                ? 'Clipboard permission denied.'
+                : 'Could not read the clipboard.';
         }
     }
 
@@ -479,7 +485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSearchUi();
     loadPopupData();
     loadReviewPromptState();
-    readClipboard();
+    readClipboard({ fromPopupOpen: true });
 
     reportIssueButton.addEventListener('click', () => {
         chrome.storage.local.get(['lastActionStatus', 'servers', 'activeServerId'], (result) => {
@@ -587,10 +593,11 @@ Add any other context about the problem here. Please double-check that you have 
         });
     });
 
-    addClipboardButton.addEventListener('click', () => {
-        if (latestClipboardValue.startsWith('magnet:') || /^https?:\/\//i.test(latestClipboardValue)) {
+    addClipboardButton.addEventListener('click', async () => {
+        await readClipboard();
+        if (isSupportedClipboardLink(latestClipboardValue)) {
             chrome.runtime.sendMessage({ action: 'addTorrentManually', url: latestClipboardValue });
-        } else {
+        } else if (clipboardStatusText.textContent !== 'Clipboard permission denied.') {
             lastActionStatusSpan.textContent = 'Error: Clipboard does not have a valid torrent link.';
         }
     });

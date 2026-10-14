@@ -18,6 +18,7 @@ import {
 } from './js/hostPermissions.js';
 
 export const LINK_CATCHING_CONTENT_SCRIPT_ID = 'art-link-catching';
+export const CONTEXT_TARGET_SCRIPT_ID = 'art-context-target';
 
 /** @deprecated Use LINK_CATCHING_ORIGINS from js/hostPermissions.js */
 export const LINK_CATCHING_HOST_ORIGINS = LINK_CATCHING_ORIGINS;
@@ -179,9 +180,103 @@ export async function injectLinkCatchingIntoFocusedWindowTabs() {
 /**
  * Read catchfrompage from storage and sync registration.
  */
+/**
+ * Remember right-clicked download buttons on sites the user has already allowed.
+ * Link catching stays opt-in; this script only records the click target.
+ */
+export async function syncContextTargetContentScript() {
+  if (!chrome.scripting?.registerContentScripts) {
+    return;
+  }
+
+  let registered = [];
+  try {
+    registered = await chrome.scripting.getRegisteredContentScripts();
+  } catch (error) {
+    debug.warn('[ART] getRegisteredContentScripts failed:', error);
+  }
+
+  const existing = registered.find((s) => s.id === CONTEXT_TARGET_SCRIPT_ID);
+  const isRegistered = Boolean(existing);
+  const expectedMatches = await resolveLinkCatchingMatches();
+
+  if (expectedMatches.length === 0) {
+    if (isRegistered) {
+      await chrome.scripting.unregisterContentScripts({
+        ids: [CONTEXT_TARGET_SCRIPT_ID],
+      });
+    }
+    return;
+  }
+
+  const needsRewrite = isRegistered && !sameMatches(existing.matches, expectedMatches);
+  if (!isRegistered || needsRewrite) {
+    if (isRegistered) {
+      await chrome.scripting.unregisterContentScripts({
+        ids: [CONTEXT_TARGET_SCRIPT_ID],
+      });
+    }
+    await chrome.scripting.registerContentScripts([
+      {
+        id: CONTEXT_TARGET_SCRIPT_ID,
+        js: ['context_target.js'],
+        matches: expectedMatches,
+        runAt: 'document_start',
+        persistAcrossSessions: true,
+      },
+    ]);
+    debug.log(
+      `[ART] Registered context-target content script for ${expectedMatches.join(', ')}.`
+    );
+  }
+}
+
+async function injectContextTargetIntoFocusedWindowTabs() {
+  if (!chrome.scripting?.executeScript) return;
+  const matches = await resolveLinkCatchingMatches();
+  if (matches.length === 0) return;
+
+  const allSites = await hasLinkCatchingHostPermission();
+  let windowId;
+  try {
+    const focused = await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
+    windowId = focused?.id;
+  } catch (error) {
+    debug.warn('[ART] Could not resolve focused window for context-target injection:', error);
+    return;
+  }
+  if (windowId == null) return;
+
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ windowId });
+  } catch (error) {
+    debug.warn('[ART] tabs.query failed during context-target injection:', error);
+    return;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !INJECTABLE_URL.test(tab.url)) continue;
+    if (!allSites && !(await hasHostPermissionForUrl(tab.url))) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['context_target.js'],
+      });
+    } catch (error) {
+      debug.log(
+        `[ART] Skipped injecting context-target script in tab ${tab.id}:`,
+        error?.message || error
+      );
+    }
+  }
+}
+
 export async function syncLinkCatchingFromStorage() {
   const { catchfrompage = false } = await chrome.storage.local.get('catchfrompage');
   await syncLinkCatchingContentScript(Boolean(catchfrompage));
+  await syncContextTargetContentScript();
+  await injectContextTargetIntoFocusedWindowTabs();
   if (catchfrompage) {
     await injectLinkCatchingIntoFocusedWindowTabs();
   }

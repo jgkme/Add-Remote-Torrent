@@ -9,6 +9,13 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.64 (2026-10-14)
+
+- **Fix (context menu):** Show **Add Torrent to Remote WebUI** when the download control is a button, not only a link. On M-Team, a right-click on the download icon uses the logged-in page session to fetch that row’s download link ([#74](https://github.com/jgkme/Add-Remote-Torrent/issues/74)).
+- **Fix (clipboard):** Declare `clipboardRead` so Brave and Chrome can read the popup clipboard, and read again when **Add Clipboard Link** is clicked ([#73](https://github.com/jgkme/Add-Remote-Torrent/issues/73)).
+- **Chore:** Update Babel, PostCSS, webpack, and pinned transitive packages.
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.63 (2026-09-16)
 
 - **Fix (qBittorrent / Firefox):** Test Connection now uses existing SID cookies like add-torrent, instead of always POSTing login. Removed the WebUI warmup GET. Firefox builds rewrite `Origin: moz-extension://…` to the WebUI host so qBittorrent CSRF does not 401 ([#72](https://github.com/jgkme/Add-Remote-Torrent/issues/72)).
