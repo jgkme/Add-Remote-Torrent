@@ -48,6 +48,9 @@ export async function fetchTorrentBytesInTab(tabId, torrentUrl) {
   }
   const results = await chrome.scripting.executeScript({
     target: { tabId },
+    // Page origin, not chrome-extension://. Signed tracker CDNs (M-Team →
+    // halomt.com) reject the extension origin with a CORS error.
+    world: "MAIN",
     func: async (url) => {
       const response = await fetch(url, {
         credentials: "include",

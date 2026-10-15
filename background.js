@@ -1862,12 +1862,16 @@ async function addTorrentToClient(
           classified.detail
         );
         updateActionHistory(msg);
-        createExtensionNotification({
-          type: "basic",
-          iconUrl: "icons/icon-48x48.png",
-          title: "Add Remote Torrent",
-          message: classified.short.substring(0, 150),
-        });
+        // A CORS failure on a signed download URL still leaves a URL the client
+        // can add. Only interrupt the user for session/HTTP failures.
+        if (classified.likelyCause !== "network_or_cors") {
+          createExtensionNotification({
+            type: "basic",
+            iconUrl: "icons/icon-48x48.png",
+            title: "Add Remote Torrent",
+            message: classified.short.substring(0, 150),
+          });
+        }
       }
     }
     }

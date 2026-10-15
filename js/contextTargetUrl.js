@@ -84,6 +84,53 @@ function rowTorrentId(row) {
   return /^\d+$/.test(String(id)) ? String(id) : "";
 }
 
+const DETAIL_PATH_ID = /\/detail\/(\d+)/;
+
+/**
+ * Walk the click target through light DOM and shadow hosts.
+ * @param {Element} element
+ * @returns {Element[]}
+ */
+function ancestorsOf(element) {
+  const list = [];
+  let node = element;
+  let depth = 0;
+  while (node && depth < 16) {
+    if (node.nodeType === 1) list.push(node);
+    if (node.parentElement) {
+      node = node.parentElement;
+    } else {
+      const root = typeof node.getRootNode === "function" ? node.getRootNode() : null;
+      node = root && root.host ? root.host : null;
+    }
+    depth += 1;
+  }
+  return list;
+}
+
+/**
+ * The list download icon is not a link. The torrent id is the single
+ * /detail/<id> link in that row (or data-row-key on the row).
+ * @param {Element} element
+ * @param {string} pageUrl
+ */
+function mteamIdNear(element, pageUrl) {
+  if (!isMteamPage(pageUrl)) return "";
+  for (const node of ancestorsOf(element)) {
+    const own = rowTorrentId(node);
+    if (own) return own;
+    if (typeof node.querySelectorAll !== "function") continue;
+    const ids = new Set();
+    for (const anchor of node.querySelectorAll("a[href]")) {
+      const href = anchor.href || anchor.getAttribute?.("href") || "";
+      const match = String(href).match(DETAIL_PATH_ID);
+      if (match) ids.add(match[1]);
+    }
+    if (ids.size === 1) return [...ids][0];
+  }
+  return detailIdFromPage(pageUrl);
+}
+
 /**
  * @param {string} pageUrl
  */
@@ -159,16 +206,14 @@ export function resolveContextTarget(element, pageUrl) {
     return { url: onclickMatch[1], mteamId: "" };
   }
 
-  if (!isDownloadControl(element)) return empty;
-
   const row = element.closest("tr, [data-row-key], li, article");
   const rowHref = torrentHrefIn(row, pageUrl);
-  if (rowHref) return { url: rowHref, mteamId: "" };
-
-  if (isMteamPage(pageUrl)) {
-    const id = rowTorrentId(row) || detailIdFromPage(pageUrl);
-    if (id) return { url: "", mteamId: id };
+  if (rowHref && (isDownloadControl(element) || !element.closest("a[href]"))) {
+    return { url: rowHref, mteamId: "" };
   }
+
+  const mteamId = mteamIdNear(element, pageUrl);
+  if (mteamId) return { url: "", mteamId };
 
   return empty;
 }

@@ -52,7 +52,9 @@ export function classifyTorrentDownloadFailure(error, http = null) {
     lower.includes("failed to fetch") ||
     lower.includes("networkerror") ||
     lower.includes("network request failed") ||
-    lower.includes("load failed")
+    lower.includes("load failed") ||
+    lower.includes("blocked by cors") ||
+    lower.includes("access-control-allow-origin")
   ) {
     return {
       likelyCause: "network_or_cors",

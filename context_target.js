@@ -32,10 +32,23 @@ async function fetchMteamDownloadUrl(id) {
 
 function eventElement(event) {
   const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  let element = null;
   for (const node of path) {
-    if (node && node.nodeType === 1) return node;
+    if (node && node.nodeType === 1) {
+      element = node;
+      break;
+    }
   }
-  return event.target && event.target.nodeType === 1 ? event.target : null;
+  if (!element && event.target && event.target.nodeType === 1) element = event.target;
+  if (!element || typeof element.closest !== "function") return element;
+  // Ant Design tooltips are portaled to <body>, so a right-click on the
+  // "下载" tooltip is not inside the torrent row. Use the trigger instead.
+  const tip = element.closest(".ant-tooltip, [role='tooltip']");
+  if (tip?.id && typeof CSS !== "undefined" && CSS.escape) {
+    const trigger = document.querySelector(`[aria-describedby="${CSS.escape(tip.id)}"]`);
+    if (trigger) return trigger;
+  }
+  return element;
 }
 
 async function resolveElement(element) {

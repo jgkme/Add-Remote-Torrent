@@ -123,6 +123,29 @@ describe("resolveContextTarget", () => {
     });
   });
 
+  test("reads the M-Team id from the row detail link when the list icon is unlabeled", () => {
+    const icon = createElement("svg");
+    const button = createElement("button", { children: [icon] });
+    const title = createElement("a", { attrs: { href: "/detail/5150" }, text: "Movie" });
+    createElement("div", { children: [title, button] });
+    expect(resolveContextTarget(icon, "https://zp.m-team.io/browse")).toEqual({
+      url: "",
+      mteamId: "5150",
+    });
+  });
+
+  test("uses the nearest row when the page lists several torrents", () => {
+    const icon = createElement("svg");
+    const rowA = createElement("div", {
+      children: [createElement("a", { attrs: { href: "/detail/1" } }), icon],
+    });
+    const rowB = createElement("div", {
+      children: [createElement("a", { attrs: { href: "/detail/2" } })],
+    });
+    createElement("div", { children: [rowA, rowB] });
+    expect(resolveContextTarget(icon, "https://zp.m-team.io/browse").mteamId).toBe("1");
+  });
+
   test("uses the detail id when the M-Team download button is on the detail page", () => {
     const button = createElement("button", { text: "下載" });
     expect(
