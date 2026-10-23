@@ -262,6 +262,9 @@ Installable builds are published on [GitHub Releases](https://github.com/jgkme/A
 
 ## Changelog
 
+- **v0.4.65 (2026-10-23):**
+  - **Fix / Feat:** Add an option to auto-add a magnet or torrent URL as soon as it is copied, without opening the popup (#73).
+  - **Build:** Chrome + Firefox release artifacts for `v0.4.65`.
 - **v0.4.64 (2026-10-14):**
   - **Fix / Feat:** Show Add Torrent on non-link download buttons, including M-Team, and fix Brave clipboard reads (#74, #73).
   - **Build:** Chrome + Firefox release artifacts for `v0.4.64`.
