@@ -8,6 +8,7 @@ import { parseCategoriesJson } from "./api_handlers/qbittorrent_handler.js";
 import {
   syncLinkCatchingContentScript,
   syncLinkCatchingFromStorage,
+  syncClipboardWatchFromStorage,
   injectLinkCatchingIntoFocusedWindowTabs,
   ensureLinkCatchingHostPermissions,
 } from "./content_script_registration.js";
@@ -30,6 +31,7 @@ import {
 } from "./browser_compat.js";
 import { installFirefoxOriginHeaderRewrite } from "./js/rewriteExtensionOriginHeaders.js";
 import { selectionToTorrentUrl } from "./js/contextTargetUrl.js";
+import { clipboardWatchDecision } from "./js/clipboardText.js";
 import "./js/torrent-list.js";
 
 installFirefoxOriginHeaderRewrite();
@@ -136,6 +138,11 @@ const popAdvancedDialog = async (url, targetServer) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   debug.log("[ART Background] Received message:", request);
+
+  if (request.action === "clipboardWatchSample") {
+    void handleClipboardWatchSample(request.text);
+    return false;
+  }
 
   if (request.action === "offscreenReady") {
     debug.log(
@@ -1045,6 +1052,16 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
       changes.activeServerId)
   ) {
     updateGlobalBadge();
+  }
+  if (namespace === "local" && changes.autoAddClipboardOnCopy) {
+    void (async () => {
+      if (changes.autoAddClipboardOnCopy.newValue === true) {
+        await resetClipboardWatchBaseline();
+      }
+      await syncClipboardWatchFromStorage();
+    })().catch((e) =>
+      debug.error("[ART Background] Clipboard-watch sync failed:", e)
+    );
   }
   if (namespace === "local" && changes.catchfrompage) {
     const enabled = changes.catchfrompage.newValue === true;
@@ -2170,6 +2187,55 @@ async function addTorrentToClient(
     }
     playSound("audio/failure.mp3");
     updateActionHistory(notificationErrorMessage);
+  }
+}
+
+function clipboardWatchStore() {
+  return chrome.storage.session || chrome.storage.local;
+}
+
+let clipboardWatchChain = Promise.resolve();
+
+async function applyClipboardWatchSample(text) {
+  const { autoAddClipboardOnCopy = false } = await chrome.storage.local.get(
+    "autoAddClipboardOnCopy"
+  );
+  if (autoAddClipboardOnCopy !== true) return;
+  const store = clipboardWatchStore();
+  const { clipboardWatchSeen = "", clipboardWatchPrimed = false } = await store.get([
+    "clipboardWatchSeen",
+    "clipboardWatchPrimed",
+  ]);
+  const decision = clipboardWatchDecision({
+    primed: clipboardWatchPrimed === true,
+    previous: clipboardWatchSeen,
+    next: text,
+  });
+  await store.set({
+    clipboardWatchPrimed: decision.primed,
+    clipboardWatchSeen: decision.seen,
+  });
+  if (!decision.add) return;
+  debug.log("[ART Background] Auto-adding copied clipboard link.");
+  await addTorrentToClient(decision.seen);
+}
+
+function handleClipboardWatchSample(text) {
+  clipboardWatchChain = clipboardWatchChain
+    .then(() => applyClipboardWatchSample(text))
+    .catch((error) => {
+      debug.warn("[ART Background] Clipboard watch sample failed:", error);
+    });
+}
+
+async function resetClipboardWatchBaseline() {
+  try {
+    await clipboardWatchStore().set({
+      clipboardWatchPrimed: false,
+      clipboardWatchSeen: "",
+    });
+  } catch (error) {
+    debug.warn("[ART Background] Could not reset clipboard watch baseline:", error);
   }
 }
 

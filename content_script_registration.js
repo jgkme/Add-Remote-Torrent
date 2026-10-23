@@ -19,6 +19,7 @@ import {
 
 export const LINK_CATCHING_CONTENT_SCRIPT_ID = 'art-link-catching';
 export const CONTEXT_TARGET_SCRIPT_ID = 'art-context-target';
+export const CLIPBOARD_WATCH_SCRIPT_ID = 'art-clipboard-watch';
 
 /** @deprecated Use LINK_CATCHING_ORIGINS from js/hostPermissions.js */
 export const LINK_CATCHING_HOST_ORIGINS = LINK_CATCHING_ORIGINS;
@@ -272,11 +273,109 @@ async function injectContextTargetIntoFocusedWindowTabs() {
   }
 }
 
+/**
+ * Watch clipboard copies only while the option is on, and only on granted sites.
+ */
+export async function syncClipboardWatchContentScript(enabled) {
+  if (!chrome.scripting?.registerContentScripts) return;
+
+  let registered = [];
+  try {
+    registered = await chrome.scripting.getRegisteredContentScripts();
+  } catch (error) {
+    debug.warn('[ART] getRegisteredContentScripts failed:', error);
+  }
+
+  const existing = registered.find((s) => s.id === CLIPBOARD_WATCH_SCRIPT_ID);
+  const isRegistered = Boolean(existing);
+  const expectedMatches = enabled ? await resolveLinkCatchingMatches() : [];
+
+  if (!enabled || expectedMatches.length === 0) {
+    if (isRegistered) {
+      await chrome.scripting.unregisterContentScripts({
+        ids: [CLIPBOARD_WATCH_SCRIPT_ID],
+      });
+    }
+    return;
+  }
+
+  const needsRewrite = isRegistered && !sameMatches(existing.matches, expectedMatches);
+  if (!isRegistered || needsRewrite) {
+    if (isRegistered) {
+      await chrome.scripting.unregisterContentScripts({
+        ids: [CLIPBOARD_WATCH_SCRIPT_ID],
+      });
+    }
+    await chrome.scripting.registerContentScripts([
+      {
+        id: CLIPBOARD_WATCH_SCRIPT_ID,
+        js: ['clipboard_watch.js'],
+        matches: expectedMatches,
+        runAt: 'document_idle',
+        persistAcrossSessions: true,
+      },
+    ]);
+    debug.log(
+      `[ART] Registered clipboard-watch content script for ${expectedMatches.join(', ')}.`
+    );
+  }
+}
+
+async function injectClipboardWatchIntoFocusedWindowTabs() {
+  if (!chrome.scripting?.executeScript) return;
+  const allSites = await hasLinkCatchingHostPermission();
+  let windowId;
+  try {
+    const focused = await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
+    windowId = focused?.id;
+  } catch (error) {
+    debug.warn('[ART] Could not resolve focused window for clipboard watch:', error);
+    return;
+  }
+  if (windowId == null) return;
+
+  let tabs = [];
+  try {
+    tabs = await chrome.tabs.query({ windowId });
+  } catch (error) {
+    debug.warn('[ART] tabs.query failed during clipboard-watch injection:', error);
+    return;
+  }
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !INJECTABLE_URL.test(tab.url)) continue;
+    if (!allSites && !(await hasHostPermissionForUrl(tab.url))) continue;
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['clipboard_watch.js'],
+      });
+    } catch (error) {
+      debug.log(
+        `[ART] Skipped injecting clipboard-watch script in tab ${tab.id}:`,
+        error?.message || error
+      );
+    }
+  }
+}
+
+export async function syncClipboardWatchFromStorage() {
+  const { autoAddClipboardOnCopy = false } = await chrome.storage.local.get(
+    'autoAddClipboardOnCopy'
+  );
+  const enabled = autoAddClipboardOnCopy === true;
+  await syncClipboardWatchContentScript(enabled);
+  if (enabled) {
+    await injectClipboardWatchIntoFocusedWindowTabs();
+  }
+}
+
 export async function syncLinkCatchingFromStorage() {
   const { catchfrompage = false } = await chrome.storage.local.get('catchfrompage');
   await syncLinkCatchingContentScript(Boolean(catchfrompage));
   await syncContextTargetContentScript();
   await injectContextTargetIntoFocusedWindowTabs();
+  await syncClipboardWatchFromStorage();
   if (catchfrompage) {
     await injectLinkCatchingIntoFocusedWindowTabs();
   }

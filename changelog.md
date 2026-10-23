@@ -9,6 +9,11 @@ Please give it a try and create some feedbacks or issues here.
 
 ## Version history
 
+### 0.4.65 (2026-10-23)
+
+- **Feat (clipboard):** Optional **Auto-add when a magnet or torrent URL is copied**. Adds the link to the active server without opening the popup. Off by default. The link already on the clipboard when you enable it is not added ([#73](https://github.com/jgkme/Add-Remote-Torrent/issues/73)).
+- **Build:** Chrome + Firefox release artifacts.
+
 ### 0.4.64 (2026-10-14)
 
 - **Fix (context menu):** Show **Add Torrent to Remote WebUI** when the download control is a button, not only a link. On M-Team, a right-click on the download icon uses the logged-in page session to fetch that row’s download link ([#74](https://github.com/jgkme/Add-Remote-Torrent/issues/74)).

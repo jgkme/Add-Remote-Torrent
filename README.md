@@ -159,6 +159,15 @@ After updating to **v0.4.42+**, you may also see a one-time notification if the 
 
 The extension **Options** page (under **Other Global Settings**) links to the same shortcut editor for quick access.
 
+## Clipboard
+
+Two optional settings live under **Other Global Settings**. Both are off until you turn them on.
+
+| Setting | What it does |
+| --- | --- |
+| **Auto-add supported clipboard link when popup opens** | When you open the extension popup, a magnet or torrent URL already on the clipboard is added. |
+| **Auto-add when a magnet or torrent URL is copied** | Adds the link to the active server as soon as it is copied on a site this extension can access. You do not need to open the popup. Turning it on asks for site access. A link that is already on the clipboard at that moment is not added; copy it again, or copy a new one. |
+
 ## Troubleshooting & FAQ
 
 **Q: Why does Chrome show a warning about "Enhanced Protection" when I install the extension?**

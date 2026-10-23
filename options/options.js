@@ -7,9 +7,9 @@ import {
     mapServerHostPermissions,
     hasLinkCatchingHostPermission,
     requestLinkCatchingHostPermission,
+    hasAnyLinkCatchingHostPermission,
     grantedOriginsToContentScriptMatches,
     getGrantedHostOrigins,
-    hasAnyLinkCatchingHostPermission,
 } from '../js/hostPermissions.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const badgeModeInput = document.getElementById('badgeModeInput');
     const badgeShowServerHealthToggle = document.getElementById('badgeShowServerHealthToggle');
     const autoAddClipboardOnOpenToggle = document.getElementById('autoAddClipboardOnOpenToggle');
+    const autoAddClipboardOnCopyToggle = document.getElementById('autoAddClipboardOnCopyToggle');
     const rssAutoAddEnabledToggle = document.getElementById('rssAutoAddEnabledToggle');
     const rssFeedsInput = document.getElementById('rssFeedsInput');
     const rssFeedsList = document.getElementById('rssFeedsList');
@@ -270,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         badgeMode: 'links',
         badgeShowServerHealth: true,
         autoAddClipboardOnOpen: false,
+        autoAddClipboardOnCopy: false,
         rssAutoAddEnabled: false,
         rssFeeds: [],
         searchProvider: 'none',
@@ -2083,6 +2085,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalSettings.autoAddClipboardOnOpen = autoAddClipboardOnOpenToggle.checked;
         chrome.storage.local.set({ autoAddClipboardOnOpen: globalSettings.autoAddClipboardOnOpen }, () => { displayFormStatus('Global settings updated.', 'success'); });
     });
+    autoAddClipboardOnCopyToggle.addEventListener('change', () => {
+        const enabled = autoAddClipboardOnCopyToggle.checked;
+        const persist = () => {
+            globalSettings.autoAddClipboardOnCopy = enabled;
+            chrome.storage.local.set({ autoAddClipboardOnCopy: enabled }, () => {
+                displayFormStatus('Global settings updated.', 'success');
+            });
+        };
+        if (!enabled) {
+            persist();
+            return;
+        }
+        requestLinkCatchingHostPermission().then(async (granted) => {
+            const alreadyGranted = granted || (await hasAnyLinkCatchingHostPermission());
+            if (!alreadyGranted) {
+                autoAddClipboardOnCopyToggle.checked = false;
+                displayFormStatus(
+                    'Site access is required to watch copied links. The setting was not enabled.',
+                    'error'
+                );
+                return;
+            }
+            persist();
+        });
+    });
     rssAutoAddEnabledToggle.addEventListener('change', () => {
         globalSettings.rssAutoAddEnabled = rssAutoAddEnabledToggle.checked;
         chrome.storage.local.set({ rssAutoAddEnabled: globalSettings.rssAutoAddEnabled }, () => { displayFormStatus('Global settings updated.', 'success'); });
@@ -2226,6 +2253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         badgeMode: importedSettings.badgeMode || 'links',
                         badgeShowServerHealth: importedSettings.badgeShowServerHealth !== false,
                         autoAddClipboardOnOpen: importedSettings.autoAddClipboardOnOpen || false,
+                        autoAddClipboardOnCopy: importedSettings.autoAddClipboardOnCopy || false,
                         rssAutoAddEnabled: importedSettings.rssAutoAddEnabled || false,
                         rssFeeds: Array.isArray(importedSettings.rssFeeds) ? importedSettings.rssFeeds : [],
                         searchProvider: importedSettings.searchProvider || 'none',
@@ -2315,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'servers', 'activeServerId', 'showAdvancedAddDialog', 'advancedAddDialog', 'enableUrlBasedServerSelection',
             'urlToServerMappings', 'catchfrompage', 'linksfoundindicator', 'linkCatchingPatterns',
             'registerDelay', 'enableSoundNotifications', 'enableTextNotifications', 'enableReviewPrompts', 'enableCompletionNotifications', 'forceTorrentDownload', 'enableServerSpecificContextMenu', 'showDownloadDirInContextMenu', 'trackerUrlRules', 'contentDebugEnabled', 'bgDebugEnabled',
-            'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
+            'badgeMode', 'badgeShowServerHealth', 'autoAddClipboardOnOpen', 'autoAddClipboardOnCopy', 'rssAutoAddEnabled', 'rssFeeds', 'searchProvider', 'searchApiUrl', 'searchApiKey'
         ], (result) => {
             servers = (result.servers || []).map(s => ({ ...s, clientType: s.clientType || 'qbittorrent', url: s.url || s.qbUrl, username: s.username || s.qbUsername, password: s.password || s.qbPassword, rpcPath: s.rpcPath || (s.clientType === 'transmission' ? '/transmission/rpc' : ''), scgiPath: s.scgiPath || '', askForLabelDirOnPage: s.askForLabelDirOnPage || false, qbittorrentSavePath: s.qbittorrentSavePath || '', qbittorrentAuthMode: s.qbittorrentAuthMode || 'cookie', qbittorrentApiKey: s.qbittorrentApiKey || '', forceStart: s.forceStart || false, labelDirectoryMap: s.labelDirectoryMap || '' }));
             activeServerId = result.activeServerId || (servers.length > 0 ? servers[0].id : null);
@@ -2392,6 +2420,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             badgeShowServerHealthToggle.checked = globalSettings.badgeShowServerHealth;
             globalSettings.autoAddClipboardOnOpen = result.autoAddClipboardOnOpen || false;
             autoAddClipboardOnOpenToggle.checked = globalSettings.autoAddClipboardOnOpen;
+            globalSettings.autoAddClipboardOnCopy = result.autoAddClipboardOnCopy || false;
+            autoAddClipboardOnCopyToggle.checked = globalSettings.autoAddClipboardOnCopy;
             globalSettings.rssAutoAddEnabled = result.rssAutoAddEnabled || false;
             rssAutoAddEnabledToggle.checked = globalSettings.rssAutoAddEnabled;
             globalSettings.rssFeeds = Array.isArray(result.rssFeeds) ? result.rssFeeds : [];

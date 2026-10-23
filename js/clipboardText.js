@@ -10,6 +10,24 @@ export function isSupportedClipboardLink(value) {
   return text.startsWith("magnet:") || /^https?:\/\//i.test(text);
 }
 
+/**
+ * Decide whether a clipboard sample should be added.
+ * The first sample after the option is turned on is only remembered, so a
+ * link that was already copied is not added until the clipboard changes.
+ * @param {{ primed?: boolean, previous?: string, next?: string }} state
+ * @returns {{ primed: true, seen: string, add: boolean }}
+ */
+export function clipboardWatchDecision(state) {
+  const seen = String(state?.next || "").trim();
+  if (!state?.primed) {
+    return { primed: true, seen, add: false };
+  }
+  if (seen === String(state.previous || "")) {
+    return { primed: true, seen, add: false };
+  }
+  return { primed: true, seen, add: isSupportedClipboardLink(seen) };
+}
+
 function pasteWithExecCommand() {
   if (typeof document === "undefined" || typeof document.execCommand !== "function") {
     return "";
